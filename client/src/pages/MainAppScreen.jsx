@@ -1,7 +1,4 @@
 import React, { useContext } from 'react';
-// --- תיקון ---
-// שינוי הייבוא ל-default import (ללא סוגריים מסולסלים)
-import HomeContext from '../context/HomeContext.jsx';
 import TaskList from '../features/tasks/TaskList';
 import ShoppingList from '../features/shopping/ShoppingList';
 import FinanceManagement from '../features/finance/FinanceManagement';
