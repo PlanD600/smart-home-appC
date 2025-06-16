@@ -9,9 +9,11 @@ import BudgetTracker from './BudgetTracker';
 import SavingsGoals from './SavingsGoals';
 import PaidBillsList from './PaidBillsList';  // ייבוא הרכיב החדש
 import IncomeList from './IncomeList'; 
+import BillForm from './forms/BillForm'; // ייבוא טופס החשבונות
 
 function FinanceManagement() {
     const { currentHome, loading, updateCurrentHome } = useHome();
+    const { openModal } = useModal(); // שימוש ב-Context של המודאל
 
     // אם המידע עדיין נטען, או שאין בית נבחר, נציג הודעה מתאימה
     if (loading && !currentHome) {
@@ -27,9 +29,13 @@ function FinanceManagement() {
 const handleEditBill = (bill) => {
         // TODO: Open modal for adding/editing a bill
         console.log("Editing bill:", bill);
-        alert("WIP: Modal for editing/adding bills");
+        openModal(<BillForm bill={bill} />);
     };
     
+  //const handleManageBudgets = () => openModal(<h4>WIP: Budget Management Form</h4>);
+  //const handleAddGoal = () => openModal(<h4>WIP: Savings Goal Form</h4>);
+  //const handleAddIncome = () => openModal(<h4>WIP: Income Form</h4>);
+
     const handleManageBudgets = () => {
         // TODO: Open modal for managing budgets
         console.log("Managing budgets");

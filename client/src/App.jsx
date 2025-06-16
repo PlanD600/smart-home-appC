@@ -4,6 +4,7 @@ import HomeContext from './context/HomeContext.jsx';
 import LoginScreen from './pages/LoginScreen.jsx';
 import MainAppScreen from './pages/MainAppScreen.jsx';
 import LoadingSpinner from './components/LoadingSpinner.jsx';
+import Modal from './components/Modal'; // 1. ייבוא רכיב ה-Modal
 
 function App() {
     const { loading } = useContext(HomeContext);
@@ -19,6 +20,7 @@ function App() {
                 <Route path="/app" element={<MainAppScreen />} />
                 <Route path="*" element={<Navigate to="/" />} />
             </Routes>
+            <Modal /> {/* 2. הצבת רכיב ה-Modal מחוץ ל-Routes */}
         </Router>
     );
 }
