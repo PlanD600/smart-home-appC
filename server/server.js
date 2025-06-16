@@ -1,51 +1,43 @@
+// pland600/smart-home-appc/smart-home-appC-f331e9bcc98af768f120e09df9e92536aea46253/server/server.js
 const express = require('express');
 const dotenv = require('dotenv');
-const connectDB = require('./config/db');
-const homeRoutes = require('./routes/homeRoutes');
+const connectDB = require('./config/db.js');
+const homeRoutes = require('./routes/homeRoutes.js');
 const cors = require('cors');
 
-// טעינת משתני סביבה מקובץ .env
-// ודא שיצרת קובץ .env בתיקיית server עם המשתנה MONGO_URI
 dotenv.config();
-
-// התחברות למסד הנתונים
-// אם החיבור נכשל, התהליך יסתיים והודעת שגיאה תוצג בטרמינל
 connectDB();
 
 const app = express();
 
-// Middleware-ים בסיסיים
-app.use(cors()); // מאפשר בקשות ממקורות שונים (חשוב לפיתוח)
-app.use(express.json()); // מאפשר קריאת גוף בקשה בפורמט JSON
+app.use(cors());
+app.use(express.json());
 
-// Middleware לתיעוד בקשות נכנסות (למטרות דיבאגינג)
+// Main API route
+app.use('/api/homes', homeRoutes); // This is correct!
+
+// Middleware for logging
 app.use((req, res, next) => {
-  console.log(`Request received: ${req.method} ${req.originalUrl}`);
-  next(); // המשך לראוטר או ל-middleware הבא
+  console.log(`Request: ${req.method} ${req.originalUrl}`);
+  next();
 });
 
-// הגדרת נתיב ה-API הראשי
-app.use('/api/homes', homeRoutes); // הגדרת נתיב בסיס לכל הראוטים
-// Middleware לטיפול בנתיבים שלא נמצאו (שגיאת 404)
+// 404 Not Found Handler
 app.use((req, res, next) => {
   const error = new Error(`Not Found - ${req.originalUrl}`);
   res.status(404);
   next(error);
 });
 
-// Middleware כללי לטיפול בשגיאות
-// יתפוס שגיאות שנזרקות מכל מקום באפליקציה
+// General Error Handler
 app.use((err, req, res, next) => {
   const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  console.error('Error:', err.message); // הדפסת השגיאה ללוג השרת
-  res.status(statusCode);
-  res.json({
+  console.error(err.stack); // Log the full error stack for debugging
+  res.status(statusCode).json({
     message: err.message,
-    // בסביבת פיתוח, נחזיר גם את פרטי השגיאה המלאים
-    stack: process.env.NODE_ENV === 'production' ? null : err.stack,
+    stack: process.env.NODE_ENV === 'production' ? '🥞' : err.stack,
   });
 });
 
 const PORT = process.env.PORT || 3001;
-
-app.listen(PORT, () => console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`));

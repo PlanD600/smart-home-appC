@@ -1,33 +1,39 @@
-// server/routes/homeRoutes.js
-
+// pland600/smart-home-appc/smart-home-appC-f331e9bcc98af768f120e09df9e92536aea46253/server/routes/homeRoutes.js
 const express = require('express');
 const router = express.Router();
+const {
+    getHomes,
+    createHome,
+    getHomeById,
+    updateHome,
+    deleteHome,
+    addTask,
+    updateTask,
+    addShoppingItem,
+    updateShoppingItem,
+    addSubItem,
+    updateSubItem,
+    deleteSubItem,
+    updateFinance,
+} = require('../controllers/homeController.js');
 
-// נייבא את כל הקונטרולר כאובייקט אחד
-const homeController = require('../controllers/homeController');
+// Base routes for homes
+router.route('/').get(getHomes).post(createHome);
+router.route('/:id').get(getHomeById).put(updateHome).delete(deleteHome);
 
-// ונקרא לפונקציות דרך האובייקט הזה
-router.route('/')
-    .get(homeController.getHomes)
-    .post(homeController.createHome);
+// Task routes
+router.route('/:id/tasks').post(addTask);
+router.route('/:id/tasks/:taskId').put(updateTask); // Note: delete is handled by updating the home document
 
-router.route('/:id')
-    .get(homeController.getHomeById);
+// Shopping routes
+router.route('/:id/shopping-list').post(addShoppingItem);
+router.route('/:id/shopping-list/:itemId').put(updateShoppingItem);
 
-// Shopping List Routes
-router.route('/:id/shopping-list')
-    .post(homeController.createShoppingItem);
+// Sub-item routes
+router.route('/:homeId/shopping-list/:itemId/sub-items').post(addSubItem);
+router.route('/:homeId/shopping-list/:itemId/sub-items/:subItemId').put(updateSubItem).delete(deleteSubItem);
 
-router.route('/:id/shopping-list/:itemId')
-    .put(homeController.updateShoppingItem) // שימוש מפורש בפונקציה מהאובייקט
-    .delete(homeController.deleteShoppingItem);
-
-// Task List Routes
-router.route('/:id/tasks')
-    .post(homeController.createTask);
-
-router.route('/:id/tasks/:taskId')
-    .put(homeController.updateTask) // שימוש מפורש בפונקציה מהאובייקט
-    .delete(homeController.deleteTask);
+// Finance routes
+router.route('/:id/finance').put(updateFinance);
 
 module.exports = router;
