@@ -1,86 +1,57 @@
 const express = require('express');
 const router = express.Router();
 const {
-    getHomes,
-    createHome,
-    getHomeData,
-    loginHome,
-    addItem,
-    updateItem,
-    deleteItem,
-    archiveItem,
-    restoreItem,
-    deleteArchivedItem,
-    addCategory,
-    addSubItem,
-    updateSubItem,
-    deleteSubItem, // הוספת ייבוא עבור מחיקת תת-פריט
-    generateListFromAI,
-    payBill,         // הוספת ייבוא עבור תשלום חשבון
-    updateBudgets,   // הוספת ייבוא עבור עדכון תקציבים
-    addUser,         // הוספת ייבוא עבור הוספת משתמש
-    removeUser,      // הוספת ייבוא עבור הסרת משתמש
-    createTemplate,  // הוספת ייבוא עבור יצירת תבנית
-    updateTemplate,  // הוספת ייבוא עבור עדכון תבנית
-    deleteTemplate   // הוספת ייבוא עבור מחיקת תבנית
+    getHomes, createHome, getHomeData, loginHome,
+    addItem, updateItem, deleteItem,
+    archiveItem, restoreItem, deleteArchivedItem,
+    addCategory, addSubItem, updateSubItem, deleteSubItem,
+    generateListFromAI, payBill, updateBudgets,
+    addUser, removeUser,
+    createTemplate, updateTemplate, deleteTemplate
 } = require('../controllers/homeController');
 
-// --- Route specifically for logging in ---
-router.post('/login', loginHome);
+// The base for these routes is /api/homes (defined in server.js)
 
-// --- Routes for Homes ---
-router.route('/homes') // שינוי ל- /homes כדי להיות יותר RESTful
-    .get(getHomes)
-    .post(createHome);
+// --- Home Authentication & Management ---
+router.route('/').get(getHomes).post(createHome); // GET /api/homes, POST /api/homes
+router.post('/login', loginHome); // POST /api/homes/login
+router.route('/:id').get(getHomeData); // GET /api/homes/some-id
 
-router.route('/homes/:id')
-    .get(getHomeData);
+// --- Item Management ---
+router.post('/:id/items/:itemType', addItem); // POST /api/homes/some-id/items/shoppingItems
+router.route('/:id/items/:itemType/:itemId')
+    .put(updateItem)       // PUT /api/homes/some-id/items/shoppingItems/item-id
+    .delete(deleteItem);   // DELETE /api/homes/some-id/items/shoppingItems/item-id
 
-// --- Generic Routes for Items (Shopping, Tasks, Finance Items like Bills/Income/SavingsGoals) ---
-// שימו לב: itemType כעת יכול להיות גם 'finances.expectedBills' וכדומה
-router.post('/homes/:id/items/:itemType', addItem);
-
-router.route('/homes/:id/items/:itemType/:itemId')
-    .put(updateItem)
-    .delete(deleteItem);
-
-// --- Routes for Archiving ---
-router.post('/homes/:id/items/:itemType/:itemId/archive', archiveItem);
-router.post('/homes/:id/archive/:itemType/:itemId/restore', restoreItem); // נתיב לשחזור פריט
-router.delete('/homes/:id/archive/:itemType/:itemId', deleteArchivedItem); // נתיב למחיקה סופית מהארכיון
-
-// --- Routes for Categories (Shopping, Tasks, Expenses) ---
-// itemType יכול להיות 'shopping', 'task', 'expense'
-router.post('/homes/:id/categories/:itemType', addCategory);
-
-
-// --- Routes for Sub-items ---
-router.post('/homes/:id/items/:itemType/:itemId/subitems', addSubItem);
-router.route('/homes/:id/items/:itemType/:itemId/subitems/:subItemId')
+// --- Sub-Item Management ---
+router.post('/:id/items/:itemType/:itemId/subitems', addSubItem);
+router.route('/:id/items/:itemType/:itemId/subitems/:subItemId')
     .put(updateSubItem)
-    .delete(deleteSubItem); // הוספת ראוט למחיקת תת-פריט
+    .delete(deleteSubItem);
 
-// --- Routes for Users ---
-router.post('/homes/:id/users', addUser);
-router.delete('/homes/:id/users/:username', removeUser); // נתיב למחיקת משתמש לפי שם
+// --- Archive Management ---
+router.post('/:id/items/:itemType/:itemId/archive', archiveItem);
+router.post('/:id/archive/:itemType/:itemId/restore', restoreItem);
+router.delete('/:id/archive/:itemType/:itemId', deleteArchivedItem);
 
-// --- Routes for Templates ---
-router.post('/homes/:id/templates', createTemplate);
-router.route('/homes/:id/templates/:templateId') // templateId הוא ה-_id של התבנית
+// --- Category Management ---
+router.post('/:id/categories/:itemType', addCategory);
+
+// --- User Management ---
+router.post('/:id/users', addUser);
+router.delete('/:id/users/:username', removeUser);
+
+// --- Template Management ---
+router.route('/:id/templates').post(createTemplate);
+router.route('/:id/templates/:templateId')
     .put(updateTemplate)
     .delete(deleteTemplate);
 
-// --- Routes for Finance Specific Actions ---
-// תשלום חשבון
-router.post('/homes/:id/finances/bills/:billId/pay', payBill);
-// עדכון תקציבים
-router.put('/homes/:id/finances/budgets', updateBudgets);
+// --- Finance Management ---
+router.post('/:id/finances/bills/:billId/pay', payBill);
+router.put('/:id/finances/budgets', updateBudgets);
 
-
-// --- Route for AI helper (Gemini) ---
-// נתיב זה אינו תלוי ב-homeId מכיוון שהוא יכול להיות קריאה כללית למודל AI
-// אם הוא צריך להיות קשור לבית ספציפי, יש לשנות ל- /homes/:id/ai-generate-list
-router.post('/ai-generate-list', generateListFromAI);
-
+// --- AI Helper ---
+router.post('/ai/generate-list', generateListFromAI); // Note: path changed slightly for clarity
 
 module.exports = router;

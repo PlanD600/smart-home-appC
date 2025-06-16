@@ -23,7 +23,7 @@ app.use(express.json()); // מאפשר לשרת להבין בקשות שמגיע
 // 2. כאן "מנהל המשמרת" אומר:
 // "כל בקשה שמגיעה לכתובת שמתחילה ב- /api/homes,
 // אני לא מטפל בה בעצמי. אני מעביר אותה ישירות לטיפולו של homeRoutes".
-app.use('/api/homes', homeRoutes);
+app.use('/api', homeRoutes);
 
 // בדיקה בסיסית שהשרת חי ונושם
 app.get('/', (req, res) => {
