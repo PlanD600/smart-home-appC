@@ -1,57 +1,53 @@
 const express = require('express');
 const router = express.Router();
 const {
-    getHomes, createHome, getHomeData, loginHome,
-    addItem, updateItem, deleteItem,
-    archiveItem, restoreItem, deleteArchivedItem,
-    addCategory, addSubItem, updateSubItem, deleteSubItem,
-    generateListFromAI, payBill, updateBudgets,
-    addUser, removeUser,
-    createTemplate, updateTemplate, deleteTemplate
+    getHomes,
+    createHome,
+    updateHome,
+    deleteHome,
+    createTask,
+    updateTask,
+    createShoppingItem,
+    updateShoppingItem,
+    createSubItem,
+    updateSubItem,
+    deleteSubItem,
+    updateFinance,
 } = require('../controllers/homeController');
 
-// The base for these routes is /api/homes (defined in server.js)
+// Home routes
+router.route('/')
+    .get(getHomes)
+    .post(createHome);
 
-// --- Home Authentication & Management ---
-router.route('/').get(getHomes).post(createHome); // GET /api/homes, POST /api/homes
-router.post('/login', loginHome); // POST /api/homes/login
-router.route('/:id').get(getHomeData); // GET /api/homes/some-id
+router.route('/:id')
+    .put(updateHome)
+    .delete(deleteHome);
 
-// --- Item Management ---
-router.post('/:id/items/:itemType', addItem); // POST /api/homes/some-id/items/shoppingItems
-router.route('/:id/items/:itemType/:itemId')
-    .put(updateItem)       // PUT /api/homes/some-id/items/shoppingItems/item-id
-    .delete(deleteItem);   // DELETE /api/homes/some-id/items/shoppingItems/item-id
+// Task routes
+router.route('/:id/tasks')
+    .post(createTask);
 
-// --- Sub-Item Management ---
-router.post('/:id/items/:itemType/:itemId/subitems', addSubItem);
-router.route('/:id/items/:itemType/:itemId/subitems/:subItemId')
+router.route('/:id/tasks/:taskId')
+    .put(updateTask);
+
+// Shopping list routes
+router.route('/:id/shopping-list')
+    .post(createShoppingItem);
+
+router.route('/:id/shopping-list/:itemId')
+    .put(updateShoppingItem);
+
+// Sub-item routes
+router.route('/:id/shopping-list/:itemId/sub-items')
+    .post(createSubItem);
+
+router.route('/:id/shopping-list/:itemId/sub-items/:subItemId')
     .put(updateSubItem)
     .delete(deleteSubItem);
 
-// --- Archive Management ---
-router.post('/:id/items/:itemType/:itemId/archive', archiveItem);
-router.post('/:id/archive/:itemType/:itemId/restore', restoreItem);
-router.delete('/:id/archive/:itemType/:itemId', deleteArchivedItem);
-
-// --- Category Management ---
-router.post('/:id/categories/:itemType', addCategory);
-
-// --- User Management ---
-router.post('/:id/users', addUser);
-router.delete('/:id/users/:username', removeUser);
-
-// --- Template Management ---
-router.route('/:id/templates').post(createTemplate);
-router.route('/:id/templates/:templateId')
-    .put(updateTemplate)
-    .delete(deleteTemplate);
-
-// --- Finance Management ---
-router.post('/:id/finances/bills/:billId/pay', payBill);
-router.put('/:id/finances/budgets', updateBudgets);
-
-// --- AI Helper ---
-router.post('/ai/generate-list', generateListFromAI); // Note: path changed slightly for clarity
+// Finance routes
+router.route('/:id/finance')
+    .put(updateFinance);
 
 module.exports = router;

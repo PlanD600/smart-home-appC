@@ -1,70 +1,73 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { getHomes } from '../services/api';
-import LoadingSpinner from '../components/LoadingSpinner.jsx';
-import { HomeContext } from '../context/HomeContext.jsx'; // ייבוא ה-Context
+import React, { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+// --- תיקון ---
+// שינוי הייבוא ל-default import (ללא סוגריים מסולסלים)
+import HomeContext from '../context/HomeContext'; 
 
-function LoginScreen() {
-  const { login, error: loginError, loading: isLoggingIn } = useContext(HomeContext); // שימוש ב-Context
+const LoginScreen = () => {
+  const [homeName, setHomeName] = useState('');
+  const { addHome, homes, setActiveHome } = useContext(HomeContext);
+  const navigate = useNavigate();
 
-  const [homes, setHomes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(null);
-  const [passwords, setPasswords] = useState({}); // אובייקט שינהל את כל הסיסמאות
-
-  useEffect(() => {
-    const fetchHomes = async () => {
-      try {
-        setLoading(true);
-        const response = await getHomes();
-        setHomes(response.data);
-        setFetchError(null);
-      } catch (err) {
-        setFetchError('Failed to fetch homes from server.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchHomes();
-  }, []);
-
-  const handlePasswordChange = (homeId, value) => {
-    setPasswords(prev => ({ ...prev, [homeId]: value }));
+  const handleLogin = (home) => {
+    setActiveHome(home);
+    navigate('/app');
   };
 
-  const handleLogin = (homeId) => {
-    const password = passwords[homeId] || '';
-    console.log(`ניסיון התחברות לבית עם ID: ${homeId} וסיסמה: ${password}`);
-    login(homeId, password); // קורא לפונקציה מה-Context
+  const handleCreateHome = async (e) => {
+    e.preventDefault();
+    if (homeName.trim()) {
+      await addHome({ name: homeName });
+      navigate('/app');
+    }
   };
-
-  if (loading) return <LoadingSpinner />;
-  if (fetchError) return <div>שגיאה: {fetchError}</div>;
 
   return (
-    <div id="login-screen" className="screen active">
-      <h1>בחר בית</h1>
-      {loginError && <p style={{ color: 'red', textAlign: 'center' }}>{loginError}</p>}
-      <div className="home-cards-container">
-        {homes.map(home => (
-          <div key={home._id} className={`home-card ${home.colorClass}`}>
-            <div className="icon-placeholder"><i className={home.iconClass}></i></div>
-            <h4>{home.name}</h4>
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8">
+        <h1 className="text-2xl font-bold text-center text-gray-800 mb-8">Welcome to Smart Home</h1>
+        
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-700 mb-4">Select an Existing Home</h2>
+          {homes.length > 0 ? (
+            <ul className="space-y-2">
+              {homes.map(home => (
+                <li key={home._id}>
+                  <button 
+                    onClick={() => handleLogin(home)}
+                    className="w-full text-left p-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50 transition-colors"
+                  >
+                    {home.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-center text-gray-500">No homes found. Create one below.</p>
+          )}
+        </div>
+
+        <div className="border-t border-gray-200 pt-6">
+          <h2 className="text-lg font-semibold text-gray-700 mb-4">Or Create a New Home</h2>
+          <form onSubmit={handleCreateHome}>
             <input
-              type="password"
-              placeholder="קוד כניסה"
-              className="home-password-input"
-              value={passwords[home._id] || ''}
-              onChange={(e) => handlePasswordChange(home._id, e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleLogin(home._id)}
+              type="text"
+              value={homeName}
+              onChange={(e) => setHomeName(e.target.value)}
+              placeholder="Enter new home name"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
-            <button className="login-home-btn" onClick={() => handleLogin(home._id)} disabled={isLoggingIn}>
-              {isLoggingIn ? 'מתחבר...' : 'כניסה'}
+            <button 
+              type="submit"
+              className="w-full mt-4 p-3 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-colors font-semibold"
+            >
+              Create Home
             </button>
-          </div>
-        ))}
+          </form>
+        </div>
       </div>
     </div>
   );
-}
+};
 
 export default LoginScreen;

@@ -1,38 +1,52 @@
-// server/server.js
-
 const express = require('express');
 const dotenv = require('dotenv');
-const cors = require('cors');
 const connectDB = require('./config/db');
-// 1. כאן אנחנו "מזמינים" את מנהל המחלקה של הבתים
 const homeRoutes = require('./routes/homeRoutes');
+const cors = require('cors');
 
-// טוען את משתני הסביבה מהקובץ הסודי .env
+// טעינת משתני סביבה מקובץ .env
+// ודא שיצרת קובץ .env בתיקיית server עם המשתנה MONGO_URI
 dotenv.config();
 
-// מתחבר למסד הנתונים
+// התחברות למסד הנתונים
+// אם החיבור נכשל, התהליך יסתיים והודעת שגיאה תוצג בטרמינל
 connectDB();
 
 const app = express();
 
-// Middleware - כללי הבית
-app.use(cors()); // מאפשר ללקוח (שירוץ מכתובת אחרת) לדבר עם השרת
-app.use(express.json()); // מאפשר לשרת להבין בקשות שמגיעות בפורמט JSON
+// Middleware-ים בסיסיים
+app.use(cors()); // מאפשר בקשות ממקורות שונים (חשוב לפיתוח)
+app.use(express.json()); // מאפשר קריאת גוף בקשה בפורמט JSON
 
-// --- כאן קורה הקסם ---
-// 2. כאן "מנהל המשמרת" אומר:
-// "כל בקשה שמגיעה לכתובת שמתחילה ב- /api/homes,
-// אני לא מטפל בה בעצמי. אני מעביר אותה ישירות לטיפולו של homeRoutes".
-app.use('/api', homeRoutes);
-
-// בדיקה בסיסית שהשרת חי ונושם
-app.get('/', (req, res) => {
-    res.send('API is running...');
+// Middleware לתיעוד בקשות נכנסות (למטרות דיבאגינג)
+app.use((req, res, next) => {
+  console.log(`Request received: ${req.method} ${req.originalUrl}`);
+  next(); // המשך לראוטר או ל-middleware הבא
 });
 
-const PORT = process.env.PORT || 5001;
+// הגדרת נתיב ה-API הראשי
+app.use('/api/homes', homeRoutes);
 
-// "פותח את המסעדה" - השרת מתחיל להאזין לבקשות
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+// Middleware לטיפול בנתיבים שלא נמצאו (שגיאת 404)
+app.use((req, res, next) => {
+  const error = new Error(`Not Found - ${req.originalUrl}`);
+  res.status(404);
+  next(error);
 });
+
+// Middleware כללי לטיפול בשגיאות
+// יתפוס שגיאות שנזרקות מכל מקום באפליקציה
+app.use((err, req, res, next) => {
+  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  console.error('Error:', err.message); // הדפסת השגיאה ללוג השרת
+  res.status(statusCode);
+  res.json({
+    message: err.message,
+    // בסביבת פיתוח, נחזיר גם את פרטי השגיאה המלאים
+    stack: process.env.NODE_ENV === 'production' ? null : err.stack,
+  });
+});
+
+const PORT = process.env.PORT || 3001;
+
+app.listen(PORT, () => console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`));

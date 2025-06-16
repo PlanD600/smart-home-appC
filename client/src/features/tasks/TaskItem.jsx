@@ -1,80 +1,34 @@
-import React, { useContext, useState } from 'react';
-import { HomeContext } from '../../context/HomeContext.jsx';
+/ client/src/features/tasks/TaskItem.jsx
+import React, { useContext } from 'react';
+import HomeContext from '../../context/HomeContext.jsx';
+import { Check, Trash } from 'lucide-react';
 
-// רכיב קטן פנימי לניהול טופס ההערה (זהה לחלוטין לקודם)
-const CommentForm = ({ initialValue, onSave, onCancel }) => {
-  const [comment, setComment] = useState(initialValue);
+const TaskItem = ({ task, homeId }) => {
+    const { updateTask } = useContext(HomeContext);
 
-  return (
-    <div>
-      <textarea
-        value={comment}
-        onChange={(e) => setComment(e.target.value)}
-        rows="4"
-        style={{ width: '100%', boxSizing: 'border-box' }}
-      />
-      <div className="modal-footer">
-        <button className="primary-action" onClick={() => onSave(comment)}>שמור</button>
-        <button className="secondary-action" onClick={onCancel}>בטל</button>
-      </div>
-    </div>
-  );
-};
+    const handleToggle = () => {
+        updateTask(homeId, task._id, { isCompleted: !task.isCompleted });
+    };
 
-function TaskItem({ item }) {
-  const { updateItemInHome, deleteItemFromHome, archiveItemInHome, openModal, closeModal } = useContext(HomeContext);
-  
-  // ההבדל היחיד - סוג הפריט
-  const itemType = 'taskItems';
+    const handleArchive = () => {
+        updateTask(homeId, task._id, { isArchived: true });
+    };
 
-  const handleToggleComplete = () => updateItemInHome(itemType, item._id, { completed: !item.completed });
-  const handleToggleUrgent = () => updateItemInHome(itemType, item._id, { isUrgent: !item.isUrgent });
-
-  const handleDelete = () => {
-    if (window.confirm(`האם למחוק את המטלה "${item.text}"?`)) {
-      deleteItemFromHome(itemType, item._id);
-    }
-  };
-
-  const handleArchive = () => {
-    if (window.confirm(`האם להעביר לארכיון את המטלה "${item.text}"?`)) {
-      archiveItemInHome(itemType, item._id);
-    }
-  };
-
-  const handleComment = () => {
-    openModal(
-      `הערה עבור: ${item.text}`,
-      <CommentForm
-        initialValue={item.comment || ''}
-        onSave={(newComment) => {
-          updateItemInHome(itemType, item._id, { comment: newComment });
-          closeModal();
-        }}
-        onCancel={closeModal}
-      />
+    return (
+        <div className="flex items-center justify-between p-2 border-b">
+            <div className="flex items-center">
+                <button onClick={handleToggle} className="mr-2">
+                    <Check className={task.isCompleted ? "text-green-500" : "text-gray-300"} />
+                </button>
+                <span className={task.isCompleted ? 'line-through text-gray-500' : ''}>
+                    {task.name}
+                </span>
+            </div>
+            <button onClick={handleArchive}>
+                <Trash className="text-red-500" />
+            </button>
+        </div>
     );
-  };
-
-  return (
-    <li className={`${item.completed ? 'completed' : ''} ${item.isUrgent ? 'urgent-item' : ''}`}>
-      <input type="checkbox" checked={item.completed} onChange={handleToggleComplete} />
-      <div className="item-text">
-        {item.text}
-        <span className="item-details">
-          {item.category}
-          {item.assignedTo !== 'משותף' && ` | ${item.assignedTo}`}
-          {item.comment && <i className="fas fa-sticky-note" style={{ marginLeft: '8px', cursor: 'pointer', color: '#E9A825' }} onClick={handleComment}></i>}
-        </span>
-      </div>
-      <div className="item-actions">
-        <button className="action-btn" onClick={handleToggleUrgent} title="דחיפות"><i className="far fa-star"></i></button>
-        <button className="action-btn" onClick={handleComment} title="הערה"><i className="fas fa-comment"></i></button>
-        <button className="action-btn" onClick={handleArchive} title="ארכיון"><i className="fas fa-archive"></i></button>
-        <button className="action-btn" onClick={handleDelete} title="מחק"><i className="far fa-trash-alt"></i></button>
-      </div>
-    </li>
-  );
-}
+};
 
 export default TaskItem;

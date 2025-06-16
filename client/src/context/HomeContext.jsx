@@ -1,164 +1,205 @@
-import React, { createContext, useState } from 'react';
-import {
-    loginHome as loginApi,
-    addItem as addItemApi,
-    updateItem as updateItemApi,
-    deleteItem as deleteItemApi,
-    archiveItem as archiveItemApi,
-    restoreItem as restoreItemApi,
-    deleteArchivedItem as deleteArchivedItemApi,
-    addCategory as addCategoryApi,
-    generateListFromAI as generateListFromAIApi,
-    // הפונקציות של תתי-פריטים יטופלו ישירות ברכיב ה-Item, אין צורך לייבא אותן לכאן
+import React, { createContext, useState, useEffect, useCallback } from 'react';
+import { 
+    fetchHomes as apiFetchHomes, 
+    addHome as apiAddHome, 
+    updateHome as apiUpdateHome, 
+    deleteHome as apiDeleteHome,
+    addTask as apiAddTask,
+    updateTask as apiUpdateTask,
+    addShoppingItem as apiAddShoppingItem,
+    updateShoppingItem as apiUpdateShoppingItem,
+    updateFinance as apiUpdateFinance,
+    addSubItem as apiAddSubItem,
+    updateSubItem as apiUpdateSubItem,
+    deleteSubItem as apiDeleteSubItem
 } from '../services/api';
 
-export const HomeContext = createContext();
+const HomeContext = createContext();
 
 export const HomeProvider = ({ children }) => {
-    const [activeHome, setActiveHome] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const [homes, setHomes] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', content: null });
+    const [activeHome, setActiveHome] = useState(null);
 
-    // --- Actions ---
-
-    const login = async (homeId, accessCode) => {
-        setLoading(true);
-        setError(null);
+    const loadHomes = useCallback(async () => {
         try {
-            const response = await loginApi(homeId, accessCode);
-            setActiveHome(response.data);
+            setLoading(true);
+            const data = await apiFetchHomes();
+            setHomes(data);
+            if (data.length > 0 && !activeHome) {
+                const lastActiveHomeId = localStorage.getItem('lastActiveHome');
+                const homeToActivate = data.find(h => h._id === lastActiveHomeId) || data[0];
+                setActiveHome(homeToActivate);
+            }
         } catch (err) {
-            const errorMessage = err.response?.data?.message || 'קוד הגישה שגוי או שגיאת שרת.';
-            setError(errorMessage);
-            console.error("Login failed:", err);
+            setError('Failed to fetch homes from server.');
+            console.error(err);
         } finally {
             setLoading(false);
         }
+    }, [activeHome]);
+
+    useEffect(() => {
+        loadHomes();
+    }, [loadHomes]);
+
+    const handleSetActiveHome = (home) => {
+        setActiveHome(home);
+        localStorage.setItem('lastActiveHome', home._id);
     };
 
-    const logout = () => {
-        setActiveHome(null);
-    };
-
-    const updateHomeState = (updatedHome) => {
-        setActiveHome(updatedHome);
-    };
-
-    const addItemToHome = async (itemType, itemData) => {
-        if (!activeHome) return;
-        try {
-            const response = await addItemApi(activeHome._id, itemType, itemData);
-            const newItemFromServer = response.data;
-
-            // עדכון המצב בצורה בטוחה (Immutable)
-            setActiveHome(prevHome => {
-                // יוצרים עותק עמוק כדי למנוע שינוי ישיר של המצב
-                const newHome = JSON.parse(JSON.stringify(prevHome));
-                
-                if (itemType.includes('.')) {
-                    const [mainProp, subProp] = itemType.split('.');
-                    newHome[mainProp][subProp].push(newItemFromServer);
-                } else {
-                    newHome[itemType].push(newItemFromServer);
-                }
-                return newHome;
-            });
-        } catch (err) {
-            console.error(`Failed to add item to ${itemType}:`, err);
+    const updateAndSetActiveHome = (updatedHome) => {
+        setHomes(prevHomes => prevHomes.map(h => (h._id === updatedHome._id ? updatedHome : h)));
+        if (activeHome?._id === updatedHome._id) {
+            handleSetActiveHome(updatedHome);
         }
     };
 
-    const updateItemInHome = async (itemType, itemId, updates) => {
-        if (!activeHome) return;
+    const addHome = async (homeData) => {
         try {
-            const response = await updateItemApi(activeHome._id, itemType, itemId, updates);
-            const updatedItem = response.data;
-            setActiveHome(prevHome => {
-                const newHome = JSON.parse(JSON.stringify(prevHome));
-                const list = itemType.includes('.') ? newHome[itemType.split('.')[0]][itemType.split('.')[1]] : newHome[itemType];
-                const itemIndex = list.findIndex(item => item._id === itemId);
-                if (itemIndex > -1) {
-                    list[itemIndex] = updatedItem;
-                }
-                return newHome;
-            });
+            const newHome = await apiAddHome(homeData);
+            setHomes(prevHomes => [...prevHomes, newHome]);
+            handleSetActiveHome(newHome);
         } catch (err) {
-            console.error(`Failed to update item in ${itemType}:`, err);
+            setError('Failed to add home.');
+            console.error(err);
         }
     };
 
-    const deleteItemFromHome = async (itemType, itemId) => {
-        if (!activeHome) return;
+    const updateHome = async (id, homeData) => {
         try {
-            await deleteItemApi(activeHome._id, itemType, itemId);
-            setActiveHome(prevHome => {
-                const newHome = JSON.parse(JSON.stringify(prevHome));
-                if (itemType.includes('.')) {
-                    const [mainProp, subProp] = itemType.split('.');
-                    newHome[mainProp][subProp] = newHome[mainProp][subProp].filter(item => item._id !== itemId);
-                } else {
-                    newHome[itemType] = newHome[itemType].filter(item => item._id !== itemId);
-                }
-                return newHome;
-            });
+            const updatedHome = await apiUpdateHome(id, homeData);
+            updateAndSetActiveHome(updatedHome);
         } catch (err) {
-            console.error(`Failed to delete item from ${itemType}:`, err);
+            setError('Failed to update home.');
+            console.error(err);
         }
     };
     
-    // הפונקציות הבאות (ארכיון, קטגוריות, AI) משתמשות באותה תבנית...
-
-    const addCategoryToHome = async (itemType, categoryName) => {
-        if (!activeHome) return;
+    const deleteHome = async (id) => {
         try {
-            const response = await addCategoryApi(activeHome._id, itemType, categoryName);
-            const updatedCategories = response.data;
-            setActiveHome(prev => {
-                const categoryListKey = `${itemType}Categories`;
-                return { ...prev, [categoryListKey]: updatedCategories };
-            });
+            await apiDeleteHome(id);
+            const remainingHomes = homes.filter(h => h._id !== id);
+            setHomes(remainingHomes);
+            if (activeHome?._id === id) {
+                const newActiveHome = remainingHomes.length > 0 ? remainingHomes[0] : null;
+                if (newActiveHome) {
+                    handleSetActiveHome(newActiveHome);
+                } else {
+                    setActiveHome(null);
+                    localStorage.removeItem('lastActiveHome');
+                }
+            }
         } catch (err) {
-            console.error("Failed to add category:", err);
+            setError('Failed to delete home.');
+            console.error(err);
         }
     };
 
-    const generateAIList = async (type, text) => {
-        setLoading(true);
+    const addTask = async (homeId, taskData) => {
         try {
-            const response = await generateListFromAIApi({ text, type });
-            const newItems = response.data;
-            const targetList = type === 'shopping' ? 'shoppingItems' : 'taskItems';
-
-            // עדכון המצב עם כל הפריטים החדשים מה-AI
-            setActiveHome(prevHome => ({
-                ...prevHome,
-                [targetList]: [...prevHome[targetList], ...newItems]
-            }));
-
+            const updatedHome = await apiAddTask(homeId, taskData);
+            updateAndSetActiveHome(updatedHome);
         } catch (err) {
-            console.error("AI generation failed:", err);
-            setError("שגיאה ביצירת רשימה מה-AI.");
-        } finally {
-            setLoading(false);
+            setError('Failed to add task.');
+            console.error(err);
         }
     };
 
+    const updateTask = async (homeId, taskId, taskData) => {
+        try {
+            const updatedHome = await apiUpdateTask(homeId, taskId, taskData);
+            updateAndSetActiveHome(updatedHome);
+        } catch (err) {
+            setError('Failed to update task.');
+            console.error(err);
+        }
+    };
 
-    const openModal = (title, content) => setModalConfig({ isOpen: true, title, content });
-    const closeModal = () => setModalConfig({ isOpen: false, title: '', content: null });
+    const addShoppingItem = async (homeId, itemData) => {
+        try {
+            const updatedHome = await apiAddShoppingItem(homeId, itemData);
+            updateAndSetActiveHome(updatedHome);
+        } catch (err) {
+            setError('Failed to add shopping item.');
+            console.error(err);
+        }
+    };
 
-    const contextValue = {
-        activeHome, loading, error, modalConfig,
-        login, logout, openModal, closeModal,
-        addItemToHome, updateItemInHome, deleteItemFromHome,
-        addCategoryToHome, generateAIList, updateHomeState
-        // פונקציות ארכיון ותבניות יתווספו באופן דומה
+     const updateShoppingItem = async (homeId, itemId, itemData) => {
+        try {
+            const updatedHome = await apiUpdateShoppingItem(homeId, itemId, itemData);
+            updateAndSetActiveHome(updatedHome);
+        } catch (err) {
+            setError('Failed to update shopping item.');
+            console.error(err);
+        }
+    };
+
+    const updateFinance = async (homeId, financeData) => {
+        try {
+            const updatedHome = await apiUpdateFinance(homeId, financeData);
+            updateAndSetActiveHome(updatedHome);
+        } catch (err) {
+            setError('Failed to update finance data.');
+            console.error(err);
+        }
+    };
+
+    const addSubItem = async (homeId, itemId, subItemData) => {
+        try {
+            const updatedHome = await apiAddSubItem(homeId, itemId, subItemData);
+            updateAndSetActiveHome(updatedHome);
+        } catch (err) {
+            setError('Failed to add sub-item.');
+            console.error(err);
+        }
+    };
+
+    const updateSubItem = async (homeId, itemId, subItemId, subItemData) => {
+        try {
+            const updatedHome = await apiUpdateSubItem(homeId, itemId, subItemId, subItemData);
+            updateAndSetActiveHome(updatedHome);
+        } catch (err) {
+            setError('Failed to update sub-item.');
+            console.error(err);
+        }
+    };
+
+    const deleteSubItem = async (homeId, itemId, subItemId) => {
+        try {
+            const updatedHome = await apiDeleteSubItem(homeId, itemId, subItemId);
+            updateAndSetActiveHome(updatedHome);
+        } catch (err) {
+            setError('Failed to delete sub-item.');
+            console.error(err);
+        }
     };
 
     return (
-        <HomeContext.Provider value={contextValue}>
+        <HomeContext.Provider value={{ 
+            homes, 
+            loading, 
+            error, 
+            activeHome, 
+            setActiveHome: handleSetActiveHome,
+            addHome, 
+            updateHome,
+            deleteHome,
+            addTask,
+            updateTask,
+            addShoppingItem,
+            updateShoppingItem,
+            updateFinance,
+            addSubItem,
+            updateSubItem,
+            deleteSubItem,
+            loadHomes
+        }}>
             {children}
         </HomeContext.Provider>
     );
 };
+
+export default HomeContext;

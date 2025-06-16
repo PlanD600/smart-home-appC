@@ -1,64 +1,63 @@
-import React, { useState, useContext } from 'react';
-import { HomeContext } from '../context/HomeContext.jsx';
-import ShoppingList from '../features/shopping/ShoppingList.jsx';
-import TaskList from '../features/tasks/TaskList.jsx';
-import FinanceManagement from '../features/finance/FinanceManagement.jsx';
-import ArchiveView from '../components/ArchiveView.jsx';
+import React, { useContext } from 'react';
+// --- תיקון ---
+// שינוי הייבוא ל-default import (ללא סוגריים מסולסלים)
+import HomeContext from '../context/HomeContext';
+import TaskList from '../features/tasks/TaskList';
+import ShoppingList from '../features/shopping/ShoppingList';
+import FinanceManagement from '../features/finance/FinanceManagement';
+import LoadingSpinner from '../components/LoadingSpinner';
 
-function MainAppScreen() {
-  const { activeHome, logout, openModal, closeModal} = useContext(HomeContext);
-  // State שיזכור איזו לשונית פעילה כרגע
-  const [activeTab, setActiveTab] = useState('shopping-list');
+const MainAppScreen = () => {
+    const { activeHome, homes, setActiveHome, loading, error } = useContext(HomeContext);
 
-  const handleViewArchive = () => {
-        openModal("ארכיון", <ArchiveView />);
-    };
-    
-  return (
-    <div id="main-app-screen" className="screen active">
-      <header>
-        <div className="header-left-part">
-          <div className="header-buttons left">
-              {/* כרגע הכפתורים יציגו התראה, נממש אותם בהמשך */}
-              <button onClick={() => alert('בקרוב!')}><i className="fas fa-plus"></i> <span>צור תבנית</span></button>
-              <button onClick={() => alert('בקרוב!')}><i className="fas fa-list-alt"></i> <span>נהל תבניות</span></button>
-              <button onClick={handleViewArchive}><i className="fas fa-archive"></i> <span>ארכיון</span></button>
-          </div>
-          <h2 id="current-home-name-header">{activeHome.name}</h2>
+    if (loading) {
+        return <LoadingSpinner />;
+    }
+
+    if (error) {
+        return <div className="text-center text-red-500 mt-8">{error}</div>;
+    }
+
+    if (!activeHome) {
+        return (
+            <div className="text-center text-gray-500 mt-8">
+                <h2>No active home selected.</h2>
+                <p>Please select a home or create a new one.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="container mx-auto p-4">
+            <header className="mb-8">
+                <h1 className="text-4xl font-bold text-gray-800">{activeHome.name}</h1>
+                <p className="text-gray-500">Welcome back!</p>
+                {homes.length > 1 && (
+                     <select 
+                        value={activeHome._id} 
+                        onChange={(e) => setActiveHome(homes.find(h => h._id === e.target.value))}
+                        className="mt-4 p-2 border rounded"
+                    >
+                        {homes.map(home => (
+                            <option key={home._id} value={home._id}>{home.name}</option>
+                        ))}
+                    </select>
+                )}
+            </header>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-1 bg-white p-6 rounded-lg shadow-md">
+                    <TaskList home={activeHome} />
+                </div>
+                <div className="lg:col-span-1 bg-white p-6 rounded-lg shadow-md">
+                    <ShoppingList home={activeHome} />
+                </div>
+                <div className="md:col-span-2 lg:col-span-1 bg-white p-6 rounded-lg shadow-md">
+                   <FinanceManagement home={activeHome} />
+                </div>
+            </div>
         </div>
-        <div className="header-buttons right">
-          <button id="logout-btn-header" className="logout-btn" onClick={logout}>
-            <i className="fas fa-sign-out-alt"></i> החלף בית
-          </button>
-        </div>
-      </header>
-
-      <nav className="tab-navigation">
-        <button 
-          className={`tab-button ${activeTab === 'shopping-list' ? 'active' : ''}`} 
-          onClick={() => setActiveTab('shopping-list')}>
-          <i className="fas fa-shopping-cart"></i> <span>רשימת קניות</span>
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'task-list' ? 'active' : ''}`} 
-          onClick={() => setActiveTab('task-list')}>
-          <i className="fas fa-tasks"></i> <span>רשימת מטלות</span>
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'finance-management' ? 'active' : ''}`} 
-          onClick={() => setActiveTab('finance-management')}>
-          <i className="fas fa-wallet"></i> <span>ניהול כספים</span>
-        </button>
-      </nav>
-
-      <div className="tab-content">
-        {/* כאן נציג את הרכיב המתאים לפי הלשונית הפעילה */}
-        {activeTab === 'shopping-list' && <ShoppingList />}
-        {activeTab === 'task-list' && <TaskList />}
-        {activeTab === 'finance-management' && <FinanceManagement />}
-      </div>
-    </div>
-  );
-}
+    );
+};
 
 export default MainAppScreen;

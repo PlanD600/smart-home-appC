@@ -1,27 +1,26 @@
 import React, { useContext } from 'react';
-import './style.css';
-import { HomeContext } from './context/HomeContext.jsx';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import HomeContext from './context/HomeContext.jsx';
 import LoginScreen from './pages/LoginScreen.jsx';
 import MainAppScreen from './pages/MainAppScreen.jsx';
-import Modal from './components/Modal.jsx'; // ייבוא המודל
+import LoadingSpinner from './components/LoadingSpinner.jsx';
 
 function App() {
-  const { activeHome, modalConfig, closeModal } = useContext(HomeContext);
+    const { loading } = useContext(HomeContext);
 
-  return (
-    <div className="container">
-      {activeHome ? <MainAppScreen /> : <LoginScreen />}
+    if (loading) {
+        return <LoadingSpinner />;
+    }
 
-      {/* הצגת המודל כאשר הוא פתוח */}
-      <Modal 
-        isOpen={modalConfig.isOpen} 
-        onClose={closeModal} 
-        title={modalConfig.title}
-      >
-        {modalConfig.content}
-      </Modal>
-    </div>
-  );
+    return (
+        <Router>
+            <Routes>
+                <Route path="/" element={<LoginScreen />} />
+                <Route path="/app" element={<MainAppScreen />} />
+                <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+        </Router>
+    );
 }
 
 export default App;
