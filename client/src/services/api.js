@@ -1,73 +1,40 @@
+// pland600/smart-home-appc/smart-home-appC-f331e9bcc98af768f120e09df9e92536aea46253/client/src/services/api.js
 import axios from 'axios';
 
-const API_URL = '/api';
+// חשוב מאוד: עדכן את כתובת ה-URL הבסיסית לכתובת השרת שלך
+const API_URL = 'http://localhost:3001/api/homes';
 
-// Home management
-export const fetchHomes = async () => {
-  try {
-    const response = await axios.get(`${API_URL}/homes`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching homes:', error.response || error.message);
-    throw error;
-  }
-};
+const api = axios.create({
+    baseURL: API_URL,
+    headers: {
+        'Content-Type': 'application/json',
+    },
+});
 
-export const addHome = async (homeData) => {
-  const response = await axios.post(`${API_URL}/homes`, homeData);
-  return response.data;
-};
+// --- Home ---
+export const apiGetHomes = () => api.get('/');
+export const apiGetHomeById = (id) => api.get(`/${id}`);
+export const apiCreateHome = (data) => api.post('/', data);
+export const apiUpdateHome = (id, data) => api.put(`/${id}`, data);
+export const apiDeleteHome = (id) => api.delete(`/${id}`);
 
-export const updateHome = async (id, homeData) => {
-  const response = await axios.put(`${API_URL}/homes/${id}`, homeData);
-  return response.data;
-};
+// --- Shopping Items ---
+export const apiAddShoppingItem = (homeId, itemData) => api.post(`/${homeId}/shopping-list`, itemData);
+export const apiUpdateShoppingItem = (homeId, itemId, updates) => api.put(`/${homeId}/shopping-list/${itemId}`, updates);
+// (Delete will be handled by updating the whole home object for simplicity for now)
 
-export const deleteHome = async (id) => {
-  const response = await axios.delete(`${API_URL}/homes/${id}`);
-  return response.data;
-};
+// --- Tasks ---
+export const apiAddTask = (homeId, taskData) => api.post(`/${homeId}/tasks`, taskData);
+export const apiUpdateTask = (homeId, taskId, updates) => api.put(`/${homeId}/tasks/${taskId}`, updates);
 
-// Task management
-export const addTask = async (homeId, taskData) => {
-    const response = await axios.post(`${API_URL}/homes/${homeId}/tasks`, taskData);
-    return response.data;
-};
+// --- Sub-Items ---
+export const apiAddSubItem = (homeId, parentItemId, subItemData) => api.post(`/${homeId}/shopping-list/${parentItemId}/sub-items`, subItemData);
+export const apiUpdateSubItem = (homeId, parentItemId, subItemId, updates) => api.put(`/${homeId}/shopping-list/${parentItemId}/sub-items/${subItemId}`, updates);
+export const apiDeleteSubItem = (homeId, parentItemId, subItemId) => api.delete(`/${homeId}/shopping-list/${parentItemId}/sub-items/${subItemId}`);
 
-export const updateTask = async (homeId, taskId, taskData) => {
-    const response = await axios.put(`${API_URL}/homes/${homeId}/tasks/${taskId}`, taskData);
-    return response.data;
-};
+// --- Finance ---
+// For finance, we'll often update the whole finance sub-document
+export const apiUpdateFinance = (homeId, financeData) => api.put(`/${homeId}/finance`, financeData);
 
-// Shopping list management
-export const addShoppingItem = async (homeId, itemData) => {
-    const response = await axios.post(`${API_URL}/homes/${homeId}/shopping-list`, itemData);
-    return response.data;
-};
-
-export const updateShoppingItem = async (homeId, itemId, itemData) => {
-    const response = await axios.put(`${API_URL}/homes/${homeId}/shopping-list/${itemId}`, itemData);
-    return response.data;
-};
-
-// Sub-item management
-export const addSubItem = async (homeId, itemId, subItemData) => {
-    const response = await axios.post(`${API_URL}/homes/${homeId}/shopping-list/${itemId}/sub-items`, subItemData);
-    return response.data;
-};
-
-export const updateSubItem = async (homeId, itemId, subItemId, subItemData) => {
-    const response = await axios.put(`${API_URL}/homes/${homeId}/shopping-list/${itemId}/sub-items/${subItemId}`, subItemData);
-    return response.data;
-};
-
-export const deleteSubItem = async (homeId, itemId, subItemId) => {
-    const response = await axios.delete(`${API_URL}/homes/${homeId}/shopping-list/${itemId}/sub-items/${subItemId}`);
-    return response.data;
-};
-
-// Finance management
-export const updateFinance = async (homeId, financeData) => {
-    const response = await axios.put(`${API_URL}/homes/${homeId}/finance`, financeData);
-    return response.data;
-};
+// Export the instance if you need to use it directly elsewhere
+export default api;

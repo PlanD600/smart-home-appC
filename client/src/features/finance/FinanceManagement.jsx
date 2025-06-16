@@ -1,98 +1,82 @@
-import React, { useContext } from 'react';
-import HomeContext from '../../context/HomeContext.jsx';
-import FinancialSummary from './FinancialSummary.jsx';
-import ExpenseChart from './ExpenseChart.jsx';
-import BudgetTracker from './BudgetTracker.jsx';
-import SavingsGoals from './SavingsGoals.jsx';
-import LoadingSpinner from '../../components/LoadingSpinner.jsx';
+// pland600/smart-home-appc/smart-home-appC-f331e9bcc98af768f120e09df9e92536aea46253/client/src/features/finance/FinanceManagement.jsx
+import React from 'react';
+import { useHome } from '../../context/HomeContext';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import FinancialSummary from './FinancialSummary';
+import ExpenseChart from './ExpenseChart';
+import ExpectedBills from './ExpectedBills';
+import BudgetTracker from './BudgetTracker';
+import SavingsGoals from './SavingsGoals';
+import PaidBillsList from './PaidBillsList';  // ייבוא הרכיב החדש
+import IncomeList from './IncomeList'; 
 
 function FinanceManagement() {
-  const { activeHome } = useContext(HomeContext);
+    const { currentHome, loading, updateCurrentHome } = useHome();
 
-  // בזמן שהנתונים נטענים, נציג אנימציה
-  if (!activeHome || !activeHome.finances) {
-    return <LoadingSpinner />;
-  }
+    // אם המידע עדיין נטען, או שאין בית נבחר, נציג הודעה מתאימה
+    if (loading && !currentHome) {
+        return <LoadingSpinner />;
+    }
+    
+    if (!currentHome || !currentHome.finances) {
+        return <p>לא נמצא מידע פיננסי עבור בית זה.</p>;
+    }
 
-  // שולפים את המידע הפיננסי מתוך הבית הפעיל
-  const { expectedBills, paidBills, income } = activeHome.finances;
+    const { finances } = currentHome;
 
-  return (
-    <section id="finance-management" className="list-section active">
-      <div className="list-title-container">
-        <h3><span data-lang-key="finance_management">ניהול כספים</span></h3>
-      </div>
+const handleEditBill = (bill) => {
+        // TODO: Open modal for adding/editing a bill
+        console.log("Editing bill:", bill);
+        alert("WIP: Modal for editing/adding bills");
+    };
+    
+    const handleManageBudgets = () => {
+        // TODO: Open modal for managing budgets
+        console.log("Managing budgets");
+        alert("WIP: Modal for managing budgets");
+    };
 
-      <div className="finance-section-content">
-        {/* יציג את 4 הריבועים בראש העמוד */}
-        <FinancialSummary />
-        
-        {/* יציג את גרף ההוצאות */}
-        <ExpenseChart />
+const handleActionPlaceholder = (action) => {
+        alert(`WIP: Modal for ${action}`);
+    };
+    return (
+        <section id="finance-management" className="list-section active">
+            <div className="list-title-container">
+                <h3>ניהול כספים</h3>
+            </div>
 
-        {/* חשבונות לתשלום */}
-        <div id="bills-section">
-          <div className="sub-section-header">
-            <h4 data-lang-key="expected_bills">חשבונות לתשלום (חיובים צפויים)</h4>
-            <button id="add-expected-bill-btn" className="header-style-button"><i className="fas fa-plus"></i> <span className="btn-text">הוסף חשבון</span></button>
-          </div>
-          <div className="item-list">
-            <ul id="expected-bills-ul">
-              {expectedBills && expectedBills.length > 0 ? (
-                expectedBills.map(bill => <li key={bill._id}>{bill.text} - {bill.amount} ש"ח</li>)
-              ) : (
-                <li>אין חיובים צפויים.</li>
-              )}
-            </ul>
-          </div>
-        </div>
-        <hr />
+            <div className="finance-section-content">
+                {/* רכיב כרטיסיות הסיכום */}
+                <FinancialSummary 
+                    income={finances.income} 
+                    paidBills={finances.paidBills} 
+                    settings={finances.financeSettings} 
+                />
+                
+                <hr />
+                
+                {/* רכיב הגרפים */}
+                <ExpenseChart 
+                    paidBills={finances.paidBills} 
+                    expenseCategories={finances.expenseCategories}
+                    settings={finances.financeSettings}
+                />
+                <ExpectedBills finances={finances} onEditBill={handleEditBill} />
+                <hr />
+                <BudgetTracker finances={finances} onManageBudgets={handleManageBudgets} />
+                <hr />
+                <PaidBillsList finances={finances} />
+                <hr />
+                <SavingsGoals finances={finances} onAddGoal={() => handleActionPlaceholder("adding savings goal")} />
+                <hr />
+                <IncomeList finances={finances} onAddIncome={() => handleActionPlaceholder("adding income")} />
+                <hr />
 
-        {/* מעקב תקציב */}
-        <BudgetTracker />
-        <hr />
+                <p style={{textAlign: 'center', color: '#888'}}>בקרוב: חשבונות לתשלום, מעקב תקציב ויעדי חיסכון...</p>
 
-        {/* יעדי חיסכון */}
-        <SavingsGoals />
-        <hr />
-        
-        {/* תשלומים שבוצעו */}
-        <div id="paid-bills-section">
-          <div className="sub-section-header">
-            <h4 data-lang-key="paid_bills">תשלומים שבוצעו</h4>
-            {/* נוסיף את ניווט החודשים בהמשך */}
-          </div>
-          <div className="item-list">
-            <ul id="paid-bills-ul">
-              {paidBills && paidBills.length > 0 ? (
-                paidBills.map(bill => <li key={bill._id}>{bill.text} - {bill.amount} ש"ח</li>)
-              ) : (
-                <li>לא בוצעו תשלומים.</li>
-              )}
-            </ul>
-          </div>
-        </div>
-        <hr />
-
-        {/* הכנסות */}
-        <div id="income-section">
-          <div className="sub-section-header">
-            <h4 data-lang-key="income">הכנסות</h4>
-            <button id="add-income-btn" className="header-style-button"><i className="fas fa-plus"></i> <span className="btn-text">הוסף הכנסה</span></button>
-          </div>
-          <div className="item-list">
-            <ul id="income-list-ul">
-              {income && income.length > 0 ? (
-                income.map(inc => <li key={inc._id}>{inc.text} - {inc.amount} ש"ח</li>)
-              ) : (
-                <li>אין הכנסות.</li>
-              )}
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+            </div>
+        </section>
+    );
 }
 
 export default FinanceManagement;

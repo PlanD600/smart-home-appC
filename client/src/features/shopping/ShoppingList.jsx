@@ -1,44 +1,77 @@
-// client/src/features/shopping/ShoppingList.jsx
-import React, { useState, useContext } from 'react';
-import HomeContext from '../../context/HomeContext.jsx';
+// pland600/smart-home-appc/smart-home-appC-f331e9bcc98af768f120e09df9e92536aea46253/client/src/features/shopping/ShoppingList.jsx
+import React, { useState } from 'react';
+import { useHome } from '../../context/HomeContext';
 import ShoppingItem from './ShoppingItem';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
-// הפונקציה צריכה להקיף את כל הלוגיקה וה-return
-const ShoppingList = ({ home }) => {
-    // השתמשתי ב-useContext בתוך הקומפוננטה, כפי שצריך
-    const { addShoppingItem } = useContext(HomeContext);
+function ShoppingList() {
+    const { currentHome, updateCurrentHome, loading } = useHome();
     const [newItemName, setNewItemName] = useState('');
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (newItemName.trim()) {
-            addShoppingItem(home._id, { name: newItemName });
-            setNewItemName('');
-        }
-    };
+    const handleAddItem = async () => {
+        if (newItemName.trim() === '' || !currentHome) return;
 
-    // ה-return חייב להיות בתוך פונקציית הקומפוננטה
+        const newItem = {
+            name: newItemName,
+            // Add other default fields if necessary
+        };
+
+        // Create a new list with the new item appended
+        const updatedShoppingItems = [...currentHome.shoppingItems, newItem];
+
+        // Use the generic updater from the context
+        await updateCurrentHome({ shoppingItems: updatedShoppingItems });
+        
+        setNewItemName(''); // Clear input after adding
+    };
+    
+    // The handleUpdateItem function will now live inside ShoppingItem.jsx
+    // for better component encapsulation.
+
+    if (!currentHome) {
+        return <p>Please select a home first.</p>;
+    }
+    
     return (
-        <div>
-            <h2 className="text-2xl font-bold mb-4">Shopping List</h2>
-            <form onSubmit={handleSubmit} className="flex mb-4">
-                <input
-                    type="text"
-                    value={newItemName}
-                    onChange={(e) => setNewItemName(e.target.value)}
-                    placeholder="Add a new item..."
-                    className="flex-grow p-2 border rounded-l-lg"
-                />
-                <button type="submit" className="bg-blue-500 text-white p-2 rounded-r-lg">Add</button>
-            </form>
-            <div>
-                {/* תיקנתי גם כאן ל-shoppingItems כפי שעשינו קודם */ }
-                {home.shoppingItems.filter(item => !item.isArchived).map(item => (
-                    <ShoppingItem key={item._id} item={item} homeId={home._id} />
-                ))}
+        <section id="shopping-list" className="list-section active">
+            <div className="list-title-container">
+                <h3>רשימת קניות</h3>
+                {/* Add actions here later */}
             </div>
-        </div>
+
+            {/* Filters can be added here */}
+
+            <div className="add-area">
+                <div className="add-item-form">
+                    <input
+                        type="text"
+                        className="add-item-input"
+                        placeholder="הוסף פריט חדש לקניות..."
+                        value={newItemName}
+                        onChange={(e) => setNewItemName(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleAddItem()}
+                    />
+                    <button className="add-item-btn" onClick={handleAddItem} disabled={loading}>
+                        {loading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-plus"></i>}
+                    </button>
+                </div>
+            </div>
+
+            <div className="item-list">
+                {loading && !currentHome.shoppingItems?.length ? (
+                    <LoadingSpinner />
+                ) : (
+                    <ul className="item-list-ul">
+                        {currentHome.shoppingItems?.map((item) => (
+                            <ShoppingItem key={item._id} item={item} />
+                        ))}
+                    </ul>
+                )}
+            </div>
+            
+            {/* Footer can be added here */}
+        </section>
     );
-}; // הסוגר של הפונקציה צריך להיות כאן, לפני ה-export
+}
 
 export default ShoppingList;

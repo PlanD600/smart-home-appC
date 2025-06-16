@@ -1,98 +1,53 @@
-// client/src/features/shopping/ShoppingItem.jsx
-import React, { useState, useContext } from 'react';
-import HomeContext from '../../context/HomeContext.jsx';
-import { Check, Trash, Plus, ChevronDown, ChevronRight } from 'lucide-react';
+// pland600/smart-home-appc/smart-home-appC-f331e9bcc98af768f120e09df9e92536aea46253/client/src/features/shopping/ShoppingItem.jsx
+import React from 'react';
+import { useHome } from '../../context/HomeContext';
 
-const ShoppingItem = ({ item, homeId }) => {
-    const { updateShoppingItem, addSubItem, updateSubItem, deleteSubItem } = useContext(HomeContext);
-    const [isEditing, setIsEditing] = useState(false);
-    const [name, setName] = useState(item.name);
-    const [newSubItemName, setNewSubItemName] = useState('');
-    const [showSubItems, setShowSubItems] = useState(false);
+function ShoppingItem({ item }) {
+    const { currentHome, updateCurrentHome } = useHome();
 
-    const handleUpdate = () => {
-        updateShoppingItem(homeId, item._id, { name, isCompleted: !item.isCompleted });
-    };
-    
-    const handleNameChange = (e) => {
-        if(e.key === 'Enter') {
-            updateShoppingItem(homeId, item._id, { name });
-            setIsEditing(false);
-        }
+    const handleUpdate = (updates) => {
+        const updatedItems = currentHome.shoppingItems.map(i => 
+            i._id === item._id ? { ...i, ...updates } : i
+        );
+        updateCurrentHome({ shoppingItems: updatedItems });
     };
 
-    const handleAddSubItem = (e) => {
-        e.preventDefault();
-        if (newSubItemName.trim()) {
-            addSubItem(homeId, item._id, { name: newSubItemName });
-            setNewSubItemName('');
-        }
+    const handleDelete = () => {
+        const updatedItems = currentHome.shoppingItems.filter(i => i._id !== item._id);
+        updateCurrentHome({ shoppingItems: updatedItems });
     };
 
     return (
-        <div className="p-2 border-b">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                    <button onClick={handleUpdate} className="mr-2">
-                        <Check className={item.isCompleted ? "text-green-500" : "text-gray-300"} />
-                    </button>
-                    {isEditing ? (
-                        <input 
-                            type="text" 
-                            value={name} 
-                            onChange={(e) => setName(e.target.value)} 
-                            onKeyDown={handleNameChange}
-                            onBlur={() => setIsEditing(false)}
-                            autoFocus
-                            className="text-lg"
-                        />
-                    ) : (
-                        <span 
-                            onDoubleClick={() => setIsEditing(true)}
-                            className={`text-lg ${item.isCompleted ? 'line-through text-gray-500' : ''}`}
-                        >
-                            {item.name}
-                        </span>
-                    )}
-                </div>
-                <div>
-                     <button onClick={() => setShowSubItems(!showSubItems)} className="mr-2">
-                        {showSubItems ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                    </button>
-                    <button onClick={() => updateShoppingItem(homeId, item._id, { isArchived: true })} className="mr-2">
-                        <Trash className="text-red-500" size={20} />
-                    </button>
-                </div>
+        <li className={`${item.isUrgent ? 'urgent-item' : ''} ${item.isCompleted ? 'completed' : ''}`}>
+            <input 
+                type="checkbox" 
+                checked={item.isCompleted}
+                onChange={() => handleUpdate({ isCompleted: !item.isCompleted })}
+                aria-label={`Mark ${item.name} as complete`}
+            />
+            <div className="item-text">
+                {item.name}
+                {/* Details can be added here later */}
             </div>
-            {showSubItems && (
-                 <div className="ml-8 mt-2">
-                     {item.subItems && item.subItems.map(sub => (
-                         <div key={sub._id} className="flex items-center justify-between text-sm">
-                             <div className="flex items-center">
-                                 <button onClick={() => updateSubItem(homeId, item._id, sub._id, { isCompleted: !sub.isCompleted })} className="mr-2">
-                                     <Check className={sub.isCompleted ? "text-green-500" : "text-gray-300"} size={16} />
-                                 </button>
-                                 <span className={sub.isCompleted ? 'line-through text-gray-500' : ''}>{sub.name}</span>
-                             </div>
-                             <button onClick={() => deleteSubItem(homeId, item._id, sub._id)}>
-                                 <Trash className="text-red-400" size={16} />
-                             </button>
-                         </div>
-                     ))}
-                    <form onSubmit={handleAddSubItem} className="flex items-center mt-2">
-                        <input 
-                            type="text" 
-                            value={newSubItemName} 
-                            onChange={(e) => setNewSubItemName(e.target.value)} 
-                            placeholder="Add sub-item"
-                            className="text-sm p-1 border rounded w-full"
-                        />
-                         <button type="submit" className="ml-2"><Plus size={20}/></button>
-                    </form>
-                 </div>
-            )}
-        </div>
+            <div className="item-actions">
+                <button 
+                    className="action-btn priority-btn" 
+                    onClick={() => handleUpdate({ isUrgent: !item.isUrgent })}
+                    title="Toggle priority"
+                >
+                    <i className="far fa-star"></i>
+                </button>
+                <button 
+                    className="action-btn delete-btn" 
+                    onClick={handleDelete}
+                    title="Delete item"
+                >
+                    <i className="far fa-trash-alt"></i>
+                </button>
+                {/* More actions can be added here */}
+            </div>
+        </li>
     );
-};
+}
 
 export default ShoppingItem;
