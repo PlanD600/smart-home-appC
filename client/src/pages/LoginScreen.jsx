@@ -2,7 +2,7 @@ import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 // --- תיקון ---
 // שינוי הייבוא ל-default import (ללא סוגריים מסולסלים)
-import HomeContext from '../context/HomeContext'; 
+import HomeContext from '../context/HomeContext.jsx';
 
 const LoginScreen = () => {
   const [homeName, setHomeName] = useState('');

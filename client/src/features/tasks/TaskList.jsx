@@ -29,7 +29,7 @@ const TaskList = ({ home }) => {
                 <button type="submit" className="bg-blue-500 text-white p-2 rounded-r-lg">Add</button>
             </form>
             <div>
-                {home.tasks.filter(task => !task.isArchived).map(task => (
+                {home.taskItems.filter(task => !task.isArchived).map(task => (
                     <TaskItem key={task._id} task={task} homeId={home._id} />
                 ))}
             </div>

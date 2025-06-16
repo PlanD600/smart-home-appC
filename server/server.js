@@ -25,8 +25,7 @@ app.use((req, res, next) => {
 });
 
 // הגדרת נתיב ה-API הראשי
-app.use('/api/homes', homeRoutes);
-
+app.use('/api/homes', homeRoutes); // הגדרת נתיב בסיס לכל הראוטים
 // Middleware לטיפול בנתיבים שלא נמצאו (שגיאת 404)
 app.use((req, res, next) => {
   const error = new Error(`Not Found - ${req.originalUrl}`);

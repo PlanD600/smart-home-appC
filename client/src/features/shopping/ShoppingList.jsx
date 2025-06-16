@@ -3,7 +3,9 @@ import React, { useState, useContext } from 'react';
 import HomeContext from '../../context/HomeContext.jsx';
 import ShoppingItem from './ShoppingItem';
 
+// הפונקציה צריכה להקיף את כל הלוגיקה וה-return
 const ShoppingList = ({ home }) => {
+    // השתמשתי ב-useContext בתוך הקומפוננטה, כפי שצריך
     const { addShoppingItem } = useContext(HomeContext);
     const [newItemName, setNewItemName] = useState('');
 
@@ -15,6 +17,7 @@ const ShoppingList = ({ home }) => {
         }
     };
 
+    // ה-return חייב להיות בתוך פונקציית הקומפוננטה
     return (
         <div>
             <h2 className="text-2xl font-bold mb-4">Shopping List</h2>
@@ -29,11 +32,13 @@ const ShoppingList = ({ home }) => {
                 <button type="submit" className="bg-blue-500 text-white p-2 rounded-r-lg">Add</button>
             </form>
             <div>
-                {home.shoppingList.filter(item => !item.isArchived).map(item => (
+                {/* תיקנתי גם כאן ל-shoppingItems כפי שעשינו קודם */ }
+                {home.shoppingItems.filter(item => !item.isArchived).map(item => (
                     <ShoppingItem key={item._id} item={item} homeId={home._id} />
                 ))}
             </div>
         </div>
     );
-};
+}; // הסוגר של הפונקציה צריך להיות כאן, לפני ה-export
+
 export default ShoppingList;

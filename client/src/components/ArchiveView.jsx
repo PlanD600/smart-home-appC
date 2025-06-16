@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { HomeContext } from '../context/HomeContext.jsx';
+import HomeContext from '../../context/HomeContext.jsx';
 
 function ArchiveView() {
     const { activeHome, restoreItemFromArchive, deleteItemPermanently } = useContext(HomeContext);

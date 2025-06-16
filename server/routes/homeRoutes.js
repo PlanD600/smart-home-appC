@@ -1,53 +1,33 @@
+// server/routes/homeRoutes.js
+
 const express = require('express');
 const router = express.Router();
-const {
-    getHomes,
-    createHome,
-    updateHome,
-    deleteHome,
-    createTask,
-    updateTask,
-    createShoppingItem,
-    updateShoppingItem,
-    createSubItem,
-    updateSubItem,
-    deleteSubItem,
-    updateFinance,
-} = require('../controllers/homeController');
 
-// Home routes
+// נייבא את כל הקונטרולר כאובייקט אחד
+const homeController = require('../controllers/homeController');
+
+// ונקרא לפונקציות דרך האובייקט הזה
 router.route('/')
-    .get(getHomes)
-    .post(createHome);
+    .get(homeController.getHomes)
+    .post(homeController.createHome);
 
 router.route('/:id')
-    .put(updateHome)
-    .delete(deleteHome);
+    .get(homeController.getHomeById);
 
-// Task routes
-router.route('/:id/tasks')
-    .post(createTask);
-
-router.route('/:id/tasks/:taskId')
-    .put(updateTask);
-
-// Shopping list routes
+// Shopping List Routes
 router.route('/:id/shopping-list')
-    .post(createShoppingItem);
+    .post(homeController.createShoppingItem);
 
 router.route('/:id/shopping-list/:itemId')
-    .put(updateShoppingItem);
+    .put(homeController.updateShoppingItem) // שימוש מפורש בפונקציה מהאובייקט
+    .delete(homeController.deleteShoppingItem);
 
-// Sub-item routes
-router.route('/:id/shopping-list/:itemId/sub-items')
-    .post(createSubItem);
+// Task List Routes
+router.route('/:id/tasks')
+    .post(homeController.createTask);
 
-router.route('/:id/shopping-list/:itemId/sub-items/:subItemId')
-    .put(updateSubItem)
-    .delete(deleteSubItem);
-
-// Finance routes
-router.route('/:id/finance')
-    .put(updateFinance);
+router.route('/:id/tasks/:taskId')
+    .put(homeController.updateTask) // שימוש מפורש בפונקציה מהאובייקט
+    .delete(homeController.deleteTask);
 
 module.exports = router;

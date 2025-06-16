@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { HomeContext } from '../../context/HomeContext.jsx';
+import HomeContext from '../../context/HomeContext.jsx';
 import FinancialSummary from './FinancialSummary.jsx';
 import ExpenseChart from './ExpenseChart.jsx';
 import BudgetTracker from './BudgetTracker.jsx';

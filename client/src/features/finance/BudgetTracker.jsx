@@ -1,5 +1,5 @@
 import React, { useContext, useMemo } from 'react';
-import { HomeContext } from '../../context/HomeContext.jsx';
+import HomeContext from '../../context/HomeContext.jsx';
 
 function BudgetTracker() {
   const { activeHome, openModal } = useContext(HomeContext);

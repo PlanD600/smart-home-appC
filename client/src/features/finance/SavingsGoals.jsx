@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { HomeContext } from '../../context/HomeContext.jsx';
+import HomeContext from '../../context/HomeContext.jsx';
 
 function SavingsGoals() {
   const { activeHome, openModal } = useContext(HomeContext);

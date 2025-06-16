@@ -1,4 +1,4 @@
-/ client/src/features/tasks/TaskItem.jsx
+// client/src/features/tasks/TaskItem.jsx
 import React, { useContext } from 'react';
 import HomeContext from '../../context/HomeContext.jsx';
 import { Check, Trash } from 'lucide-react';

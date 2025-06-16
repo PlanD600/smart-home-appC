@@ -1,5 +1,5 @@
 import React, { useContext, useState, useMemo } from 'react';
-import { HomeContext } from '../../context/HomeContext.jsx';
+import HomeContext from '../../context/HomeContext.jsx';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
 
