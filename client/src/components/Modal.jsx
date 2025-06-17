@@ -1,4 +1,4 @@
-// pland600/smart-home-appc/smart-home-appC-f331e9bcc98af768f120e09df9e92536aea46253/client/src/components/Modal.jsx
+// client/src/components/Modal.jsx
 import React from 'react';
 import { useModal } from '../context/ModalContext';
 
@@ -9,8 +9,10 @@ function Modal() {
         return null;
     }
 
+    // לחיצה על הרקע האפור תסגור את המודאל
     return (
         <div className="modal" onClick={closeModal}>
+            {/* לחיצה על תוכן המודאל עצמו לא תסגור אותו */}
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <span className="close-modal-btn" onClick={closeModal}>&times;</span>
                 {modalContent}

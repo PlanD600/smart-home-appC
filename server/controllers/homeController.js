@@ -1,88 +1,60 @@
 // pland600/smart-home-appc/smart-home-appC-f331e9bcc98af768f120e09df9e92536aea46253/server/controllers/homeController.js
 const Home = require('../models/Home.js');
 
-// Helper to handle async operations and send response
 const asyncHandler = (fn) => (req, res, next) =>
     Promise.resolve(fn(req, res, next)).catch(next);
 
-// @desc    Get all homes
-// @route   GET /api/homes
+// --- Home Management ---
 exports.getHomes = asyncHandler(async (req, res) => {
-    const homes = await Home.find({});
+    const homes = await Home.find({}).select('name iconClass');
     res.json(homes);
 });
 
-// @desc    Create a new home
-// @route   POST /api/homes
+exports.getHomeById = asyncHandler(async (req, res) => {
+    const home = await Home.findById(req.params.id);
+    if (home) res.json(home);
+    else res.status(404).json({ message: 'Home not found' });
+});
+
 exports.createHome = asyncHandler(async (req, res) => {
-    const { name } = req.body;
+    const { name, accessCode, iconClass } = req.body;
+    const homeExists = await Home.findOne({ name });
+
+    if (homeExists) {
+        return res.status(400).json({ message: 'Home with this name already exists' });
+    }
+
     const home = new Home({
-        name: name || 'My New Home',
-        users: ['Admin'],
-        // Initialize with default empty structures
-        finances: {
-            expenseCategories: [
-                { name: "דיור", budgetAmount: 0 },
-                { name: "מזון ומשקאות", budgetAmount: 0 },
-                { name: "חשבונות", budgetAmount: 0 },
-            ]
-        },
-        shoppingCategories: ['כללית'],
-        taskCategories: ['כללית']
+        name,
+        accessCode,
+        iconClass: iconClass || 'fas fa-home',
+        users: ['Admin']
     });
     const createdHome = await home.save();
     res.status(201).json(createdHome);
 });
 
-// @desc    Get a single home by ID
-// @route   GET /api/homes/:id
-exports.getHomeById = asyncHandler(async (req, res) => {
-    const home = await Home.findById(req.params.id);
-    if (home) {
-        res.json(home);
-    } else {
-        res.status(404);
-        throw new Error('Home not found');
-    }
-});
+exports.loginHome = asyncHandler(async (req, res) => {
+    const { name, accessCode, iconClass } = req.body;
+    const home = await Home.findOne({ name, iconClass });
 
-// @desc    Update a home (generic)
-// @route   PUT /api/homes/:id
-exports.updateHome = asyncHandler(async (req, res) => {
-    const home = await Home.findById(req.params.id);
-    if (home) {
-        // This is a generic updater. The frontend will send the field to update.
-        Object.assign(home, req.body);
-        const updatedHome = await home.save();
-        res.json(updatedHome);
+    if (home && home.accessCode === accessCode) {
+        const fullHome = await Home.findById(home._id);
+        res.json(fullHome);
     } else {
-        res.status(404);
-        throw new Error('Home not found');
-    }
-});
-
-// @desc    Delete a home
-// @route   DELETE /api/homes/:id
-exports.deleteHome = asyncHandler(async (req, res) => {
-    const home = await Home.findById(req.params.id);
-    if (home) {
-        await home.deleteOne();
-        res.json({ message: 'Home removed' });
-    } else {
-        res.status(404);
-        throw new Error('Home not found');
+        res.status(401).json({ message: 'אחד או יותר מהפרטים שהזנת שגויים' });
     }
 });
 
 
-// --- TASKS ---
+// --- Task Management ---
 exports.addTask = asyncHandler(async (req, res) => {
     const home = await Home.findById(req.params.id);
     if (home) {
-        const task = { name: req.body.name, category: req.body.category };
+        const task = { name: req.body.name, category: req.body.category || 'כללית' };
         home.taskItems.push(task);
         await home.save();
-        res.status(201).json(home);
+        res.status(201).json(home.taskItems[home.taskItems.length - 1]);
     } else {
         res.status(404).json({ message: 'Home not found' });
     }
@@ -90,28 +62,35 @@ exports.addTask = asyncHandler(async (req, res) => {
 
 exports.updateTask = asyncHandler(async (req, res) => {
     const home = await Home.findById(req.params.id);
-    if (!home) {
-        res.status(404).json({ message: 'Home not found' });
-        return;
-    }
-    const task = home.taskItems.id(req.params.taskId);
+    const task = home?.taskItems.id(req.params.taskId);
     if (task) {
         task.set(req.body);
         await home.save();
-        res.json(home);
+        res.json(task);
     } else {
-        res.status(404).json({ message: 'Task not found' });
+        res.status(404).json({ message: 'Task or Home not found' });
     }
 });
 
-// --- SHOPPING ---
+exports.deleteTask = asyncHandler(async (req, res) => {
+    const home = await Home.findById(req.params.id);
+    if (home) {
+        home.taskItems.id(req.params.taskId).deleteOne();
+        await home.save();
+        res.json({ message: 'Task removed' });
+    } else {
+        res.status(404).json({ message: 'Home not found' });
+    }
+});
+
+// --- Shopping Item Management ---
 exports.addShoppingItem = asyncHandler(async (req, res) => {
     const home = await Home.findById(req.params.id);
     if (home) {
-        const item = { name: req.body.name, category: req.body.category };
+        const item = { name: req.body.name, category: req.body.category || 'כללית' };
         home.shoppingItems.push(item);
         await home.save();
-        res.status(201).json(home);
+        res.status(201).json(home.shoppingItems[home.shoppingItems.length - 1]);
     } else {
         res.status(404).json({ message: 'Home not found' });
     }
@@ -119,79 +98,80 @@ exports.addShoppingItem = asyncHandler(async (req, res) => {
 
 exports.updateShoppingItem = asyncHandler(async (req, res) => {
     const home = await Home.findById(req.params.id);
-    if (!home) {
-        res.status(404).json({ message: 'Home not found' });
-        return;
-    }
-    const item = home.shoppingItems.id(req.params.itemId);
+    const item = home?.shoppingItems.id(req.params.itemId);
     if (item) {
         item.set(req.body);
         await home.save();
-        res.json(home);
+        res.json(item);
     } else {
-        res.status(404).json({ message: 'Item not found' });
+        res.status(404).json({ message: 'Item or Home not found' });
     }
 });
 
-// --- SUB-ITEMS ---
-exports.addSubItem = asyncHandler(async (req, res) => {
-    const home = await Home.findById(req.params.homeId);
-    if (!home) {
-        return res.status(404).json({ message: 'Home not found' });
+exports.deleteShoppingItem = asyncHandler(async (req, res) => {
+    const home = await Home.findById(req.params.id);
+    if (home) {
+        home.shoppingItems.id(req.params.itemId).deleteOne();
+        await home.save();
+        res.json({ message: 'Shopping item removed' });
+    } else {
+        res.status(404).json({ message: 'Home not found' });
     }
-    const item = home.shoppingItems.id(req.params.itemId);
-    if (item) {
-        item.subItems.push({ name: req.body.name });
+});
+
+// --- User Management ---
+exports.addUserToHome = asyncHandler(async (req, res) => {
+    const { username } = req.body;
+    const home = await Home.findById(req.params.id);
+    if (home) {
+        if (home.users.includes(username)) {
+            return res.status(400).json({ message: 'User already in home' });
+        }
+        home.users.push(username);
         await home.save();
         res.status(201).json(home);
     } else {
-        res.status(404).json({ message: 'Item not found' });
+        res.status(404).json({ message: 'Home not found' });
     }
 });
 
-exports.updateSubItem = asyncHandler(async (req, res) => {
-    const home = await Home.findById(req.params.homeId);
-    if (!home) {
-        return res.status(404).json({ message: 'Home not found' });
-    }
-    const item = home.shoppingItems.id(req.params.itemId);
-    const subItem = item?.subItems.id(req.params.subItemId);
-    if (subItem) {
-        subItem.set(req.body);
-        await home.save();
-        res.json(home);
-    } else {
-        res.status(404).json({ message: 'Sub-item not found' });
-    }
-});
-
-exports.deleteSubItem = asyncHandler(async (req, res) => {
-    const home = await Home.findById(req.params.homeId);
-    if (!home) {
-        return res.status(404).json({ message: 'Home not found' });
-    }
-    const item = home.shoppingItems.id(req.params.itemId);
-    if (item) {
-        item.subItems.id(req.params.subItemId).deleteOne(); // Correct way to remove sub-document
-        await home.save();
-        res.json(home);
-    } else {
-        res.status(404).json({ message: 'Home or item not found' });
-    }
-});
-
-
-// --- FINANCE ---
-exports.updateFinance = asyncHandler(async (req, res) => {
+exports.removeUserFromHome = asyncHandler(async (req, res) => {
+    const { username } = req.body;
     const home = await Home.findById(req.params.id);
     if (home) {
-        // This allows for deep nested updates using dot notation from the client
-        // For example, client can send: { $push: { "finances.income": newIncomeObject } }
-        // For simplicity here, we'll merge the finance object.
-        Object.assign(home.finances, req.body);
+        home.users.pull(username);
+        await home.save();
+        res.json(home);
+    } else {
+        res.status(404).json({ message: 'Home not found' });
+    }
+});
+
+// --- Category Management ---
+exports.addCategory = asyncHandler(async (req, res) => {
+    const { name, type } = req.body; // type should be 'shopping' or 'task'
+    const home = await Home.findById(req.params.id);
+    if (home) {
+        const categoryArray = type === 'shopping' ? home.shoppingCategories : home.taskCategories;
+        if (categoryArray.includes(name)) {
+             return res.status(400).json({ message: 'Category already exists' });
+        }
+        categoryArray.push(name);
+        await home.save();
+        res.status(201).json(home);
+    } else {
+        res.status(404).json({ message: 'Home not found' });
+    }
+});
+
+// --- Finance Management ---
+exports.updateFinances = asyncHandler(async (req, res) => {
+    const home = await Home.findById(req.params.id);
+    if (home) {
+        home.finances = req.body;
         await home.save();
         res.json(home.finances);
     } else {
-         res.status(404).json({ message: 'Home not found' });
+        res.status(404).json({ message: 'Home not found' });
     }
 });

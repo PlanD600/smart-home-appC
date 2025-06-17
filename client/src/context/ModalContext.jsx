@@ -1,4 +1,3 @@
-// pland600/smart-home-appc/smart-home-appC-f331e9bcc98af768f120e09df9e92536aea46253/client/src/context/ModalContext.jsx
 import React, { createContext, useState, useContext } from 'react';
 
 const ModalContext = createContext();

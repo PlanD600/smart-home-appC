@@ -1,6 +1,7 @@
 // pland600/smart-home-appc/smart-home-appC-f331e9bcc98af768f120e09df9e92536aea46253/client/src/features/finance/FinanceManagement.jsx
 import React from 'react';
 import { useHome } from '../../context/HomeContext';
+import { useModal } from '../../context/ModalContext.jsx'; // <-- הנה התיקון!
 import LoadingSpinner from '../../components/LoadingSpinner';
 import FinancialSummary from './FinancialSummary';
 import ExpenseChart from './ExpenseChart';

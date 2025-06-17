@@ -3,3 +3,6 @@
 
 # Environment variables
 .env
+
+# Ignore Gemini service file with API key
+src/services/gemini.js

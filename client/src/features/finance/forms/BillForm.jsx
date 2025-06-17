@@ -46,7 +46,14 @@ function BillForm({ bill }) { // We receive the bill to edit, or null if adding
         
         updateCurrentHome({ finances: { ...finances, expectedBills: updatedBills } });
         closeModal();
+        
     };
+
+    // --- THIS IS THE FIX ---
+    // Add a guard clause to ensure currentHome exists before rendering the form
+    if (!currentHome || !currentHome.finances) {
+        return <div>טוען נתונים...</div>;
+    }
 
     return (
         <div>

@@ -8,30 +8,44 @@ const HomeSchema = new mongoose.Schema({
     accessCode: { type: String, required: false }, // Making it optional for simplicity
     iconClass: { type: String, default: 'fas fa-home' },
     colorClass: { type: String, default: 'card-color-1' },
-    users: [String],
+    users: { type: [String], default: ['Admin'] }, // Default user "Admin"
 
     // Using imported schemas
-    shoppingItems: [ItemSchema],
-    taskItems: [ItemSchema],
-    archivedShopping: [ItemSchema],
-    archivedTasks: [ItemSchema],
+    shoppingItems: { type: [ItemSchema], default: [] },
+    taskItems: { type: [ItemSchema], default: [] },
+    archivedShopping: { type: [ItemSchema], default: [] },
+    archivedTasks: { type: [ItemSchema], default: [] },
     
     // Using the dedicated Finance schema
     finances: {
         type: FinanceSchema,
-        default: () => ({}) // Default to an empty object
+        default: () => ({ // Default to an object with basic finance structure
+            income: [],
+            expectedBills: [],
+            paidBills: [],
+            expenseCategories: [
+                { name: "דיור", budgetAmount: 0 },
+                { name: "מזון ומשקאות", budgetAmount: 0 },
+                { name: "חשבונות", budgetAmount: 0 },
+            ],
+            savingsGoals: [],
+            financeSettings: { currency: '₪' }
+        })
     },
 
     // Simple arrays for category names
-    shoppingCategories: [String],
-    taskCategories: [String],
+    shoppingCategories: { type: [String], default: ['כללית'] },
+    taskCategories: { type: [String], default: ['כללית'] },
 
     // Templates remain flexible
-    templates: [{
-        name: String,
-        type: String, // 'shopping', 'task', 'finance'
-        items: mongoose.Schema.Types.Mixed,
-    }],
+    templates: {
+        type: [{
+            name: String,
+            type: String, // 'shopping', 'task', 'finance'
+            items: mongoose.Schema.Types.Mixed,
+        }],
+        default: []
+    },
 }, {
     timestamps: true,
 });

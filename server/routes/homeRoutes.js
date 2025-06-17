@@ -2,38 +2,36 @@
 const express = require('express');
 const router = express.Router();
 const {
-    getHomes,
-    createHome,
-    getHomeById,
-    updateHome,
-    deleteHome,
-    addTask,
-    updateTask,
-    addShoppingItem,
-    updateShoppingItem,
-    addSubItem,
-    updateSubItem,
-    deleteSubItem,
-    updateFinance,
+    getHomes, createHome, getHomeById, loginHome,
+    addTask, updateTask, deleteTask,
+    addShoppingItem, updateShoppingItem, deleteShoppingItem, // Assuring these are included
+    addUserToHome, removeUserFromHome,
+    addCategory,
+    updateFinances,
 } = require('../controllers/homeController.js');
 
-// Base routes for homes
+// --- Primary Routes ---
 router.route('/').get(getHomes).post(createHome);
-router.route('/:id').get(getHomeById).put(updateHome).delete(deleteHome);
+router.route('/login').post(loginHome);
+router.route('/:id').get(getHomeById); // This is the route that likely caused the error
 
+// --- Sub-document Routes ---
 // Task routes
 router.route('/:id/tasks').post(addTask);
-router.route('/:id/tasks/:taskId').put(updateTask); // Note: delete is handled by updating the home document
+router.route('/:id/tasks/:taskId').put(updateTask).delete(deleteTask);
 
 // Shopping routes
 router.route('/:id/shopping-list').post(addShoppingItem);
-router.route('/:id/shopping-list/:itemId').put(updateShoppingItem);
+router.route('/:id/shopping-list/:itemId').put(updateShoppingItem).delete(deleteShoppingItem);
 
-// Sub-item routes
-router.route('/:homeId/shopping-list/:itemId/sub-items').post(addSubItem);
-router.route('/:homeId/shopping-list/:itemId/sub-items/:subItemId').put(updateSubItem).delete(deleteSubItem);
+// User management routes
+router.route('/:id/users').post(addUserToHome);
+router.route('/:id/users/remove').post(removeUserFromHome);
 
-// Finance routes
-router.route('/:id/finance').put(updateFinance);
+// Category management routes
+router.route('/:id/categories').post(addCategory);
+
+// Finance management route
+router.route('/:id/finances').put(updateFinances);
 
 module.exports = router;

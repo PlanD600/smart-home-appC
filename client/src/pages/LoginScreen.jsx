@@ -1,57 +1,99 @@
-// pland600/smart-home-appc/smart-home-appC-f331e9bcc98af768f120e09df9e92536aea46253/client/src/pages/LoginScreen.jsx
-import React, { useEffect, useState } from 'react';
-import { useHome } from '../context/HomeContext'; // <-- This is the only import needed from HomeContext
-import LoadingSpinner from '../components/LoadingSpinner';
+// client/src/pages/LoginScreen.jsx
+
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useHome } from '../context/HomeContext';
+import { apiLoginHome, apiCreateHome } from '../services/api';
+
+const AVAILABLE_ICONS = ["fas fa-home", "fas fa-user-friends", "fas fa-briefcase", "fas fa-heart", "fas fa-star", "fas fa-car", "fas fa-building", "fas fa-graduation-cap", "fas fa-lightbulb", "fas fa-piggy-bank"];
 
 function LoginScreen() {
-    const { homes, loading, error, fetchHomes, setActiveHomeId } = useHome();
-    const [accessCodes, setAccessCodes] = useState({});
+    const { loginUser } = useHome();
+    const navigate = useNavigate();
 
-    useEffect(() => {
-        fetchHomes();
-    }, []);
+    const [isLoginMode, setIsLoginMode] = useState(true);
 
-    const handleAccessCodeChange = (id, value) => {
-        setAccessCodes(prev => ({ ...prev, [id]: value }));
+    const [name, setName] = useState('');
+    const [accessCode, setAccessCode] = useState('');
+    const [selectedIcon, setSelectedIcon] = useState(AVAILABLE_ICONS[0]);
+    
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const resetForm = () => {
+        setName('');
+        setAccessCode('');
+        setError('');
+        setSelectedIcon(AVAILABLE_ICONS[0]);
     };
 
-    const handleLogin = (home) => {
-        // In a real app, you'd verify the access code against the backend
-        // For now, we'll just set the active home
-        console.log(`Logging into ${home.name} with code ${accessCodes[home._id]}`);
-        setActiveHomeId(home._id);
+    const handleAction = async (actionType) => {
+        setLoading(true);
+        setError('');
+        const credentials = { name, accessCode, iconClass: selectedIcon };
+
+        try {
+            const apiCall = actionType === 'login' ? apiLoginHome : apiCreateHome;
+            const { data: homeData } = await apiCall(credentials);
+            loginUser(homeData);
+            navigate('/app');
+        } catch (err) {
+            setError(err.response?.data?.message || 'An error occurred.');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    if (loading) {
-        return <LoadingSpinner />;
-    }
+    const sharedFormFields = (
+        <>
+            <label>בחר אייקון</label>
+            <div className="icon-selector">
+                {AVAILABLE_ICONS.map(icon => (
+                    <i key={icon} className={`${icon} ${selectedIcon === icon ? 'selected' : ''}`} onClick={() => setSelectedIcon(icon)} />
+                ))}
+            </div>
 
-    if (error) {
-        return <p>Error: {error}</p>;
-    }
+            <label htmlFor="home-name">שם הבית</label>
+            <input id="home-name" type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="הקלד שם..." />
+            
+            <label htmlFor="access-code">סיסמה</label>
+            <input id="access-code" type="password" value={accessCode} onChange={(e) => setAccessCode(e.target.value)} required placeholder="הקלד סיסמה..." />
+        </>
+    );
 
     return (
-        <div id="login-screen" className="screen active">
-            <h1>בחר בית</h1>
-            <div className="home-cards-container">
-                {homes.map(home => (
-                    <div key={home._id} className={`home-card ${home.colorClass}`}>
-                        <div className="icon-placeholder"><i className={home.iconClass}></i></div>
-                        <h4>{home.name}</h4>
-                        <input
-                            type="password"
-                            placeholder="קוד כניסה"
-                            className="home-password-input"
-                            value={accessCodes[home._id] || ''}
-                            onChange={(e) => handleAccessCodeChange(home._id, e.target.value)}
-                        />
-                        <button className="login-home-btn" onClick={() => handleLogin(home)}>
-                            <i className="fas fa-arrow-right"></i> כניסה
+        <div className="login-container">
+            <div className="login-card">
+                {isLoginMode ? (
+                    <form onSubmit={(e) => { e.preventDefault(); handleAction('login'); }} className="login-card-form">
+                        <h2 style={{ textAlign: 'center', marginTop: '0' }}>כניסה לבית</h2>
+                        {sharedFormFields}
+                        {error && <p className="error-message">{error}</p>}
+                        <button type="submit" className="form-submit-btn login" disabled={loading}>
+                            {loading ? 'מתחבר...' : 'התחבר'}
                         </button>
-                    </div>
-                ))}
-                {/* We can add the "Add Home" card logic here later */}
+                        <p className="switch-mode-text">
+                            אין לך בית? <span onClick={() => { resetForm(); setIsLoginMode(false); }}>צור אחד חדש</span>
+                        </p>
+                    </form>
+                ) : (
+                    <form onSubmit={(e) => { e.preventDefault(); handleAction('create'); }} className="login-card-form">
+                        <h2 style={{ textAlign: 'center', marginTop: '0' }}>יצירת בית חדש</h2>
+                        {sharedFormFields}
+                        {error && <p className="error-message">{error}</p>}
+                        <button type="submit" className="form-submit-btn create" disabled={loading}>
+                            {loading ? 'יוצר...' : 'צור בית'}
+                        </button>
+                        <p className="switch-mode-text">
+                            יש לך כבר בית? <span onClick={() => { resetForm(); setIsLoginMode(true); }}>חזור למסך הכניסה</span>
+                        </p>
+                    </form>
+                )}
             </div>
+            <style>{`
+                .switch-mode-text { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: #555; }
+                .switch-mode-text span { color: var(--mint-green); font-weight: 700; cursor: pointer; text-decoration: underline; }
+            `}</style>
         </div>
     );
 }

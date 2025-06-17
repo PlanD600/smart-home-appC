@@ -671,3 +671,165 @@ body.lang-ltr .sticky-note-container { right: 25px; left: auto; }
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* === NEW LOGIN SCREEN STYLES === */
+.login-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh;
+    gap: 20px;
+}
+
+.login-card {
+    background: #fff;
+    padding: 2rem 2.5rem;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+    border: 1px solid #e9e9e9;
+}
+
+.login-card-icon-display {
+    text-align: center;
+    font-size: 4rem;
+    color: var(--mint-green);
+    margin-bottom: 1.5rem;
+}
+
+.login-card-form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #555;
+}
+
+.login-card-form input,
+.login-card-form select {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    margin-bottom: 1.2rem;
+    box-sizing: border-box; /* Important */
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.login-card-form input:focus,
+.login-card-form select:focus {
+    outline: none;
+    border-color: var(--mint-green);
+    box-shadow: 0 0 0 3px rgba(150, 206, 180, 0.3);
+}
+
+.icon-selector {
+    display: flex;
+    justify-content: space-around;
+    margin: 10px 0 20px 0;
+}
+
+.icon-selector i {
+    font-size: 2rem;
+    cursor: pointer;
+    padding: 10px;
+    border-radius: 50%;
+    transition: all 0.2s ease-in-out;
+}
+
+.icon-selector i:hover {
+    transform: scale(1.2);
+}
+
+.icon-selector i.selected {
+    background-color: var(--mint-green);
+    color: white;
+    transform: scale(1.2);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.error-message {
+    color: var(--coral-red);
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.form-submit-btn {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 8px;
+    background-color: var(--mint-green);
+    color: rgb(0, 0, 0);
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+
+}
+
+.form-submit-btn:hover {
+    background-color: #45dfb1;
+}
+
+.create-home-btn {
+    background-color: #7abda1;
+    border: none;
+    color: var(--dark-grey);
+    font-weight: 800;
+    cursor: pointer;
+    padding: 10px;
+    display: flex;
+    border-radius: 4px;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.3s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+
+}
+.create-home-btn:hover {
+    color:  #ffffff;
+    background-color: #45dfb1;
+
+}
+.icon-selector {
+    display: flex;
+    justify-content: center; /* מרכוז האייקונים */
+    align-items: center;
+    flex-wrap: wrap; /* זו השורה החשובה שגורמת לגלישה לשורה חדשה */
+    gap: 15px; /* מוסיף רווח בין האייקונים */
+    margin-bottom: 1.5rem;
+}
+/* client/src/style.css */
+
+.item-list li.urgent-item {
+    background-color: #fff3cd; /* צבע צהבהב עדין */
+    border-inline-start: 4px solid #ffc107; /* פס צהוב בצד */
+    font-weight: bold;
+}
+
+.item-list li.urgent-item .priority-btn i {
+    color: #ffc107; /* צובע את הכוכב בצהוב */
+    font-weight: 900; /* הופך את הכוכב למלא */
+}
+
+/* סגנון לקו החוצה על פריט שהושלם */
+.item-list li.completed .item-text { 
+    text-decoration: line-through; 
+    color: #aaa; 
+}
+
+/* סגנון לפריט דחוף */
+.item-list li.urgent-item {
+    background-color: #fff3cd; /* צבע צהבהב עדין */
+    border-inline-start: 4px solid #ffc107; /* פס צהוב בצד */
+    font-weight: bold;
+}
+
+/* סגנון לכפתור הדחיפות כשהוא פעיל */
+.item-list li.urgent-item .priority-btn i {
+    color: #ffc107; /* צובע את הכוכב בצהוב */
+    font-weight: 900; /* הופך את הכוכב למלא */
+}
