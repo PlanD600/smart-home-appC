@@ -9,10 +9,8 @@ function Modal() {
         return null;
     }
 
-    // לחיצה על הרקע האפור תסגור את המודאל
     return (
         <div className="modal" onClick={closeModal}>
-            {/* לחיצה על תוכן המודאל עצמו לא תסגור אותו */}
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <span className="close-modal-btn" onClick={closeModal}>&times;</span>
                 {modalContent}

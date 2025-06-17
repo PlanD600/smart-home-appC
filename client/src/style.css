@@ -815,6 +815,7 @@ body.lang-ltr .sticky-note-container { right: 25px; left: auto; }
     font-weight: 900; /* הופך את הכוכב למלא */
 }
 
+
 /* סגנון לקו החוצה על פריט שהושלם */
 .item-list li.completed .item-text { 
     text-decoration: line-through; 
@@ -823,13 +824,13 @@ body.lang-ltr .sticky-note-container { right: 25px; left: auto; }
 
 /* סגנון לפריט דחוף */
 .item-list li.urgent-item {
-    background-color: #fff3cd; /* צבע צהבהב עדין */
-    border-inline-start: 4px solid #ffc107; /* פס צהוב בצד */
+    background-color: #fff3cd;
+    border-inline-start: 4px solid #ffc107;
     font-weight: bold;
 }
 
 /* סגנון לכפתור הדחיפות כשהוא פעיל */
 .item-list li.urgent-item .priority-btn i {
-    color: #ffc107; /* צובע את הכוכב בצהוב */
-    font-weight: 900; /* הופך את הכוכב למלא */
+    color: #ffc107;
+    font-weight: 900;
 }

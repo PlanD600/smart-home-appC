@@ -1,3 +1,4 @@
+// client/src/context/ModalContext.jsx
 import React, { createContext, useState, useContext } from 'react';
 
 const ModalContext = createContext();
@@ -18,12 +19,7 @@ export const ModalProvider = ({ children }) => {
         setModalContent(null);
     };
 
-    const value = {
-        isModalOpen,
-        modalContent,
-        openModal,
-        closeModal,
-    };
+    const value = { isModalOpen, modalContent, openModal, closeModal };
 
     return (
         <ModalContext.Provider value={value}>
