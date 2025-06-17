@@ -1,18 +1,15 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path'; // יש לוודא שpath מיובא
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  server: {
-    // הוספת הגדרות פרוקסי
-    proxy: {
-      // כל בקשה לשרת הפיתוח שמתחילה ב-'/api'
-      // תועבר לשרת האחורי בכתובת 'http://localhost:3001'
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true, // נדרש עבור virtual hosts
-      },
+  resolve: {
+    alias: {
+      // הגדרה זו מאפשרת לייבא קבצים החל מ"src/"
+      // לדוגמה: import { useHome } from 'src/context/HomeContext.jsx';
+      'src': path.resolve(__dirname, './src'),
     },
   },
-})
+});

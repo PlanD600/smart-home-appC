@@ -1,177 +1,162 @@
-// pland600/smart-home-appc/smart-home-appC-f331e9bcc98af768f120e09df9e92536aea46253/server/controllers/homeController.js
-const Home = require('../models/Home.js');
+const Home = require('../models/Home');
 
-const asyncHandler = (fn) => (req, res, next) =>
-    Promise.resolve(fn(req, res, next)).catch(next);
+/**
+ * @file homeController.js
+ * @description Controller functions for managing home data, including creation, retrieval,
+ * and updates of nested fields like shopping items, tasks, finances, and templates.
+ */
 
-// --- Home Management ---
-exports.getHomes = asyncHandler(async (req, res) => {
-    const homes = await Home.find({}).select('name iconClass');
-    res.json(homes);
-});
+// פונקציית עזר לטיפול בשגיאות ושליחת תגובה אחידה
+const sendErrorResponse = (res, message, statusCode = 500) => {
+  console.error(message);
+  res.status(statusCode).json({ message: message });
+};
 
-exports.getHomeById = asyncHandler(async (req, res) => {
-    const home = await Home.findById(req.params.id);
-    if (home) res.json(home);
-    else res.status(404).json({ message: 'Home not found' });
-});
+/**
+ * @route POST /api/homes
+ * @description Create a new home
+ * @access Public (or authenticated for real apps)
+ */
+exports.createHome = async (req, res) => {
+  try {
+    const { name, accessCode, iconClass, colorClass, members, users, shoppingItems, taskItems, shoppingCategories, taskCategories, templates, archivedShopping, archivedTasks, finances } = req.body;
 
-exports.createHome = asyncHandler(async (req, res) => {
-    const { name, accessCode, iconClass } = req.body;
-    const homeExists = await Home.findOne({ name });
-
-    if (homeExists) {
-        return res.status(400).json({ message: 'Home with this name already exists' });
+    // ולידציה בסיסית
+    if (!name || !accessCode) {
+      return sendErrorResponse(res, 'שם וקוד כניסה נדרשים.', 400);
     }
 
-    const home = new Home({
-        name,
-        accessCode,
-        iconClass: iconClass || 'fas fa-home',
-        users: ['Admin']
+    const newHome = new Home({
+      name,
+      accessCode,
+      iconClass,
+      colorClass,
+      // ודא ששדות המערך מוגדרים כברירת מחדל אם לא נשלחו
+      members: members || [],
+      users: users || ["אני"], // Ensure default user is set if not provided
+      shoppingItems: shoppingItems || [],
+      taskItems: taskItems || [],
+      shoppingCategories: shoppingCategories || ["כללית"],
+      taskCategories: taskCategories || ["כללית"],
+      templates: templates || [],
+      archivedShopping: archivedShopping || [],
+      archivedTasks: archivedTasks || [],
+      // Finance field will be initialized by the client if it's missing or needs defaults
+      finances: finances || { // Provide a default empty structure if nothing is sent
+        income: [],
+        expectedBills: [],
+        paidBills: [],
+        expenseCategories: [],
+        savingsGoals: [],
+        financeSettings: { currency: "₪" }
+      }
     });
-    const createdHome = await home.save();
-    res.status(201).json(createdHome);
-});
 
-exports.loginHome = asyncHandler(async (req, res) => {
-    const { name, accessCode, iconClass } = req.body;
-    const home = await Home.findOne({ name, iconClass });
+    const savedHome = await newHome.save();
+    res.status(201).json(savedHome);
+  } catch (error) {
+    sendErrorResponse(res, `שגיאה ביצירת בית: ${error.message}`);
+  }
+};
 
-    if (home && home.accessCode === accessCode) {
-        const fullHome = await Home.findById(home._id);
-        res.json(fullHome);
-    } else {
-        res.status(401).json({ message: 'אחד או יותר מהפרטים שהזנת שגויים' });
-    }
-});
+/**
+ * @route GET /api/homes
+ * @description Get all homes (for a specific user/member - simplified for now)
+ * @access Public (or authenticated for real apps)
+ *
+ * NOTE: In a real app, this should typically return homes specific to the authenticated user.
+ * For this example, it might return all homes or require a member ID in query.
+ */
+exports.getHomes = async (req, res) => {
+  try {
+    // אם היה אימות, היינו שולפים בתים לפי req.user.id
+    // מכיוון שאין אימות מלא, נחזיר את כל הבתים או נחפש לפי userId בקווארי
+    // לצורך הדגמה, נחזיר את כל הבתים עם לפחות משתמש אחד
+    const homes = await Home.find({ 'members.0': { '$exists': true } }); // Filter out homes with no members if needed
+    res.status(200).json(homes);
+  } catch (error) {
+    sendErrorResponse(res, `שגיאה באחזור בתים: ${error.message}`);
+  }
+};
 
-
-// --- Task Management ---
-exports.addTask = asyncHandler(async (req, res) => {
+/**
+ * @route GET /api/homes/:id
+ * @description Get a single home by ID
+ * @access Public (or authenticated for real apps)
+ */
+exports.getHomeById = async (req, res) => {
+  try {
     const home = await Home.findById(req.params.id);
-    if (home) {
-        const task = { name: req.body.name, category: req.body.category || 'כללית' };
-        home.taskItems.push(task);
-        await home.save();
-        res.status(201).json(home.taskItems[home.taskItems.length - 1]);
-    } else {
-        res.status(404).json({ message: 'Home not found' });
+    if (!home) {
+      return sendErrorResponse(res, 'בית לא נמצא.', 404);
     }
-});
+    res.status(200).json(home);
+  } catch (error) {
+    sendErrorResponse(res, `שגיאה באחזור בית: ${error.message}`);
+  }
+};
 
-exports.updateTask = asyncHandler(async (req, res) => {
-    const home = await Home.findById(req.params.id);
-    const task = home?.taskItems.id(req.params.taskId);
-    if (task) {
-        task.set(req.body);
-        await home.save();
-        res.json(task);
-    } else {
-        res.status(404).json({ message: 'Task or Home not found' });
-    }
-});
+/**
+ * @route PUT /api/homes/:id
+ * @description Update a home by ID (including nested data)
+ * @access Public (or authenticated)
+ *
+ * This function is designed to handle updates to top-level fields AND
+ * updates to nested arrays/objects (like shoppingItems, finances, etc.)
+ * by completely replacing the updated part of the document.
+ * For granular updates within arrays (e.g., updating one item in shoppingItems),
+ * more specific Mongoose operators ($set, $push, $pull) would be needed,
+ * or the client sends the full updated array. Here we assume the client
+ * sends the full updated array for simplicity.
+ */
+exports.updateHome = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body; // Client sends the updated fields
 
-exports.deleteTask = asyncHandler(async (req, res) => {
-    const home = await Home.findById(req.params.id);
-    if (home) {
-        home.taskItems.id(req.params.taskId).deleteOne();
-        await home.save();
-        res.json({ message: 'Task removed' });
-    } else {
-        res.status(404).json({ message: 'Home not found' });
-    }
-});
+    // Mongoose findByIdAndUpdate automatically merges top-level fields.
+    // For nested arrays/objects, we need to ensure the entire updated array/object
+    // is sent from the client if we want to replace it.
+    // If only parts of nested objects are sent, Mongoose's default behavior
+    // will replace the whole nested object unless specific dot notation is used.
+    // Here, we trust the client to send the correct structure for updates.
 
-// --- Shopping Item Management ---
-exports.addShoppingItem = asyncHandler(async (req, res) => {
-    const home = await Home.findById(req.params.id);
-    if (home) {
-        const item = { name: req.body.name, category: req.body.category || 'כללית' };
-        home.shoppingItems.push(item);
-        await home.save();
-        res.status(201).json(home.shoppingItems[home.shoppingItems.length - 1]);
-    } else {
-        res.status(404).json({ message: 'Home not found' });
-    }
-});
+    const updatedHome = await Home.findByIdAndUpdate(
+      id,
+      { $set: updates }, // Use $set to explicitly update the fields provided in 'updates'
+      { new: true, runValidators: true } // Return the updated document and run schema validators
+    );
 
-exports.updateShoppingItem = asyncHandler(async (req, res) => {
-    const home = await Home.findById(req.params.id);
-    const item = home?.shoppingItems.id(req.params.itemId);
-    if (item) {
-        item.set(req.body);
-        await home.save();
-        res.json(item);
-    } else {
-        res.status(404).json({ message: 'Item or Home not found' });
+    if (!updatedHome) {
+      return sendErrorResponse(res, 'בית לא נמצא לעדכון.', 404);
     }
-});
 
-exports.deleteShoppingItem = asyncHandler(async (req, res) => {
-    const home = await Home.findById(req.params.id);
-    if (home) {
-        home.shoppingItems.id(req.params.itemId).deleteOne();
-        await home.save();
-        res.json({ message: 'Shopping item removed' });
-    } else {
-        res.status(404).json({ message: 'Home not found' });
+    res.status(200).json(updatedHome);
+  } catch (error) {
+    // Handle validation errors specifically
+    if (error.name === 'ValidationError') {
+      return sendErrorResponse(res, `שגיאת ולידציה: ${error.message}`, 400);
     }
-});
+    sendErrorResponse(res, `שגיאה בעדכון בית: ${error.message}`);
+  }
+};
 
-// --- User Management ---
-exports.addUserToHome = asyncHandler(async (req, res) => {
-    const { username } = req.body;
-    const home = await Home.findById(req.params.id);
-    if (home) {
-        if (home.users.includes(username)) {
-            return res.status(400).json({ message: 'User already in home' });
-        }
-        home.users.push(username);
-        await home.save();
-        res.status(201).json(home);
-    } else {
-        res.status(404).json({ message: 'Home not found' });
-    }
-});
+/**
+ * @route DELETE /api/homes/:id
+ * @description Delete a home by ID
+ * @access Public (or authenticated)
+ */
+exports.deleteHome = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedHome = await Home.findByIdAndDelete(id);
 
-exports.removeUserFromHome = asyncHandler(async (req, res) => {
-    const { username } = req.body;
-    const home = await Home.findById(req.params.id);
-    if (home) {
-        home.users.pull(username);
-        await home.save();
-        res.json(home);
-    } else {
-        res.status(404).json({ message: 'Home not found' });
+    if (!deletedHome) {
+      return sendErrorResponse(res, 'בית לא נמצא למחיקה.', 404);
     }
-});
 
-// --- Category Management ---
-exports.addCategory = asyncHandler(async (req, res) => {
-    const { name, type } = req.body; // type should be 'shopping' or 'task'
-    const home = await Home.findById(req.params.id);
-    if (home) {
-        const categoryArray = type === 'shopping' ? home.shoppingCategories : home.taskCategories;
-        if (categoryArray.includes(name)) {
-             return res.status(400).json({ message: 'Category already exists' });
-        }
-        categoryArray.push(name);
-        await home.save();
-        res.status(201).json(home);
-    } else {
-        res.status(404).json({ message: 'Home not found' });
-    }
-});
-
-// --- Finance Management ---
-exports.updateFinances = asyncHandler(async (req, res) => {
-    const home = await Home.findById(req.params.id);
-    if (home) {
-        home.finances = req.body;
-        await home.save();
-        res.json(home.finances);
-    } else {
-        res.status(404).json({ message: 'Home not found' });
-    }
-});
+    res.status(200).json({ message: 'הבית נמחק בהצלחה.' });
+  } catch (error) {
+    sendErrorResponse(res, `שגיאה במחיקת בית: ${error.message}`);
+  }
+};

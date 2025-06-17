@@ -1,30 +1,107 @@
-// pland600/smart-home-appc/smart-home-appC-f331e9bcc98af768f120e09df9e92536aea46253/client/src/services/api.js
 import axios from 'axios';
-const API_URL = 'http://localhost:3001/api/homes';
 
-const api = axios.create({ baseURL: API_URL, headers: { 'Content-Type': 'application/json' } });
+/**
+ * @file api.js
+ * @description Centralized API service for interacting with the Node.js backend.
+ * Uses Axios for HTTP requests.
+ */
 
-// --- Homes ---
-export const apiCreateHome = (homeData) => api.post('/', homeData);
-export const apiLoginHome = (credentials) => api.post('/login', credentials); // credentials will be { name, accessCode }
-export const apiGetHomeById = (id) => api.get(`/${id}`);
+// הגדרת בסיס ה-URL לשרת שלך
+// יש לוודא שזה תואם לכתובת השרת שלך (לרוב localhost:3001 בפיתוח)
+const API_URL = 'http://localhost:3001/api/homes'; 
 
-// --- Shopping Items ---
-export const apiAddShoppingItem = (homeId, itemData) => api.post(`/${homeId}/shopping-list`, itemData);
-export const apiUpdateShoppingItem = (homeId, itemId, updates) => api.put(`/${homeId}/shopping-list/${itemId}`, updates);
-export const apiDeleteShoppingItem = (homeId, itemId) => api.delete(`/${homeId}/shopping-list/${itemId}`); // <-- THE FIX IS HERE
+/**
+ * פונקציית עזר לטיפול בשגיאות מה-API.
+ * @param {Error} error - אובייקט השגיאה.
+ * @returns {Promise<Error>} - מחזיר Promise שנכשל עם אובייקט שגיאה מפורט.
+ */
+const handleError = (error) => {
+  const errorMessage = error.response?.data?.message || error.message || 'שגיאה לא ידועה';
+  console.error('API Error:', errorMessage, error.response || error);
+  // ניתן לזרוק שגיאה עם הודעה מותאמת אישית או קוד סטטוס
+  throw new Error(errorMessage);
+};
 
-// --- Tasks ---
-export const apiAddTask = (homeId, taskData) => api.post(`/${homeId}/tasks`, taskData);
-export const apiUpdateTask = (homeId, taskId, updates) => api.put(`/${homeId}/tasks/${taskId}`, updates);
-export const apiDeleteTask = (homeId, taskId) => api.delete(`/${homeId}/tasks/${taskId}`);
+/**
+ * מאחזר את רשימת כל הבתים מהשרת.
+ * @returns {Promise<Array>} - Promise עם מערך הבתים.
+ */
+export const getHomes = async () => {
+  try {
+    const response = await axios.get(API_URL);
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
+};
 
-// --- Finance ---
-export const apiUpdateFinances = (homeId, financeData) => api.put(`/${homeId}/finances`, financeData);
+/**
+ * מאחזר בית ספציפי לפי ID.
+ * @param {string} id - ה-ID של הבית.
+ * @returns {Promise<Object>} - Promise עם אובייקט הבית.
+ */
+export const getHomeById = async (id) => {
+  try {
+    const response = await axios.get(`${API_URL}/${id}`);
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
+};
 
-// --- Sub-Items ---
-export const apiAddSubItem = (homeId, parentItemId, subItemData) => api.post(`/${homeId}/shopping-list/${parentItemId}/sub-items`, subItemData);
-export const apiUpdateSubItem = (homeId, parentItemId, subItemId, updates) => api.put(`/${homeId}/shopping-list/${parentItemId}/sub-items/${subItemId}`, updates);
-export const apiDeleteSubItem = (homeId, parentItemId, subItemId) => api.delete(`/${homeId}/shopping-list/${parentItemId}/sub-items/${subItemId}`);
+/**
+ * יוצר בית חדש.
+ * @param {Object} homeData - נתוני הבית ליצירה.
+ * @returns {Promise<Object>} - Promise עם אובייקט הבית שנוצר.
+ */
+export const createHome = async (homeData) => {
+  try {
+    const response = await axios.post(API_URL, homeData);
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
+};
 
-export default api;
+/**
+ * מעדכן בית קיים לפי ID.
+ * @param {string} id - ה-ID של הבית לעדכון.
+ * @param {Object} updates - האובייקט המכיל את השדות לעדכון.
+ * @returns {Promise<Object>} - Promise עם אובייקט הבית המעודכן.
+ */
+export const updateHome = async (id, updates) => {
+  try {
+    const response = await axios.put(`${API_URL}/${id}`, updates);
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+/**
+ * מוחק בית קיים לפי ID.
+ * @param {string} id - ה-ID של הבית למחיקה.
+ * @returns {Promise<Object>} - Promise עם הודעת הצלחה.
+ */
+export const deleteHome = async (id) => {
+  try {
+    const response = await axios.delete(`${API_URL}/${id}`);
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+// ניתן להוסיף כאן פונקציות API נוספות עבור פעולות ספציפיות יותר
+// אם הקונטרולר בצד השרת יפוצל לפונקציות עדינות יותר
+// לדוגמה:
+/*
+export const addItemToShoppingList = async (homeId, itemData) => {
+  try {
+    const response = await axios.post(`${API_URL}/${homeId}/shopping-items`, itemData);
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
+};
+*/

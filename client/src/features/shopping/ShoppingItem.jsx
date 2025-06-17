@@ -1,52 +1,85 @@
-// client/src/features/shopping/ShoppingItem.jsx
 import React from 'react';
-import { useHome } from '../../context/HomeContext';
-import { useModal } from '../../context/ModalContext';
-import CommentForm from '../common/CommentForm';
-import AssignUserForm from '../common/AssignUserForm';
 
-function ShoppingItem({ item }) {
-    const { updateShoppingItem, deleteShoppingItem, archiveItem } = useHome();
-    const { openModal } = useModal();
+/**
+ * @file ShoppingItem component
+ * @description Renders a single shopping list item with its details and action buttons.
+ * @param {object} props - Component props
+ * @param {object} props.item - The shopping item object
+ * @param {function} props.onToggleComplete - Callback for toggling item completion
+ * @param {function} props.onTogglePriority - Callback for toggling item urgency/priority
+ * @param {function} props.onDeleteItem - Callback for deleting an item
+ * @param {function} props.onArchiveItem - Callback for archiving an item
+ * @param {function} props.onAssignUser - Callback for assigning a user to an item
+ * @param {function} props.onItemComment - Callback for adding/editing a comment on an item
+ */
+const ShoppingItem = ({ item, onToggleComplete, onTogglePriority, onDeleteItem, onArchiveItem, onAssignUser, onItemComment }) => {
+  // Determine if assignedTo is 'משותף' or 'משותפת' for display purposes
+  const isAssignedToShared = item.assignedTo && (item.assignedTo === 'משותף' || item.assignedTo === 'משותפת');
 
-    const handleEdit = () => {
-        const newName = prompt("שנה את שם הפריט:", item.name);
-        if (newName && newName.trim() !== '' && newName.trim() !== item.name) {
-            updateShoppingItem(item._id, { name: newName.trim() });
-        }
-    };
+  return (
+    <li className={item.isUrgent ? 'urgent-item' : ''}>
+      <input
+        type="checkbox"
+        checked={item.completed}
+        onChange={(e) => onToggleComplete(item.id, e.target.checked)}
+        aria-label={`סמן כהושלם עבור ${item.text}`}
+      />
+      <div className="item-text">
+        {item.text}
+        <span className="item-details">
+          קטגוריה: {item.category || 'כללית'}
+          {item.assignedTo && !isAssignedToShared && (
+            <> | <i className="fas fa-user" aria-hidden="true"></i> {item.assignedTo}</>
+          )}
+          {item.comment && (
+            <> | <button className="action-btn-inline comment-display-btn" title="הצג הערה" aria-label={`הצג הערה עבור ${item.text}`} onClick={() => onItemComment(item.id)}><i className="fas fa-sticky-note" aria-hidden="true"></i></button></>
+          )}
+        </span>
+      </div>
+      <div className="item-actions">
+        <button
+          className="action-btn priority-btn"
+          title="דחיפות"
+          aria-label={`שנה דחיפות עבור ${item.text}`}
+          onClick={() => onTogglePriority(item.id)}
+        >
+          <i className="far fa-star" aria-hidden="true"></i>
+        </button>
+        <button
+          className="action-btn assign-user-btn"
+          title="שייך למשתמש"
+          aria-label={`שייך משתמש עבור ${item.text}`}
+          onClick={() => onAssignUser(item.id)}
+        >
+          <i className="fas fa-user-tag" aria-hidden="true"></i>
+        </button>
+        <button
+          className="action-btn comment-btn"
+          title="הערה"
+          aria-label={`הוסף או ערוך הערה עבור ${item.text}`}
+          onClick={() => onItemComment(item.id)}
+        >
+          <i className="fas fa-comment" aria-hidden="true"></i>
+        </button>
+        <button
+          className="action-btn archive-btn"
+          title="ארכיון"
+          aria-label={`העבר לארכיון את ${item.text}`}
+          onClick={() => onArchiveItem(item.id, item.text)}
+        >
+          <i className="fas fa-archive" aria-hidden="true"></i>
+        </button>
+        <button
+          className="action-btn delete-btn"
+          title="מחק"
+          aria-label={`מחק את ${item.text}`}
+          onClick={() => onDeleteItem(item.id, item.text)}
+        >
+          <i className="far fa-trash-alt" aria-hidden="true"></i>
+        </button>
+      </div>
+    </li>
+  );
+};
 
-    return (
-        <li className={`${item.isCompleted ? 'completed' : ''} ${item.isUrgent ? 'urgent-item' : ''}`}>
-            <input type="checkbox" checked={!!item.isCompleted} onChange={() => updateShoppingItem(item._id, { isCompleted: !item.isCompleted })} />
-            <div className="item-text">
-                {item.name}
-                <span className="item-details">
-                    {item.assignedTo && item.assignedTo !== 'משותף' ? `שויך ל: ${item.assignedTo}` : 'פריט משותף'}
-                    {item.comment && <i className="fas fa-comment" style={{ marginInlineStart: '8px' }} title={item.comment}></i>}
-                </span>
-            </div>
-            <div className="item-actions">
-                <button className="action-btn priority-btn" title="דחוף" onClick={() => updateShoppingItem(item._id, { isUrgent: !item.isUrgent })}>
-                    <i className="fas fa-star"></i>
-                </button>
-                <button className="action-btn" title="שייך למשתמש" onClick={() => openModal(<AssignUserForm item={item} onSave={updateShoppingItem} />)}>
-                    <i className="fas fa-user-tag"></i>
-                </button>
-                <button className="action-btn" title="הוסף/ערוך הערה" onClick={() => openModal(<CommentForm item={item} onSave={updateShoppingItem} />)}>
-                    <i className="fas fa-comment"></i>
-                </button>
-                 <button className="action-btn" title="ערוך שם" onClick={handleEdit}>
-                    <i className="fas fa-edit"></i>
-                </button>
-                <button className="action-btn" title="העבר לארכיון" onClick={() => archiveItem('shopping', item._id)}>
-                    <i className="fas fa-archive"></i>
-                </button>
-                <button className="action-btn delete-btn" title="מחק" onClick={() => deleteShoppingItem(item._id)}>
-                    <i className="far fa-trash-alt"></i>
-                </button>
-            </div>
-        </li>
-    );
-}
 export default ShoppingItem;
