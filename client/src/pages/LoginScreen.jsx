@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useHome } from '../context/HomeContext';
-import { apiLoginHome, apiCreateHome } from '../services/api';
+import { createHome, getHomeByAccessCode } from '../services/api.js';
 
 const AVAILABLE_ICONS = ["fas fa-home", "fas fa-user-friends", "fas fa-briefcase", "fas fa-heart", "fas fa-star", "fas fa-car", "fas fa-building", "fas fa-graduation-cap", "fas fa-lightbulb", "fas fa-piggy-bank"];
 

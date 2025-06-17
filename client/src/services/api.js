@@ -92,6 +92,23 @@ export const deleteHome = async (id) => {
   }
 };
 
+/**
+ * מאחזר בית לפי קוד גישה.
+ * @param {string} accessCode - קוד הגישה של הבית.
+ * @returns {Promise<Object>} - Promise עם אובייקט הבית.
+ */
+export const getHomeByAccessCode = async (accessCode) => {
+  try {
+    const response = await axios.get(`<span class="math-inline">\{API\_URL\}/byAccessCode/</span>{accessCode}`);
+    return response.data;
+  } catch (error) {
+    // שים לב: כאן אנו רוצים שהשגיאה תיזרק חזרה לקומפוננטה
+    // כדי שנוכל להציג הודעה למשתמש (למשל "קוד שגוי").
+    console.error('Error fetching home by access code:', error.response ? error.response.data : error.message);
+    throw error;
+  }
+};
+
 // ניתן להוסיף כאן פונקציות API נוספות עבור פעולות ספציפיות יותר
 // אם הקונטרולר בצד השרת יפוצל לפונקציות עדינות יותר
 // לדוגמה:

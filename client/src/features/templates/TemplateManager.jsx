@@ -1,7 +1,7 @@
 import React from 'react';
 import { useHome } from 'src/context/HomeContext.jsx'; // נתיב יבוא תקין
 import { useModal } from 'src/context/ModalContext.jsx'; // נתיב יבוא תקין
-import TemplateForm from 'src/features/templates/forms/TemplateForm.jsx'; // נתיב יבוא תקין
+import TemplateForm from 'src/features/templates/froms/TemplateForm.jsx'; // נתיב יבוא תקין
 /**
  * @file TemplateManager component
  * @description Displays and manages a list of templates (shopping, task, finance).
