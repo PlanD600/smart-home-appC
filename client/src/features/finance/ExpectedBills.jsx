@@ -5,11 +5,21 @@ import BillForm from './forms/BillForm';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 const ExpectedBills = () => {
-  const { activeHome, handlePayBill, isLoading } = useHome();
+  const { activeHome, handlePayBill, deleteBill, isLoading } = useHome();
   const { showModal } = useModal();
 
   const openAddBillModal = () => {
     showModal(<BillForm />, { title: 'הוספת חשבון חדש' });
+  };
+  
+  const openEditBillModal = (bill) => {
+    showModal(<BillForm existingBill={bill} />, { title: 'עריכת חשבון' });
+  };
+
+  const handleDeleteClick = (bill) => {
+    if (window.confirm(`האם למחוק את החשבון "${bill.text}"?`)) {
+      deleteBill(bill._id);
+    }
   };
   
   const bills = activeHome?.finances?.expectedBills || [];
@@ -17,7 +27,7 @@ const ExpectedBills = () => {
   return (
     <div id="bills-section">
       <div className="sub-section-header">
-        <h4 data-lang-key="expected_bills">חשבונות לתשלום (חיובים צפויים)</h4>
+        <h4 data-lang-key="expected_bills">חשבונות לתשלום</h4>
         <button id="add-expected-bill-btn" className="header-style-button" onClick={openAddBillModal}>
           <i className="fas fa-plus"></i> <span className="btn-text">הוסף חשבון</span>
         </button>
@@ -39,8 +49,12 @@ const ExpectedBills = () => {
                   <button className="action-btn pay-bill-btn" title="שלם חשבון" onClick={() => handlePayBill(bill._id)}>
                     <i className="fas fa-check"></i>
                   </button>
-                  <button className="action-btn edit-bill-btn" title="ערוך"><i className="fas fa-edit"></i></button>
-                  <button className="action-btn delete-bill-btn" title="מחק"><i className="far fa-trash-alt"></i></button>
+                  <button className="action-btn edit-bill-btn" title="ערוך" onClick={() => openEditBillModal(bill)}>
+                    <i className="fas fa-edit"></i>
+                  </button>
+                  <button className="action-btn delete-bill-btn" title="מחק" onClick={() => handleDeleteClick(bill)}>
+                    <i className="far fa-trash-alt"></i>
+                  </button>
                 </div>
               </li>
             ))

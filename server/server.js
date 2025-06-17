@@ -3,23 +3,16 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
 
-// Load env vars
 dotenv.config();
-
-// Connect to database
 connectDB();
 
 const app = express();
 
-// Enable CORS
 app.use(cors());
-
-// Body Parser Middleware
-// This is the modern replacement for body-parser
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: false }));
 
-// Mount routes
+// This line mounts all the routes from homeRoutes.js under the "/api/homes" prefix
 app.use('/api/homes', require('./routes/homeRoutes'));
 
 const PORT = process.env.PORT || 5000;

@@ -16,18 +16,20 @@ const ShoppingList = () => {
   const handleAddItem = (itemData) => {
     addItemToList('shopping', itemData);
   };
+
+  // --- התיקון כאן ---
+  // ממיין את המערך לפני ההצגה. פריטים עם isUrgent=true יופיעו ראשונים.
+  const sortedItems = [...shoppingItems].sort((a, b) => Number(b.isUrgent) - Number(a.isUrgent));
   
   return (
     <section id="shopping-list" className="list-section active">
       <div className="list-title-container">
         <h3><span>רשימת קניות</span></h3>
         <div className="list-title-actions">
-          {/* Gemini and other buttons can be wired up later */}
           <button className="header-style-button gemini-btn">✨ <span>הפוך מתכון לרשימה</span></button>
         </div>
       </div>
       
-      {/* We can add filters here later */}
       <div className="list-filters">
         <label>קטגוריה:</label>
         <select className="category-filter">
@@ -48,8 +50,9 @@ const ShoppingList = () => {
 
       <div className="item-list">
         <ul className="item-list-ul">
-          {shoppingItems && shoppingItems.length > 0 ? (
-            shoppingItems.map(item => (
+          {sortedItems && sortedItems.length > 0 ? (
+            // --- שימוש במערך הממוין ---
+            sortedItems.map(item => (
               <ShoppingItem key={item._id} item={item} />
             ))
           ) : (

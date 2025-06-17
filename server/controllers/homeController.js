@@ -11,7 +11,6 @@ const findHomeById = async (id, res) => {
 };
 
 // @desc    Get all homes (for login screen)
-// @route   GET /api/homes
 exports.getHomes = async (req, res) => {
   try {
     const homes = await Home.find({}, 'name iconClass colorClass');
@@ -22,7 +21,7 @@ exports.getHomes = async (req, res) => {
 };
 
 // @desc    Create a new home
-// @route   POST /api/homes
+// --- THIS IS THE MOST IMPORTANT FIX ---
 exports.createHome = async (req, res) => {
   try {
     const { name, accessCode, iconClass } = req.body;
@@ -33,13 +32,27 @@ exports.createHome = async (req, res) => {
       name,
       accessCode,
       iconClass,
-      // Add default finance data on creation
+      // Add the initial user to the users array
+      users: ['אני'], 
+      // This part is already fixed, but we ensure it stays
       finances: {
+        income: [],
+        expectedBills: [],
+        paidBills: [],
+        savingsGoals: [],
         expenseCategories: [
-          { name: "דיור", budgetAmount: 0 },
-          { name: "מזון ומשקאות", budgetAmount: 0 },
-          { name: "חשבונות", budgetAmount: 0 },
-        ]
+          { name: "דיור ושכירות", budgetAmount: 0, color: "#AED581" },
+          { name: "מזון ומשקאות", budgetAmount: 0, color: "#FFB74D" },
+          { name: "חשבונות ותקשורת", budgetAmount: 0, color: "#4FC3F7" },
+          { name: "תחבורה ורכב", budgetAmount: 0, color: "#BA68C8" },
+          { name: "בילוי ופנאי", budgetAmount: 0, color: "#F06292" },
+          { name: "ביגוד והנעלה", budgetAmount: 0, color: "#4DB6AC" },
+          { name: "בריאות וטיפוח", budgetAmount: 0, color: "#FF8A65" },
+          { name: "חינוך וילדים", budgetAmount: 0, color: "#7986CB" },
+          { name: "מתנות ותרומות", budgetAmount: 0, color: "#E57373" },
+          { name: "שונות", budgetAmount: 0, color: "#90A4AE" }
+        ],
+        financeSettings: { currency: "ש\"ח" }
       }
     });
     await newHome.save();
@@ -50,7 +63,6 @@ exports.createHome = async (req, res) => {
 };
 
 // @desc    Get full home data by access code
-// @route   POST /api/homes/login
 exports.getHomeByAccessCode = async (req, res) => {
   try {
     const { homeId, accessCode } = req.body;
@@ -64,50 +76,31 @@ exports.getHomeByAccessCode = async (req, res) => {
   }
 };
 
-
-// --- Item Management (Shopping & Tasks) ---
-
-// @desc    Add an item to a list (shopping or task)
-// @route   POST /api/homes/:homeId/:listType
+// --- Item Management ---
 exports.addItem = async (req, res) => {
   try {
     const home = await findHomeById(req.params.homeId, res);
     if (!home) return;
-
     const { listType } = req.params;
-    const list = listType === 'shopping' ? home.shoppingItems : home.taskItems;
-    
-    // The request body is the new item
-    const newItem = list.create(req.body);
-    list.push(newItem);
-    
+    const listKey = listType === 'shopping' ? 'shoppingItems' : 'taskItems';
+    const newItem = home[listKey].create(req.body);
+    home[listKey].push(newItem);
     await home.save();
-    // Return the newly created item with its generated _id
     res.status(201).json(newItem);
   } catch (error) {
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 };
 
-
-// @desc    Update an item in a list
-// @route   PUT /api/homes/:homeId/:listType/:itemId
 exports.updateItem = async (req, res) => {
     try {
         const home = await findHomeById(req.params.homeId, res);
         if (!home) return;
-
         const { listType, itemId } = req.params;
-        const list = listType === 'shopping' ? home.shoppingItems : home.taskItems;
-        const item = list.id(itemId);
-
-        if (!item) {
-            return res.status(404).json({ message: 'Item not found' });
-        }
-
-        // Update item fields based on request body
+        const listKey = listType === 'shopping' ? 'shoppingItems' : 'taskItems';
+        const item = home[listKey].id(itemId);
+        if (!item) return res.status(404).json({ message: 'Item not found' });
         Object.assign(item, req.body);
-        
         await home.save();
         res.status(200).json(item);
     } catch (error) {
@@ -115,23 +108,13 @@ exports.updateItem = async (req, res) => {
     }
 };
 
-// @desc    Delete an item from a list
-// @route   DELETE /api/homes/:homeId/:listType/:itemId
 exports.deleteItem = async (req, res) => {
     try {
         const home = await findHomeById(req.params.homeId, res);
         if (!home) return;
-
         const { listType, itemId } = req.params;
-        const list = listType === 'shopping' ? home.shoppingItems : home.taskItems;
-        
-        // Mongoose sub-document removal
-        const item = list.id(itemId);
-        if (!item) {
-            return res.status(404).json({ message: 'Item not found' });
-        }
-        item.remove();
-        
+        const listKey = listType === 'shopping' ? 'shoppingItems' : 'taskItems';
+        home[listKey].pull({ _id: itemId });
         await home.save();
         res.status(200).json({ message: 'Item deleted successfully', itemId });
     } catch (error) {
@@ -140,17 +123,12 @@ exports.deleteItem = async (req, res) => {
 };
 
 // --- Finance Management ---
-
-// @desc    Add an expected bill
-// @route   POST /api/homes/:homeId/finance/expected-bills
 exports.addExpectedBill = async (req, res) => {
   try {
     const home = await findHomeById(req.params.homeId, res);
     if (!home) return;
-    
     const newBill = home.finances.expectedBills.create(req.body);
     home.finances.expectedBills.push(newBill);
-    
     await home.save();
     res.status(201).json(newBill);
   } catch (error) {
@@ -158,67 +136,51 @@ exports.addExpectedBill = async (req, res) => {
   }
 };
 
-// @desc    Pay a bill (move from expected to paid and handle recurring)
-// @route   POST /api/homes/:homeId/finance/pay-bill/:billId
 exports.payBill = async (req, res) => {
   try {
     const home = await findHomeById(req.params.homeId, res);
     if (!home) return;
-
     const { billId } = req.params;
     const billToPay = home.finances.expectedBills.id(billId);
-
-    if (!billToPay) {
-      return res.status(404).json({ message: 'Bill not found' });
-    }
-
-    // Create a new paid bill entry
-    const paidBill = home.finances.paidBills.create({
-      text: billToPay.text,
-      amount: billToPay.amount,
-      datePaid: new Date(),
-      category: billToPay.category,
-      assignedTo: billToPay.assignedTo,
-      comment: billToPay.comment,
-    });
+    if (!billToPay) return res.status(404).json({ message: 'Bill not found' });
+    const paidBill = { text: billToPay.text, amount: billToPay.amount, datePaid: new Date(), category: billToPay.category, assignedTo: billToPay.assignedTo, comment: billToPay.comment };
     home.finances.paidBills.push(paidBill);
-
-    // If the bill is recurring, create the next instance
     if (billToPay.recurring && billToPay.recurring.frequency) {
       const nextDueDate = new Date(billToPay.dueDate);
-      if (billToPay.recurring.frequency === 'monthly') {
-        nextDueDate.setMonth(nextDueDate.getMonth() + 1);
-      } else if (billToPay.recurring.frequency === 'yearly') {
-        nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
-      }
-
+      if (billToPay.recurring.frequency === 'monthly') nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+      else if (billToPay.recurring.frequency === 'yearly') nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
       const nextBill = { ...billToPay.toObject(), _id: undefined, dueDate: nextDueDate, isUrgent: false };
       home.finances.expectedBills.push(nextBill);
     }
-    
-    // Remove the original bill from expectedBills
-    billToPay.remove();
-
+    home.finances.expectedBills.pull({ _id: billId });
     await home.save();
-    res.status(200).json(home.finances); // Return the entire updated finances object
+    res.status(200).json(home.finances);
   } catch (error) {
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 };
 
-
-// @desc    Add an income entry
-// @route   POST /api/homes/:homeId/finance/income
-exports.addIncome = async (req, res) => {
+exports.deleteExpectedBill = async (req, res) => {
   try {
     const home = await findHomeById(req.params.homeId, res);
     if (!home) return;
-
-    const newIncome = home.finances.income.create(req.body);
-    home.finances.income.push(newIncome);
-
+    home.finances.expectedBills.pull({ _id: req.params.billId });
     await home.save();
-    res.status(201).json(newIncome);
+    res.status(200).json({ message: 'Bill deleted successfully', billId: req.params.billId });
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
+exports.updateExpectedBill = async (req, res) => {
+  try {
+    const home = await findHomeById(req.params.homeId, res);
+    if (!home) return;
+    const bill = home.finances.expectedBills.id(req.params.billId);
+    if (!bill) return res.status(404).json({ message: 'Bill not found' });
+    Object.assign(bill, req.body);
+    await home.save();
+    res.status(200).json(bill);
   } catch (error) {
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
@@ -228,32 +190,41 @@ exports.updateBudgets = async (req, res) => {
   try {
     const home = await findHomeById(req.params.homeId, res);
     if (!home) return;
-
-    const { budgets } = req.body; // Expects an object like { "categoryName": amount }
+    const { budgets } = req.body;
     
+    if (budgets.__newCategory) {
+      const { name, amount } = budgets.__newCategory;
+      if (name && !home.finances.expenseCategories.some(c => c.name === name)) {
+          home.finances.expenseCategories.push({
+              name,
+              budgetAmount: parseFloat(amount) || 0,
+              color: '#cccccc' // Default color for new categories
+          });
+      }
+      delete budgets.__newCategory;
+    }
+
     home.finances.expenseCategories.forEach(cat => {
       if (budgets[cat.name] !== undefined) {
-        cat.budgetAmount = parseFloat(budgets[cat.name]) || 0;
+        cat.budgetAmount = parseFloat(budgets[cat.name].amount) || 0;
+        cat.color = budgets[cat.name].color || '#cccccc';
       }
     });
-
+    
     await home.save();
     res.status(200).json(home.finances.expenseCategories);
   } catch (error) {
+    console.error("Error in updateBudgets:", error);
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 };
 
-// @desc    Add a new savings goal
-// @route   POST /api/homes/:homeId/finance/savings-goals
 exports.addSavingsGoal = async (req, res) => {
   try {
     const home = await findHomeById(req.params.homeId, res);
     if (!home) return;
-
     const newGoal = home.finances.savingsGoals.create(req.body);
     home.finances.savingsGoals.push(newGoal);
-    
     await home.save();
     res.status(201).json(newGoal);
   } catch (error) {
@@ -261,28 +232,59 @@ exports.addSavingsGoal = async (req, res) => {
   }
 };
 
-// @desc    Add funds to a savings goal
-// @route   PUT /api/homes/:homeId/finance/savings-goals/:goalId
 exports.addToSavingsGoal = async (req, res) => {
   try {
     const home = await findHomeById(req.params.homeId, res);
     if (!home) return;
-    
     const goal = home.finances.savingsGoals.id(req.params.goalId);
-    if (!goal) {
-        return res.status(404).json({ message: 'Savings goal not found' });
-    }
-
+    if (!goal) return res.status(404).json({ message: 'Savings goal not found' });
     const { amountToAdd } = req.body;
     goal.currentAmount += parseFloat(amountToAdd) || 0;
-
     await home.save();
     res.status(200).json(goal);
   } catch (error) {
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 };
-// You can add more controllers for savings, budgets, etc., following the same pattern.
-// --- TODO: Add controllers for Finance, Users, Templates etc. ---
-// I'll add more controllers here as we proceed to the frontend implementation
-// to keep this response focused. The structure will be similar.
+
+exports.addIncome = async (req, res) => {
+  try {
+    const home = await findHomeById(req.params.homeId, res);
+    if (!home) return;
+    const newIncome = home.finances.income.create(req.body);
+    home.finances.income.push(newIncome);
+    await home.save();
+    res.status(201).json(newIncome);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
+// --- User Management ---
+exports.addUser = async (req, res) => {
+  try {
+    const home = await findHomeById(req.params.homeId, res);
+    if (!home) return;
+
+    const { name } = req.body;
+    if (!name) {
+      return res.status(400).json({ message: 'User name is required' });
+    }
+    if (!home.users) {
+      home.users = [];
+    }
+    // --- End of Defensive Check ---
+
+    if (home.users.includes(name)) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
+    
+    home.users.push(name);
+    await home.save();
+    res.status(201).json(home.users);
+    
+  } catch (error) {
+    console.error("Error in addUser controller:", error);
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};

@@ -834,3 +834,28 @@ body.lang-ltr .sticky-note-container { right: 25px; left: auto; }
     color: #ffc107;
     font-weight: 900;
 }
+
+.savings-goal-card.goal-completed {
+  background-color: #e8f5e9; /* Light green background */
+  border-color: var(--progress-green);
+}
+
+.savings-goal-card .goal-progress-fill {
+  background-color: var(--mustard-yellow);
+}
+
+.savings-goal-card.goal-completed .goal-progress-fill {
+  background-color: var(--progress-green); /* Green fill when completed */
+}
+
+.completion-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: var(--progress-green);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}

@@ -28,13 +28,13 @@ const FinanceManagement = () => {
         <hr />
         <ExpenseChart paidBills={finances.paidBills} currency={currency} />
         <hr />
-        <ExpectedBills />
+        <ExpectedBills /> {/* <-- First: Expected Bills */}
+        <hr />
+        <PaidBillsList paidBills={finances.paidBills} currency={currency} /> {/* <-- Second: Paid Bills */}
         <hr />
         <BudgetTracker paidBills={finances.paidBills} expenseCategories={finances.expenseCategories} currency={currency} />
         <hr />
         <SavingsGoals savingsGoals={finances.savingsGoals} currency={currency} />
-        <hr />
-        <PaidBillsList paidBills={finances.paidBills} currency={currency} />
         <hr />
         <IncomeList income={finances.income} currency={currency} />
       </div>

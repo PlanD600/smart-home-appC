@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useHome } from '../../../context/HomeContext';
 import { useModal } from '../../../context/ModalContext';
 
-const BillForm = () => {
-  const { activeHome, addBill } = useHome();
+const BillForm = ({ existingBill }) => {
+  const { activeHome, addBill, updateBill } = useHome();
   const { hideModal } = useModal();
   
-  const [text, setText] = useState('');
-  const [amount, setAmount] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [category, setCategory] = useState(activeHome?.finances?.expenseCategories[0]?.name || 'חשבונות');
-  const [isRecurring, setIsRecurring] = useState(false);
+  // Initialize state with existing bill data if in edit mode, otherwise empty
+  const [text, setText] = useState(existingBill?.text || '');
+  const [amount, setAmount] = useState(existingBill?.amount || '');
+  const [dueDate, setDueDate] = useState(existingBill ? new Date(existingBill.dueDate).toISOString().split('T')[0] : '');
+  const [category, setCategory] = useState(existingBill?.category || activeHome?.finances?.expenseCategories[0]?.name || 'חשבונות');
+  const [isRecurring, setIsRecurring] = useState(existingBill?.recurring != null);
   
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -19,13 +20,21 @@ const BillForm = () => {
       return;
     }
     
-    addBill({
+    const billData = {
       text,
       amount: parseFloat(amount),
       dueDate,
       category,
       recurring: isRecurring ? { frequency: 'monthly' } : null,
-    });
+    };
+
+    if (existingBill) {
+      // If we are editing, call updateBill
+      updateBill(existingBill._id, billData);
+    } else {
+      // If we are creating, call addBill
+      addBill(billData);
+    }
     
     hideModal();
   };
@@ -54,7 +63,7 @@ const BillForm = () => {
       </div>
 
       <div className="modal-footer">
-        <button type="submit" className="primary-action">הוסף חשבון</button>
+        <button type="submit" className="primary-action">{existingBill ? 'שמור שינויים' : 'הוסף חשבון'}</button>
         <button type="button" className="secondary-action" onClick={hideModal}>ביטול</button>
       </div>
     </form>

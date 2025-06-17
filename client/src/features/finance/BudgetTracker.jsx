@@ -1,6 +1,12 @@
 import React from 'react';
+import { useModal } from '../../context/ModalContext';
+import BudgetForm from './forms/BudgetForm';
 
 const BudgetTracker = ({ paidBills, expenseCategories, currency }) => {
+  const { showModal } = useModal();
+  
+  const openBudgetModal = () => showModal(<BudgetForm />, { title: 'ניהול תקציבים' });
+
   const now = new Date();
   const monthlyExpenses = paidBills
     .filter(bill => {
@@ -18,7 +24,7 @@ const BudgetTracker = ({ paidBills, expenseCategories, currency }) => {
     <div id="budget-tracking-section">
       <div className="sub-section-header">
         <h4 data-lang-key="monthly_budget_tracking">מעקב תקציב חודשי</h4>
-        <button id="manage-budgets-btn" className="header-style-button">
+        <button id="manage-budgets-btn" className="header-style-button" onClick={openBudgetModal}>
           <i className="fas fa-cogs"></i> <span className="btn-text">נהל תקציבים</span>
         </button>
       </div>
