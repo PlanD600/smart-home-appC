@@ -1,20 +1,20 @@
 import React from 'react';
 
-// אין יותר צורך לייבא לוגו!
-
-function LoadingSpinner() {
-  return (
-    <div className="loading-overlay">
-      <div className="loading-content">
-        {/* החלפנו את התמונה באייקון */}
-        <div className="loading-icon-container">
-          <i className="fas fa-home"></i>
-        </div>
+const LoadingSpinner = ({ fullPage = false }) => {
+  if (fullPage) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <div className="spinner"></div>
-        <p>טוען...</p>
       </div>
+    );
+  }
+
+  // This is for the modal loader
+  return (
+    <div className="modal-loader" style={{ display: 'block' }}>
+      <div className="spinner"></div>
     </div>
   );
-}
+};
 
 export default LoadingSpinner;

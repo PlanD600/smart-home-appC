@@ -1,168 +1,220 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import * as api from '../services/api.js'; // ייבוא שירותי ה-API לצורך תקשורת עם השרת (Node.js/MongoDB) - נוספה סיומת קובץ
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import * as api from '../services/api';
 
-// יצירת קונטקסט הבית
 const HomeContext = createContext();
 
-// Hook מותאם אישית לשימוש בקונטקסט הבית
 export const useHome = () => useContext(HomeContext);
 
-/**
- * @file HomeContext component
- * @description Provides global state management for home data, handling fetching, creating,
- * updating, and selecting homes via the Node.js/MongoDB backend API.
- */
 export const HomeProvider = ({ children }) => {
-  const [currentHome, setCurrentHome] = useState(null); // הבית הפעיל כרגע
-  const [homes, setHomes] = useState([]); // רשימת כל הבתים שהמשתמש מחובר אליהם
-  const [loading, setLoading] = useState(true); // מצב טעינה גלובלי
-  const [error, setError] = useState(null); // מצב שגיאה גלובלי
-  const [userId, setUserId] = useState('anonymous_user'); // ID משתמש (כרגע פלייסדר, ישולב עם מערכת אימות מהשרת)
+  const [homes, setHomes] = useState([]); // List of homes for login
+  const [activeHome, setActiveHome] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // פונקציית אתחול ראשונית (במקום אתחול Firebase)
-  // כרגע תפקידה העיקרי הוא לטעון בתים אם יש משתמש מאומת
-  const initApp = useCallback(async () => {
-    setLoading(true);
-    try {
-      // כאן, אם הייתה מערכת אימות בצד השרת, היינו מאחזרים את ה-userId האמיתי
-      // לדוגמה: const authenticatedUserId = await api.getAuthStatus();
-      // setUserId(authenticatedUserId || 'anonymous_user');
-
-      // דוגמה: בדיקה אם קיים homeId ב-localStorage כדי לנסות לטעון אותו
-      const savedHomeId = localStorage.getItem('activeHomeId');
-      if (savedHomeId) {
-        await fetchAndSelectHome(savedHomeId);
-      } else {
-        // אם אין בית פעיל שמור, ננסה לאחזר את רשימת הבתים של המשתמש
-        // (בהנחה ש-API.getHomes() מחזיר בתים זמינים למשתמש הנוכחי/אנונימי)
-        const fetchedHomes = await api.getHomes(); // קריאה ל-API של השרת
-        setHomes(fetchedHomes);
-      }
-    } catch (err) {
-      console.error("Error during app initialization:", err);
-      setError("Failed to initialize application.");
-    } finally {
-      setLoading(false);
-    }
-  }, []); // ריצה פעם אחת באתחול האפליקציה
-
-  // פונקציה לאחזור ובחירת בית ספציפי
-  const fetchAndSelectHome = useCallback(async (homeId) => {
-    setLoading(true);
-    try {
-      const home = await api.getHomeById(homeId); // קריאה ל-API של השרת
-      if (home) {
-        setCurrentHome(home);
-        localStorage.setItem('activeHomeId', homeId); // שמירת ID הבית ב-localStorage
-        // מכיוון שאין onSnapshot ב-MongoDB, נצטרך לרענן ידנית או לממש WebSockets
-        // נדאג לרענון באמצעות עדכוני state בעת שמירת שינויים.
-        console.log("Selected home:", home);
-      } else {
-        setError("Home not found.");
-        setCurrentHome(null);
-        localStorage.removeItem('activeHomeId');
-      }
-    } catch (err) {
-      console.error("Error fetching and selecting home:", err);
-      setError("Failed to load home.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // יצירת בית חדש באמצעות ה-API של השרת
-  const createHome = useCallback(async (homeData) => {
-    setLoading(true);
-    try {
-      // אתחול נתונים פיננסיים עם ערכי ברירת מחדל
-      const newHomeData = {
-        ...homeData,
-        members: [userId], // שיוך המשתמש הנוכחי לבית
-        createdAt: new Date().toISOString(), // תאריך יצירה בפורמט ISO
-        finances: {
-          income: [],
-          expectedBills: [],
-          paidBills: [],
-          expenseCategories: [
-              { id: 'cat_exp_1', name: "דיור", icon: "fas fa-home", color: "#AED581", budgetAmount: 0 },
-              { id: 'cat_exp_2', name: "מזון ומשקאות", icon: "fas fa-utensils", color: "#FFB74D", budgetAmount: 0 },
-              { id: 'cat_exp_3', name: "חשבונות", icon: "fas fa-receipt", color: "#4FC3F7", budgetAmount: 0 },
-          ],
-          savingsGoals: [],
-          financeSettings: { currency: "₪" }
-        },
-        shoppingItems: [],
-        taskItems: [],
-        users: ["אני"], // משתמש ברירת מחדל
-        shoppingCategories: ["כללית"],
-        taskCategories: ["כללית"],
-        templates: [],
-        archivedShopping: [],
-        archivedTasks: [],
-      };
-      const createdHome = await api.createHome(newHomeData); // קריאה ל-API של השרת
-      setHomes(prevHomes => [...prevHomes, createdHome]); // עדכון רשימת הבתים המקומית
-      await fetchAndSelectHome(createdHome._id); // בחירת הבית החדש שנוצר
-      return createdHome;
-    } catch (err) {
-      console.error("Error creating home:", err);
-      setError("Failed to create home.");
-      throw err; // זריקת השגיאה כדי שתוכל להיקלט בקומפוננטה שקראה לפונקציה
-    } finally {
-      setLoading(false);
-    }
-  }, [userId, fetchAndSelectHome]);
-
-  // עדכון נתוני הבית הנוכחי באמצעות ה-API של השרת
-  const updateCurrentHome = useCallback(async (updates) => {
-    if (!currentHome || !currentHome._id) {
-      console.error("No current home selected for update.");
-      setError("No home selected.");
-      return;
-    }
-    setLoading(true);
-    try {
-      // שולח את העדכונים לשרת. ה-API בצד השרת אמור לטפל במיזוג/עדכון הנתונים ב-MongoDB.
-      const updatedHome = await api.updateHome(currentHome._id, updates);
-      setCurrentHome(updatedHome); // עדכון הסטייט המקומי עם הנתונים המעודכנים מהשרת
-      console.log("Home data updated successfully for ID:", currentHome._id);
-    } catch (err) {
-      console.error("Error updating home data:", err);
-      setError("Failed to update home data.");
-      throw err; // זריקת השגיאה
-    } finally {
-      setLoading(false);
-    }
-  }, [currentHome]);
-
-  // פונקציית התנתקות
-  const logout = useCallback(() => {
-    setCurrentHome(null);
-    localStorage.removeItem('activeHomeId'); // הסרת הבית הפעיל מ-localStorage
-    // אם הייתה מערכת אימות, כאן היינו מבצעים יציאה (לדוגמה: api.logoutUser())
-  }, []);
-
-  // הפעלת initApp בעת טעינת הקומפוננטה
+  // Fetch homes for login screen on initial load
   useEffect(() => {
-    initApp();
-  }, [initApp]);
+    const fetchHomes = async () => {
+      setIsLoading(true);
+      try {
+        const { data } = await api.getHomesForLogin();
+        setHomes(data);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to fetch homes');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchHomes();
+  }, []);
+  
+  // --- Actions ---
 
-  // ערכי הקונטקסט שיהיו זמינים לכל הקומפוננטות העוטפות
-  const value = {
-    currentHome,
-    homes, // הוספת רשימת הבתים לקונטקסט
-    loading,
-    error,
-    userId,
-    fetchAndSelectHome, // שינוי שם מ-selectHome לבהירות
-    createHome,
-    updateCurrentHome,
-    logout,
+  const login = async (homeId, accessCode) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { data } = await api.loginToHome(homeId, accessCode);
+      setActiveHome(data);
+      // Save homeId to local storage to persist login across page reloads (optional)
+      localStorage.setItem('activeHomeId', data._id);
+      localStorage.setItem('accessCode', accessCode); // Note: Storing password is not secure
+      return true;
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  return (
-    <HomeContext.Provider value={value}>
-      {children}
-    </HomeContext.Provider>
-  );
+  const logout = () => {
+    setActiveHome(null);
+    localStorage.removeItem('activeHomeId');
+    localStorage.removeItem('accessCode');
+  };
+  
+  const createHome = async (homeData) => {
+    setIsLoading(true);
+    try {
+        const { data } = await api.createNewHome(homeData);
+        // Add the new home to the list of homes for the login screen
+        setHomes(prevHomes => [...prevHomes, data]);
+        return data; // Return the new home data
+    } catch(err) {
+        setError(err.response?.data?.message || 'Failed to create home');
+        return null;
+    } finally {
+        setIsLoading(false);
+    }
+  }
+
+  // Generic function to update the active home state
+  const updateActiveHome = (updatedData) => {
+    setActiveHome(prevHome => ({...prevHome, ...updatedData}));
+  }
+
+  // --- Item Management ---
+  const addItemToList = async (listType, itemData) => {
+    if (!activeHome) return;
+    try {
+      const { data: newItem } = await api.addItem(activeHome._id, listType, itemData);
+      
+      // Update local state correctly
+      const listKey = listType === 'shopping' ? 'shoppingItems' : 'taskItems';
+      const updatedList = [...activeHome[listKey], newItem];
+      setActiveHome(prevHome => ({
+        ...prevHome,
+        [listKey]: updatedList,
+      }));
+
+    } catch (err) {
+      console.error(`Failed to add ${listType} item:`, err);
+      // Optionally set an error state to show in the UI
+    }
+  };
+  
+  const updateItemInList = async (listType, itemId, updates) => {
+    if (!activeHome) return;
+    try {
+        const { data: updatedItem } = await api.updateItem(activeHome._id, listType, itemId, updates);
+        
+        const listKey = listType === 'shopping' ? 'shoppingItems' : 'taskItems';
+        const updatedList = activeHome[listKey].map(item => 
+            item._id === itemId ? updatedItem : item
+        );
+        setActiveHome(prevHome => ({ ...prevHome, [listKey]: updatedList }));
+    } catch (err) {
+        console.error(`Failed to update ${listType} item:`, err);
+    }
+  };
+  
+  const deleteItemFromList = async (listType, itemId) => {
+    if (!activeHome) return;
+    try {
+        await api.deleteItem(activeHome._id, listType, itemId);
+        
+        const listKey = listType === 'shopping' ? 'shoppingItems' : 'taskItems';
+        const updatedList = activeHome[listKey].filter(item => item._id !== itemId);
+        setActiveHome(prevHome => ({ ...prevHome, [listKey]: updatedList }));
+    } catch (err) {
+        console.error(`Failed to delete ${listType} item:`, err);
+    }
+  };
+
+  const addBill = async (billData) => {
+    if (!activeHome) return;
+    try {
+      const { data: newBill } = await api.addExpectedBill(activeHome._id, billData);
+      const updatedBills = [...activeHome.finances.expectedBills, newBill];
+      setActiveHome(prev => ({
+        ...prev,
+        finances: { ...prev.finances, expectedBills: updatedBills }
+      }));
+    } catch (err) {
+      console.error("Failed to add bill:", err);
+    }
+  };
+
+  const handlePayBill = async (billId) => {
+    if (!activeHome) return;
+    setIsLoading(true);
+    try {
+      // The backend returns the entire updated finances object
+      const { data: updatedFinances } = await api.payBill(activeHome._id, billId);
+      setActiveHome(prev => ({ ...prev, finances: updatedFinances }));
+    } catch (err) {
+      console.error("Failed to pay bill:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Add these functions inside your HomeProvider and export them in the 'value' object
+
+  const saveBudgets = async (budgets) => {
+    if (!activeHome) return;
+    try {
+      const { data: updatedCategories } = await api.updateBudgets(activeHome._id, budgets);
+      setActiveHome(prev => ({
+        ...prev,
+        finances: { ...prev.finances, expenseCategories: updatedCategories }
+      }));
+    } catch (err) { console.error("Failed to save budgets:", err); }
+  };
+  
+  const addIncomeEntry = async (incomeData) => {
+    if(!activeHome) return;
+    try {
+        const {data: newIncome} = await api.addIncome(activeHome._id, incomeData);
+        setActiveHome(prev => ({
+            ...prev,
+            finances: {...prev.finances, income: [...prev.finances.income, newIncome]}
+        }));
+    } catch(err) { console.error("Failed to add income:", err); }
+  };
+  
+  const addGoal = async (goalData) => {
+    if (!activeHome) return;
+    try {
+      const { data: newGoal } = await api.addSavingsGoal(activeHome._id, goalData);
+      setActiveHome(prev => ({
+        ...prev,
+        finances: { ...prev.finances, savingsGoals: [...prev.finances.savingsGoals, newGoal] }
+      }));
+    } catch (err) { console.error("Failed to add savings goal:", err); }
+  };
+  
+  const addFundsToGoal = async (goalId, amountToAdd) => {
+    if (!activeHome) return;
+    try {
+      const { data: updatedGoal } = await api.addToSavingsGoal(activeHome._id, goalId, amountToAdd);
+      const updatedGoals = activeHome.finances.savingsGoals.map(g => g._id === goalId ? updatedGoal : g);
+      setActiveHome(prev => ({
+        ...prev,
+        finances: { ...prev.finances, savingsGoals: updatedGoals }
+      }));
+    } catch (err) { console.error("Failed to add funds to goal:", err); }
+  };
+
+  const value = {
+    homes,
+    activeHome,
+    isLoading,
+    error,
+    login,
+    logout,
+    createHome,
+    updateActiveHome,
+    addItemToList,
+    updateItemInList,
+    deleteItemFromList,
+    addBill,
+    handlePayBill,
+    saveBudgets,
+    addIncomeEntry,
+    addGoal,
+    addFundsToGoal,
+  };
+
+  return <HomeContext.Provider value={value}>{children}</HomeContext.Provider>;
 };

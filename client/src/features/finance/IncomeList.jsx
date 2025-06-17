@@ -1,36 +1,39 @@
-// pland600/smart-home-appc/smart-home-appC-f331e9bcc98af768f120e09df9e92536aea46253/client/src/features/finance/IncomeList.jsx
 import React from 'react';
+import { useHome } from '../../context/HomeContext';
+// We'll need to create IncomeForm later, for now just a button.
+// import { useModal } from '../../context/ModalContext';
+// import IncomeForm from './forms/IncomeForm';
 
-function IncomeList({ finances, onAddIncome }) {
-    
-    const sortedIncome = [...(finances.income || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
-    const currency = finances.financeSettings?.currency || '₪';
+const IncomeList = ({ income, currency }) => {
+  // const { showModal } = useModal();
+  // const openAddIncomeModal = () => showModal(<IncomeForm />, { title: 'הוספת הכנסה' });
 
-    return (
-        <div id="income-section">
-            <div className="sub-section-header">
-                <h4>הכנסות</h4>
-                <button className="header-style-button" onClick={onAddIncome}>
-                    <i className="fas fa-plus"></i> הוסף הכנסה
-                </button>
-            </div>
-            <div className="item-list">
-                <ul id="income-list-ul">
-                     {sortedIncome.length > 0 ? sortedIncome.map(inc => (
-                        <li key={inc._id}>
-                             <div className="item-text">
-                                <span>{inc.text} - {inc.amount.toLocaleString()} {currency}</span>
-                                <span className="item-details">
-                                    תאריך: {new Date(inc.date).toLocaleDateString('he-IL')}
-                                    {inc.recurring && ` (קבוע ${inc.recurring.frequency === 'monthly' ? 'חודשי' : 'שנתי'})`}
-                                </span>
-                            </div>
-                        </li>
-                     )) : <p style={{textAlign: 'center'}}>לא הוזנו הכנסות.</p>}
-                </ul>
-            </div>
-        </div>
-    );
-}
+  return (
+    <div id="income-section">
+      <div className="sub-section-header">
+        <h4 data-lang-key="income">הכנסות</h4>
+        <button id="add-income-btn" className="header-style-button" /*onClick={openAddIncomeModal}*/>
+          <i className="fas fa-plus"></i> <span className="btn-text">הוסף הכנסה</span>
+        </button>
+      </div>
+      <div className="item-list">
+        <ul id="income-list-ul">
+          {income.length > 0 ? (
+            income.map(inc => (
+              <li key={inc._id}>
+                <div className="item-text">
+                  <span>{inc.text} - {inc.amount.toLocaleString()} {currency}</span>
+                  <span className="item-details">תאריך: {new Date(inc.date).toLocaleDateString('he-IL')}</span>
+                </div>
+              </li>
+            ))
+          ) : (
+            <li style={{ textAlign: 'center', color: '#777' }}>לא הוזנו הכנסות.</li>
+          )}
+        </ul>
+      </div>
+    </div>
+  );
+};
 
 export default IncomeList;

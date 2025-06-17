@@ -1,101 +1,60 @@
-// client/src/pages/LoginScreen.jsx
-
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useHome } from '../context/HomeContext';
-import { createHome, getHomeByAccessCode } from '../services/api.js';
+import { useModal } from '../context/ModalContext';
+import CreateHomeForm from '../features/auth/CreateHomeForm';
 
-const AVAILABLE_ICONS = ["fas fa-home", "fas fa-user-friends", "fas fa-briefcase", "fas fa-heart", "fas fa-star", "fas fa-car", "fas fa-building", "fas fa-graduation-cap", "fas fa-lightbulb", "fas fa-piggy-bank"];
+const LoginScreen = () => {
+  const { homes, login, error } = useHome();
+  const { showModal } = useModal();
+  const [accessCodes, setAccessCodes] = useState({});
 
-function LoginScreen() {
-    const { loginUser } = useHome();
-    const navigate = useNavigate();
+  const handleAccessCodeChange = (homeId, code) => {
+    setAccessCodes(prev => ({ ...prev, [homeId]: code }));
+  };
 
-    const [isLoginMode, setIsLoginMode] = useState(true);
+  const handleLogin = async (homeId) => {
+    const code = accessCodes[homeId] || '';
+    if (!code) {
+      alert('נא להזין קוד כניסה.');
+      return;
+    }
+    await login(homeId, code);
+  };
+  
+  const openCreateHomeModal = () => {
+    showModal(<CreateHomeForm />, { title: 'הוסף בית חדש' });
+  };
 
-    const [name, setName] = useState('');
-    const [accessCode, setAccessCode] = useState('');
-    const [selectedIcon, setSelectedIcon] = useState(AVAILABLE_ICONS[0]);
-    
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
-
-    const resetForm = () => {
-        setName('');
-        setAccessCode('');
-        setError('');
-        setSelectedIcon(AVAILABLE_ICONS[0]);
-    };
-
-    const handleAction = async (actionType) => {
-        setLoading(true);
-        setError('');
-        const credentials = { name, accessCode, iconClass: selectedIcon };
-
-        try {
-            const apiCall = actionType === 'login' ? apiLoginHome : apiCreateHome;
-            const { data: homeData } = await apiCall(credentials);
-            loginUser(homeData);
-            navigate('/app');
-        } catch (err) {
-            setError(err.response?.data?.message || 'An error occurred.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const sharedFormFields = (
-        <>
-            <label>בחר אייקון</label>
-            <div className="icon-selector">
-                {AVAILABLE_ICONS.map(icon => (
-                    <i key={icon} className={`${icon} ${selectedIcon === icon ? 'selected' : ''}`} onClick={() => setSelectedIcon(icon)} />
-                ))}
-            </div>
-
-            <label htmlFor="home-name">שם הבית</label>
-            <input id="home-name" type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="הקלד שם..." />
-            
-            <label htmlFor="access-code">סיסמה</label>
-            <input id="access-code" type="password" value={accessCode} onChange={(e) => setAccessCode(e.target.value)} required placeholder="הקלד סיסמה..." />
-        </>
-    );
-
-    return (
-        <div className="login-container">
-            <div className="login-card">
-                {isLoginMode ? (
-                    <form onSubmit={(e) => { e.preventDefault(); handleAction('login'); }} className="login-card-form">
-                        <h2 style={{ textAlign: 'center', marginTop: '0' }}>כניסה לבית</h2>
-                        {sharedFormFields}
-                        {error && <p className="error-message">{error}</p>}
-                        <button type="submit" className="form-submit-btn login" disabled={loading}>
-                            {loading ? 'מתחבר...' : 'התחבר'}
-                        </button>
-                        <p className="switch-mode-text">
-                            אין לך בית? <span onClick={() => { resetForm(); setIsLoginMode(false); }}>צור אחד חדש</span>
-                        </p>
-                    </form>
-                ) : (
-                    <form onSubmit={(e) => { e.preventDefault(); handleAction('create'); }} className="login-card-form">
-                        <h2 style={{ textAlign: 'center', marginTop: '0' }}>יצירת בית חדש</h2>
-                        {sharedFormFields}
-                        {error && <p className="error-message">{error}</p>}
-                        <button type="submit" className="form-submit-btn create" disabled={loading}>
-                            {loading ? 'יוצר...' : 'צור בית'}
-                        </button>
-                        <p className="switch-mode-text">
-                            יש לך כבר בית? <span onClick={() => { resetForm(); setIsLoginMode(true); }}>חזור למסך הכניסה</span>
-                        </p>
-                    </form>
-                )}
-            </div>
-            <style>{`
-                .switch-mode-text { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: #555; }
-                .switch-mode-text span { color: var(--mint-green); font-weight: 700; cursor: pointer; text-decoration: underline; }
-            `}</style>
+  return (
+    <div id="login-screen" className="screen active">
+      <h1>בחר בית</h1>
+      {error && <p style={{ color: 'red', textAlign: 'center' }}>שגיאה: {error}</p>}
+      <div className="home-cards-container">
+        {homes.map(home => (
+          <div key={home._id} className={`home-card ${home.colorClass || 'card-color-1'}`}>
+            <div className="icon-placeholder"><i className={home.iconClass}></i></div>
+            <h4>{home.name}</h4>
+            <input 
+              type="password" 
+              placeholder="קוד כניסה" 
+              className="home-password-input"
+              aria-label={`קוד כניסה עבור ${home.name}`}
+              value={accessCodes[home._id] || ''}
+              onChange={(e) => handleAccessCodeChange(home._id, e.target.value)}
+            />
+            <button className="login-home-btn" onClick={() => handleLogin(home._id)}>
+              <i className="fas fa-arrow-right" aria-hidden="true"></i> כניסה
+            </button>
+          </div>
+        ))}
+        {/* Add New Home Card */}
+        <div className="home-card add-home-card" role="button" tabIndex="0" onClick={openCreateHomeModal}>
+          <i className="fas fa-plus-circle" aria-hidden="true"></i>
+          <h4>הוסף בית חדש</h4>
         </div>
-    );
-}
+      </div>
+    </div>
+  );
+};
 
 export default LoginScreen;

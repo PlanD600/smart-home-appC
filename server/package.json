@@ -1,14 +1,12 @@
 {
-  "name": "server",
+  "name": "smart-home-server",
   "version": "1.0.0",
-  "description": "Backend for Smart Home App",
+  "description": "Backend for the Smart Home application",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

@@ -1,29 +1,42 @@
-// client/src/context/ModalContext.jsx
 import React, { createContext, useState, useContext } from 'react';
+import Modal from '../components/Modal'; // We will create this component next
 
 const ModalContext = createContext();
 
 export const useModal = () => useContext(ModalContext);
 
 export const ModalProvider = ({ children }) => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalContent, setModalContent] = useState(null);
+  const [modalContent, setModalContent] = useState(null);
+  const [modalProps, setModalProps] = useState({});
+  const [isOpen, setIsOpen] = useState(false);
 
-    const openModal = (content) => {
-        setModalContent(content);
-        setIsModalOpen(true);
-    };
+  const showModal = (content, props = {}) => {
+    setModalContent(content);
+    setModalProps(props);
+    setIsOpen(true);
+  };
 
-    const closeModal = () => {
-        setIsModalOpen(false);
+  const hideModal = () => {
+    setIsOpen(false);
+    // Delay clearing content to allow for closing animation
+    setTimeout(() => {
         setModalContent(null);
-    };
+        setModalProps({});
+    }, 300);
+  };
 
-    const value = { isModalOpen, modalContent, openModal, closeModal };
-
-    return (
-        <ModalContext.Provider value={value}>
-            {children}
-        </ModalContext.Provider>
-    );
+  return (
+    <ModalContext.Provider value={{ showModal, hideModal }}>
+      {children}
+      {isOpen && (
+        <Modal
+          isOpen={isOpen}
+          onClose={hideModal}
+          title={modalProps.title || ''}
+        >
+          {modalContent}
+        </Modal>
+      )}
+    </ModalContext.Provider>
+  );
 };

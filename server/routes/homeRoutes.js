@@ -1,25 +1,32 @@
 const express = require('express');
 const router = express.Router();
-const homeController = require('../controllers/homeController'); // ייבוא הקונטרולר
+const {
+  getHomes,
+  createHome,
+  getHomeByAccessCode,
+  addItem,
+  updateItem,
+  deleteItem
+} = require('../controllers/homeController');
 
-/**
- * @file homeRoutes.js
- * @description Defines API routes for home management, linking them to controller functions.
- */
+// --- Basic Home Routes ---
+router.get('/', getHomes);
+router.post('/', createHome);
+router.post('/login', getHomeByAccessCode);
 
-// יצירת בית חדש
-router.post('/', homeController.createHome);
+// --- Item Routes (Shopping & Tasks) ---
+// listType will be 'shopping' or 'tasks'
+router.post('/:homeId/:listType', addItem);
+router.put('/:homeId/:listType/:itemId', updateItem);
+router.delete('/:homeId/:listType/:itemId', deleteItem);
 
-// אחזור כל הבתים
-router.get('/', homeController.getHomes);
 
-// אחזור בית לפי ID
-router.get('/:id', homeController.getHomeById);
-
-// עדכון בית לפי ID
-router.put('/:id', homeController.updateHome);
-
-// מחיקת בית לפי ID
-router.delete('/:id', homeController.deleteHome);
+// --- Finance Routes ---
+router.post('/:homeId/finance/expected-bills', require('../controllers/homeController').addExpectedBill);
+router.post('/:homeId/finance/pay-bill/:billId', require('../controllers/homeController').payBill);
+router.post('/:homeId/finance/income', require('../controllers/homeController').addIncome);
+router.put('/:homeId/finance/budgets', require('../controllers/homeController').updateBudgets);
+router.post('/:homeId/finance/savings-goals', require('../controllers/homeController').addSavingsGoal);
+router.put('/:homeId/finance/savings-goals/:goalId', require('../controllers/homeController').addToSavingsGoal);
 
 module.exports = router;

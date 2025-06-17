@@ -1,87 +1,64 @@
-// pland600/smart-home-appc/smart-home-appC-f331e9bcc98af768f120e09df9e92536aea46253/client/src/features/finance/forms/BillForm.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useHome } from '../../../context/HomeContext';
 import { useModal } from '../../../context/ModalContext';
 
-function BillForm({ bill }) { // We receive the bill to edit, or null if adding
-    const { currentHome, updateCurrentHome } = useHome();
-    const { closeModal } = useModal();
-    const [formData, setFormData] = useState({
-        text: '',
-        amount: '',
-        dueDate: '',
-        category: 'חשבונות',
-    });
-
-    const isEditing = bill !== null;
-
-    useEffect(() => {
-        if (isEditing) {
-            setFormData({
-                text: bill.text,
-                amount: bill.amount,
-                dueDate: bill.dueDate.split('T')[0], // Format date for input
-                category: bill.category,
-            });
-        }
-    }, [bill, isEditing]);
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        const { finances } = currentHome;
-        let updatedBills;
-
-        if (isEditing) {
-            updatedBills = finances.expectedBills.map(b => 
-                b._id === bill._id ? { ...b, ...formData } : b
-            );
-        } else {
-            updatedBills = [...finances.expectedBills, { ...formData, _id: `temp_${Date.now()}` }];
-        }
-        
-        updateCurrentHome({ finances: { ...finances, expectedBills: updatedBills } });
-        closeModal();
-        
-    };
-
-    // --- THIS IS THE FIX ---
-    // Add a guard clause to ensure currentHome exists before rendering the form
-    if (!currentHome || !currentHome.finances) {
-        return <div>טוען נתונים...</div>;
+const BillForm = () => {
+  const { activeHome, addBill } = useHome();
+  const { hideModal } = useModal();
+  
+  const [text, setText] = useState('');
+  const [amount, setAmount] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [category, setCategory] = useState(activeHome?.finances?.expenseCategories[0]?.name || 'חשבונות');
+  const [isRecurring, setIsRecurring] = useState(false);
+  
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!text || !amount || !dueDate) {
+      alert('נא למלא את כל השדות.');
+      return;
     }
+    
+    addBill({
+      text,
+      amount: parseFloat(amount),
+      dueDate,
+      category,
+      recurring: isRecurring ? { frequency: 'monthly' } : null,
+    });
+    
+    hideModal();
+  };
 
-    return (
-        <div>
-            <h4>{isEditing ? 'עריכת חשבון' : 'הוספת חשבון חדש'}</h4>
-            <form onSubmit={handleSubmit} id="generic-modal-body">
-                <label>שם החשבון:</label>
-                <input type="text" name="text" value={formData.text} onChange={handleChange} required />
-                
-                <label>סכום:</label>
-                <input type="number" name="amount" value={formData.amount} onChange={handleChange} required />
+  return (
+    <form onSubmit={handleSubmit}>
+      <label htmlFor="bill-name">שם החשבון:</label>
+      <input type="text" id="bill-name" value={text} onChange={(e) => setText(e.target.value)} placeholder="למשל: חשבון חשמל" required />
+      
+      <label htmlFor="bill-amount">סכום:</label>
+      <input type="number" id="bill-amount" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="350" required />
 
-                <label>תאריך לתשלום:</label>
-                <input type="date" name="dueDate" value={formData.dueDate} onChange={handleChange} required />
-                
-                <label>קטגוריה:</label>
-                <select name="category" value={formData.category} onChange={handleChange}>
-                    {currentHome.finances.expenseCategories.map(cat => (
-                        <option key={cat._id} value={cat.name}>{cat.name}</option>
-                    ))}
-                </select>
+      <label htmlFor="bill-due-date">תאריך לתשלום:</label>
+      <input type="date" id="bill-due-date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} required />
 
-                <div className="modal-footer">
-                    <button type="submit" className="primary-action">{isEditing ? 'שמור שינויים' : 'הוסף חשבון'}</button>
-                    <button type="button" className="secondary-action" onClick={closeModal}>בטל</button>
-                </div>
-            </form>
-        </div>
-    );
-}
+      <label htmlFor="bill-category">קטגוריה:</label>
+      <select id="bill-category" value={category} onChange={(e) => setCategory(e.target.value)}>
+        {activeHome?.finances?.expenseCategories.map(cat => (
+          <option key={cat.name} value={cat.name}>{cat.name}</option>
+        ))}
+      </select>
+
+      <div className="checkbox-container">
+        <input type="checkbox" id="bill-recurring-checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} />
+        <label htmlFor="bill-recurring-checkbox">חיוב קבוע (חודשי)</label>
+      </div>
+
+      <div className="modal-footer">
+        <button type="submit" className="primary-action">הוסף חשבון</button>
+        <button type="button" className="secondary-action" onClick={hideModal}>ביטול</button>
+      </div>
+    </form>
+  );
+};
 
 export default BillForm;

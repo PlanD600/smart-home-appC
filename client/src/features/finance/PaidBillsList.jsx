@@ -1,63 +1,60 @@
-// pland600/smart-home-appc/smart-home-appC-f331e9bcc98af768f120e09df9e92536aea46253/client/src/features/finance/PaidBillsList.jsx
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 
-function PaidBillsList({ finances }) {
-    const [monthOffset, setMonthOffset] = useState(0);
+const PaidBillsList = ({ paidBills, currency }) => {
+  const [monthOffset, setMonthOffset] = useState(0);
 
-    const monthlyData = useMemo(() => {
-        const targetDate = new Date();
-        targetDate.setDate(1);
-        targetDate.setMonth(targetDate.getMonth() - monthOffset);
+  const getTargetMonth = () => {
+    const date = new Date();
+    date.setDate(1); // Avoid issues with day numbers
+    date.setMonth(date.getMonth() - monthOffset);
+    return date;
+  };
 
-        const monthName = targetDate.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
+  const targetDate = getTargetMonth();
 
-        const filteredBills = (finances.paidBills || [])
-            .filter(bill => {
-                const billDate = new Date(bill.datePaid);
-                return billDate.getFullYear() === targetDate.getFullYear() && billDate.getMonth() === targetDate.getMonth();
-            })
-            .sort((a, b) => new Date(b.datePaid) - new Date(a.datePaid));
-        
-        return { monthName, filteredBills };
-    }, [monthOffset, finances.paidBills]);
+  const filteredBills = paidBills
+    .filter(bill => {
+      const billDate = new Date(bill.datePaid);
+      return billDate.getMonth() === targetDate.getMonth() && billDate.getFullYear() === targetDate.getFullYear();
+    })
+    .sort((a, b) => new Date(b.datePaid) - new Date(a.datePaid));
 
-    const currency = finances.financeSettings?.currency || '₪';
-
-    return (
-        <div id="paid-bills-section">
-            <div className="sub-section-header">
-                <h4>תשלומים שבוצעו</h4>
-                <div className="month-navigation">
-                    <button className="header-style-button" onClick={() => setMonthOffset(monthOffset + 1)}>
-                        <i className="fas fa-chevron-right"></i>
-                    </button>
-                    <span id="paid-bills-month-display">{monthlyData.monthName}</span>
-                    <button 
-                        className="header-style-button" 
-                        onClick={() => setMonthOffset(monthOffset - 1)}
-                        disabled={monthOffset <= 0}
-                    >
-                        <i className="fas fa-chevron-left"></i>
-                    </button>
-                </div>
-            </div>
-            <div className="item-list">
-                <ul id="paid-bills-ul">
-                    {monthlyData.filteredBills.length > 0 ? monthlyData.filteredBills.map(bill => (
-                        <li key={bill._id}>
-                            <div className="item-text">
-                                <span>{bill.text} - {bill.amount.toLocaleString()} {currency}</span>
-                                <span className="item-details">
-                                    שולם ב: {new Date(bill.datePaid).toLocaleDateString('he-IL')} | קטגוריה: {bill.category}
-                                </span>
-                            </div>
-                            {/* אפשר להוסיף כפתור מחיקה או עריכה כאן בעתיד */}
-                        </li>
-                    )) : <p style={{textAlign: 'center'}}>אין תשלומים בחודש זה.</p>}
-                </ul>
-            </div>
+  return (
+    <div id="paid-bills-section">
+      <div className="sub-section-header">
+        <h4 data-lang-key="paid_bills">תשלומים שבוצעו</h4>
+        <div className="month-navigation">
+          <button id="paid-bills-prev-month" className="header-style-button" onClick={() => setMonthOffset(prev => prev + 1)}>
+            <i className="fas fa-chevron-right"></i>
+          </button>
+          <span id="paid-bills-month-display">
+            {targetDate.toLocaleString('he-IL', { month: 'long', year: 'numeric' })}
+          </span>
+          <button id="paid-bills-next-month" className="header-style-button" onClick={() => setMonthOffset(prev => Math.max(0, prev - 1))} disabled={monthOffset === 0}>
+            <i className="fas fa-chevron-left"></i>
+          </button>
         </div>
-    );
-}
+      </div>
+      <div className="item-list">
+        <ul id="paid-bills-ul">
+          {filteredBills.length > 0 ? (
+            filteredBills.map(bill => (
+              <li key={bill._id}>
+                <div className="item-text">
+                  <span>{bill.text} - {bill.amount.toLocaleString()} {currency}</span>
+                  <span className="item-details">
+                    שולם ב: {new Date(bill.datePaid).toLocaleDateString('he-IL')} | קטגוריה: {bill.category}
+                  </span>
+                </div>
+              </li>
+            ))
+          ) : (
+            <li style={{ textAlign: 'center', padding: '15px', color: '#777' }}>אין תשלומים בחודש זה.</li>
+          )}
+        </ul>
+      </div>
+    </div>
+  );
+};
 
 export default PaidBillsList;

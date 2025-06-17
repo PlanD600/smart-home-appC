@@ -1,81 +1,62 @@
 import React from 'react';
+import { useHome } from '../../context/HomeContext';
 
-/**
- * @file TaskItem component
- * @description Renders a single task list item with its details and action buttons.
- * @param {object} props - Component props
- * @param {object} props.item - The task item object
- * @param {function} props.onToggleComplete - Callback for toggling item completion
- * @param {function} props.onTogglePriority - Callback for toggling item urgency/priority
- * @param {function} props.onDeleteItem - Callback for deleting an item
- * @param {function} props.onArchiveItem - Callback for archiving an item
- * @param {function} props.onAssignUser - Callback for assigning a user to an item
- * @param {function} props.onItemComment - Callback for adding/editing a comment on an item
- */
-const TaskItem = ({ item, onToggleComplete, onTogglePriority, onDeleteItem, onArchiveItem, onAssignUser, onItemComment }) => {
-  // Determine if assignedTo is 'משותף' or 'משותפת' for display purposes
-  const isAssignedToShared = item.assignedTo && (item.assignedTo === 'משותף' || item.assignedTo === 'משותפת');
+const TaskItem = ({ item }) => {
+  const { updateItemInList, deleteItemFromList } = useHome();
+
+  // Handle checkbox change to mark as complete/incomplete
+  const handleToggleComplete = () => {
+    updateItemInList('tasks', item._id, { completed: !item.completed });
+  };
+
+  // Handle priority change
+  const handleToggleUrgent = () => {
+    updateItemInList('tasks', item._id, { isUrgent: !item.isUrgent });
+  };
+
+  // Handle item deletion with confirmation
+  const handleDelete = () => {
+    if (window.confirm(`האם למחוק את המשימה "${item.text}"?`)) {
+      deleteItemFromList('tasks', item._id);
+    }
+  };
+  
+  // Combine class names based on the item's state
+  const liClassName = `
+    ${item.completed ? 'completed' : ''}
+    ${item.isUrgent ? 'urgent-item' : ''}
+  `.trim();
 
   return (
-    <li className={item.isUrgent ? 'urgent-item' : ''}>
-      <input
-        type="checkbox"
-        checked={item.completed}
-        onChange={(e) => onToggleComplete(item.id, e.target.checked)}
-        aria-label={`סמן כהושלם עבור ${item.text}`}
+    <li className={liClassName} data-id={item._id}>
+      <input 
+        type="checkbox" 
+        checked={item.completed} 
+        onChange={handleToggleComplete}
+        aria-label={`סמן כהושלם עבור ${item.text}`} 
       />
       <div className="item-text">
         {item.text}
         <span className="item-details">
           קטגוריה: {item.category || 'כללית'}
-          {item.assignedTo && !isAssignedToShared && (
-            <> | <i className="fas fa-user" aria-hidden="true"></i> {item.assignedTo}</>
-          )}
-          {item.comment && (
-            <> | <button className="action-btn-inline comment-display-btn" title="הצג הערה" aria-label={`הצג הערה עבור ${item.text}`} onClick={() => onItemComment(item.id)}><i className="fas fa-sticky-note" aria-hidden="true"></i></button></>
-          )}
+          {item.assignedTo && ` | שויך ל: ${item.assignedTo}`}
         </span>
       </div>
       <div className="item-actions">
-        <button
-          className="action-btn priority-btn"
-          title="דחיפות"
-          aria-label={`שנה דחיפות עבור ${item.text}`}
-          onClick={() => onTogglePriority(item.id)}
+        <button 
+            className="action-btn priority-btn" 
+            title="דחיפות" 
+            onClick={handleToggleUrgent}
+            // Change color if the item is urgent
+            style={{ color: item.isUrgent ? 'var(--coral-red)' : '#aaa' }}
         >
-          <i className="far fa-star" aria-hidden="true"></i>
+          <i className="fas fa-star"></i>
         </button>
-        <button
-          className="action-btn assign-user-btn"
-          title="שייך למשתמש"
-          aria-label={`שייך משתמש עבור ${item.text}`}
-          onClick={() => onAssignUser(item.id)}
-        >
-          <i className="fas fa-user-tag" aria-hidden="true"></i>
-        </button>
-        <button
-          className="action-btn comment-btn"
-          title="הערה"
-          aria-label={`הוסף או ערוך הערה עבור ${item.text}`}
-          onClick={() => onItemComment(item.id)}
-        >
-          <i className="fas fa-comment" aria-hidden="true"></i>
-        </button>
-        <button
-          className="action-btn archive-btn"
-          title="ארכיון"
-          aria-label={`העבר לארכיון את ${item.text}`}
-          onClick={() => onArchiveItem(item.id, item.text)}
-        >
-          <i className="fas fa-archive" aria-hidden="true"></i>
-        </button>
-        <button
-          className="action-btn delete-btn"
-          title="מחק"
-          aria-label={`מחק את ${item.text}`}
-          onClick={() => onDeleteItem(item.id, item.text)}
-        >
-          <i className="far fa-trash-alt" aria-hidden="true"></i>
+        {/* Placeholder buttons for future functionality */}
+        <button className="action-btn assign-user-btn" title="שייך למשתמש"><i className="fas fa-user-tag"></i></button>
+        <button className="action-btn comment-btn" title="הערה"><i className="fas fa-comment"></i></button>
+        <button className="action-btn delete-btn" title="מחק" onClick={handleDelete}>
+          <i className="far fa-trash-alt"></i>
         </button>
       </div>
     </li>

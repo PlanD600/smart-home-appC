@@ -1,56 +1,63 @@
-// client/src/features/auth/CreateHomeForm.jsx
-
 import React, { useState } from 'react';
-import { apiCreateHome } from '../../services/api';
+import { useHome } from '../../context/HomeContext';
+import { useModal } from '../../context/ModalContext';
 
-const AVAILABLE_ICONS = ["fas fa-home", "fas fa-user-friends", "fas fa-briefcase", "fas fa-heart", "fas fa-star", "fas fa-car", "fas fa-building", "fas fa-graduation-cap", "fas fa-lightbulb", "fas fa-piggy-bank"];
+const AVAILABLE_ICONS = ["fas fa-home", "fas fa-user-friends", "fas fa-briefcase", "fas fa-heart", "fas fa-star"];
 
-function CreateHomeForm({ onSuccess }) {
-    const [name, setName] = useState('');
-    const [accessCode, setAccessCode] = useState('');
-    const [selectedIcon, setSelectedIcon] = useState(AVAILABLE_ICONS[0]);
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
+const CreateHomeForm = () => {
+  const [name, setName] = useState('');
+  const [accessCode, setAccessCode] = useState('');
+  const [selectedIcon, setSelectedIcon] = useState(AVAILABLE_ICONS[0]);
+  const { createHome, error } = useHome();
+  const { hideModal } = useModal();
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
-        try {
-            const { data: newHome } = await apiCreateHome({ name, accessCode, iconClass: selectedIcon });
-            // קורא לפונקציה שהועברה מ-LoginScreen כדי לטפל בהצלחה
-            onSuccess(newHome);
-        } catch (err) {
-            setError(err.response?.data?.message || 'Failed to create home.');
-        } finally {
-            setLoading(false);
-        }
-    };
-    
-    return (
-         <form onSubmit={handleSubmit} className="login-card-form">
-            <h2 style={{ textAlign: 'center', marginTop: 0 }}>יצירת בית חדש</h2>
-            
-            <label>שם הבית</label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)} required placeholder="לדוגמה: הדירה בתל אביב" />
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!name || !accessCode) {
+      alert('נא למלא שם וקוד כניסה.');
+      return;
+    }
+    const newHome = await createHome({ name, accessCode, iconClass: selectedIcon });
+    if (newHome) {
+      alert(`בית "${name}" נוצר בהצלחה!`);
+      hideModal();
+    }
+  };
 
-            <label>בחר אייקון</label>
-            <div className="icon-selector">
-                {AVAILABLE_ICONS.map(icon => (
-                    <i key={icon} className={`${icon} ${selectedIcon === icon ? 'selected' : ''}`} onClick={() => setSelectedIcon(icon)} />
-                ))}
-            </div>
-            
-            <label>קבע סיסמה</label>
-            <input type="password" value={accessCode} onChange={e => setAccessCode(e.target.value)} required placeholder="סיסמה חזקה" />
-            
-            {error && <p className="error-message">{error}</p>}
-            
-            <button type="submit" className="form-submit-btn" disabled={loading}>
-                {loading ? 'יוצר...' : 'צור את הבית'}
-            </button>
-        </form>
-    );
-}
+  return (
+    <form onSubmit={handleSubmit}>
+      <label htmlFor="new-home-name">שם הבית:</label>
+      <input type="text" id="new-home-name" value={name} onChange={(e) => setName(e.target.value)} />
+
+      <label htmlFor="new-home-code">קוד כניסה:</label>
+      <input type="password" id="new-home-code" value={accessCode} onChange={(e) => setAccessCode(e.target.value)} />
+
+      <label>בחר אייקון:</label>
+      <div>
+        {AVAILABLE_ICONS.map(icon => (
+          <span 
+            key={icon} 
+            onClick={() => setSelectedIcon(icon)}
+            style={{ 
+              fontSize: '24px', 
+              padding: '5px', 
+              cursor: 'pointer',
+              border: selectedIcon === icon ? '2px solid blue' : '2px solid transparent'
+            }}
+          >
+            <i className={icon}></i>
+          </span>
+        ))}
+      </div>
+      
+      {error && <p style={{color: 'red'}}>{error}</p>}
+
+      <div className="modal-footer">
+        <button type="submit" className="primary-action">צור</button>
+        <button type="button" className="secondary-action" onClick={hideModal}>בטל</button>
+      </div>
+    </form>
+  );
+};
 
 export default CreateHomeForm;

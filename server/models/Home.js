@@ -1,33 +1,16 @@
 const mongoose = require('mongoose');
-const { Schema } = mongoose;
-
-// ייבוא סכמות משנה עבור פריטים פיננסיים, מטלות וקניות
+const ItemSchema = require('./ItemSchema');
 const FinanceSchema = require('./FinanceSchema');
-const ItemSchema = require('./ItemSchema'); // ישמש עבור shoppingItems ו-taskItems
 
-// הגדרת סכמה לתבנית (Template)
-const TemplateItemSchema = new Schema({
-  text: { type: String, required: true },
-  amount: { type: Number }, // רלוונטי לתבניות פיננסיות
-  date: { type: String }, // רלוונטי לתבניות פיננסיות (ISO string)
-}, { _id: false }); // לא ליצור _id עבור פריטים בתבנית
-
-const TemplateSchema = new Schema({
-  name: { type: String, required: true },
-  type: { type: String, enum: ['shopping', 'task', 'finance'], required: true },
-  items: [TemplateItemSchema], // מערך של פריטים בתבנית
-}, { _id: false });
-
-// הגדרת הסכמה הראשית עבור הבית (Home)
-const HomeSchema = new Schema({
+const HomeSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true,
+    required: [true, 'Home name is required'],
     trim: true,
   },
   accessCode: {
     type: String,
-    required: true,
+    required: [true, 'Access code is required'],
   },
   iconClass: {
     type: String,
@@ -37,30 +20,30 @@ const HomeSchema = new Schema({
     type: String,
     default: 'card-color-1',
   },
-  members: { // משתמשים המשויכים לבית (יכולים להיות IDs של משתמשים מאומתים)
+  users: {
     type: [String],
-    default: [],
+    default: ['אני'],
   },
-  users: { // שמות בני הבית לשיבוץ פריטים (כמו "אני", "משותף", "הורה 1")
+  shoppingCategories: {
     type: [String],
-    default: ["אני"],
+    default: ['כללית'],
   },
-  shoppingItems: [ItemSchema], // רשימת פריטי קניות
-  taskItems: [ItemSchema], // רשימת מטלות
-  shoppingCategories: { // קטגוריות מותאמות אישית לרשימת קניות
+  taskCategories: {
     type: [String],
-    default: ["כללית"],
+    default: ['כללית'],
   },
-  taskCategories: { // קטגוריות מותאמות אישית לרשימת מטלות
-    type: [String],
-    default: ["כללית"],
-  },
-  templates: [TemplateSchema], // רשימת תבניות (קניות, מטלות, פיננסים)
-  archivedShopping: [ItemSchema], // פריטי קניות בארכיון
-  archivedTasks: [ItemSchema], // מטלות בארכיון
-  finances: FinanceSchema, // אובייקט ניהול כספים משולב
-}, { timestamps: true }); // הוספת timestamps אוטומטיים (createdAt, updatedAt)
+  shoppingItems: [ItemSchema],
+  taskItems: [ItemSchema],
+  archivedShopping: [ItemSchema],
+  archivedTasks: [ItemSchema],
+  templates: [
+    {
+      name: String,
+      type: String, // 'shopping', 'task', 'finance'
+      items: mongoose.Schema.Types.Mixed,
+    },
+  ],
+  finances: FinanceSchema,
+});
 
-const Home = mongoose.model('Home', HomeSchema);
-
-module.exports = Home;
+module.exports = mongoose.model('Home', HomeSchema);
