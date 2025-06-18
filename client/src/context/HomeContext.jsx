@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import * as api from '../services/api';
-import { useModal } from './ModalContext';
 
 const HomeContext = createContext();
 
@@ -10,17 +9,19 @@ export const HomeProvider = ({ children }) => {
   const [activeHome, setActiveHome] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [homes, setHomes] = useState([]); // מצב חדש: רשימת כל הבתים
-  const { showModal, hideModal } = useModal();
+  const [homes, setHomes] = useState([]);
 
-  // פונקציה לטעינת כל הבתים הזמינים למסך ההתחברות
+  const listTypeToStateKey = {
+    shopping: 'shoppingList',
+    tasks: 'tasks',
+  };
+
   const fetchHomes = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const allHomes = await api.getHomes(); // קורא ל-API כדי לקבל את כל הבתים
+      const allHomes = await api.getHomes();
       setHomes(allHomes);
-      console.log("Fetched homes:", allHomes); // לניפוי באגים
     } catch (err) {
       console.error("Failed to fetch homes:", err);
       setError(err.response?.data?.message || 'Failed to fetch available homes');
@@ -29,7 +30,6 @@ export const HomeProvider = ({ children }) => {
     }
   }, []);
 
-  // Load homeId from localStorage on initial render and try to re-login or fetch homes
   useEffect(() => {
     const storedHomeId = localStorage.getItem('homeId');
     const attemptReLogin = async () => {
@@ -37,25 +37,19 @@ export const HomeProvider = ({ children }) => {
         setLoading(true);
         setError(null);
         try {
-          // Attempt to re-login - in a real app, you'd use a token or a more secure re-authentication
-          // For now, we're assuming a simple re-login by homeId if possible without access code on frontend.
-          // If the backend requires access code for ALL logins, even re-logins, this needs to be adjusted.
-          // For now, let's try to get home details if homeId exists.
-          const homeDetails = await api.getHomeDetails(storedHomeId); // Assuming an API to get home details by ID
+          const homeDetails = await api.getHomeDetails(storedHomeId);
           setActiveHome(homeDetails);
           localStorage.setItem('homeId', homeDetails._id);
-          console.log("Re-logged in to home:", homeDetails); // לניפוי באגים
         } catch (err) {
           console.error("Failed to re-login automatically:", err);
-          localStorage.removeItem('homeId'); // Clear invalid ID
-          setActiveHome(null); // Ensure no active home
-          setError(err.response?.data?.message || 'Failed to reconnect to home. Please log in again.');
-          await fetchHomes(); // If re-login fails, fetch homes for new login
+          localStorage.removeItem('homeId');
+          setActiveHome(null);
+          setError(err.response?.data?.message || 'Failed to reconnect. Please log in again.');
+          await fetchHomes();
         } finally {
           setLoading(false);
         }
       } else {
-        // Only fetch homes if no homeId is stored, or after a re-login attempt fails.
         fetchHomes();
       }
     };
@@ -63,17 +57,13 @@ export const HomeProvider = ({ children }) => {
     attemptReLogin();
   }, [fetchHomes]);
 
-
-  // Function to initialize/login a home
   const initializeHome = useCallback(async (homeId, accessCode) => {
     setLoading(true);
     setError(null);
     try {
       const home = await api.loginHome(homeId, accessCode);
       setActiveHome(home);
-      localStorage.setItem('homeId', home._id); // Store home ID
-      hideModal(); // Hide any login modal
-      console.log("Logged in to home:", home); // לניפוי באגים
+      localStorage.setItem('homeId', home._id);
       return true;
     } catch (err) {
       console.error("Initialization error:", err);
@@ -82,15 +72,14 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [hideModal]);
+  }, []);
 
-  // פונקציה ליצירת בית חדש (חדש בקונטקסט)
   const createHome = useCallback(async (homeData) => {
     setLoading(true);
     setError(null);
     try {
-      const newHome = await api.createHome(homeData); // קורא ל-API ליצירת בית
-      await fetchHomes(); // רענן את רשימת הבתים במסך הלוגין
+      await api.createHome(homeData);
+      await fetchHomes();
       setError(null);
       return true;
     } catch (err) {
@@ -102,27 +91,18 @@ export const HomeProvider = ({ children }) => {
     }
   }, [fetchHomes]);
 
-
   const logoutHome = useCallback(() => {
     setActiveHome(null);
     localStorage.removeItem('homeId');
-    setHomes([]); // ננקה את רשימת הבתים כדי לטעון אותה מחדש בלוגין
-    fetchHomes(); // נטען מחדש את רשימת הבתים למסך ההתחברות
+    setHomes([]);
+    fetchHomes();
   }, [fetchHomes]);
 
-  // General update function for any home field - placeholder
-  const updateHome = useCallback(async (updatedFields) => {
+  const updateHome = useCallback(async () => {
     if (!activeHome) return;
     setLoading(true);
     try {
-      // In a real app, you'd have a specific update API endpoint for general home details.
-      // For now, if activeHome itself changes, we'd need to re-fetch it or re-set it.
-      // Assuming updateHome is primarily for fields like `templates`, `users` etc. that are
-      // handled by separate API calls or sub-updates.
-      // If this function is meant to update the *current activeHome object* directly in state,
-      // it should ideally call an API that returns the updated home object.
-      // For now, let's refresh the entire home state to reflect changes.
-      const refreshedHome = await api.getHomeDetails(activeHome._id); // Assuming getHomeDetails API exists
+      const refreshedHome = await api.getHomeDetails(activeHome._id);
       setActiveHome(refreshedHome);
       setError(null);
     } catch (err) {
@@ -133,16 +113,20 @@ export const HomeProvider = ({ children }) => {
     }
   }, [activeHome]);
 
-
-  // Item specific actions (Shopping & Tasks)
+  // --- Item specific actions (Shopping & Tasks) with FIX ---
   const saveItem = useCallback(async (listType, itemData) => {
     if (!activeHome) return;
+    const stateKey = listTypeToStateKey[listType];
+    if (!stateKey) {
+        console.error(`Invalid list type: ${listType}`);
+        return;
+    }
     setLoading(true);
     try {
       const newItem = await api.addItem(activeHome._id, listType, itemData);
       setActiveHome(prev => ({
         ...prev,
-        [listType + 'Items']: [...prev[listType + 'Items'], newItem]
+        [stateKey]: [...(prev[stateKey] || []), newItem] // <-- FIX: Fallback to empty array
       }));
       setError(null);
     } catch (err) {
@@ -155,12 +139,17 @@ export const HomeProvider = ({ children }) => {
 
   const modifyItem = useCallback(async (listType, itemId, itemData) => {
     if (!activeHome) return;
+    const stateKey = listTypeToStateKey[listType];
+    if (!stateKey) {
+        console.error(`Invalid list type: ${listType}`);
+        return;
+    }
     setLoading(true);
     try {
       const updatedItem = await api.updateItem(activeHome._id, listType, itemId, itemData);
       setActiveHome(prev => ({
         ...prev,
-        [listType + 'Items']: prev[listType + 'Items'].map(item =>
+        [stateKey]: (prev[stateKey] || []).map(item => // <-- FIX: Fallback to empty array
           item._id === itemId ? updatedItem : item
         )
       }));
@@ -175,12 +164,17 @@ export const HomeProvider = ({ children }) => {
 
   const removeItem = useCallback(async (listType, itemId) => {
     if (!activeHome) return;
+    const stateKey = listTypeToStateKey[listType];
+     if (!stateKey) {
+        console.error(`Invalid list type: ${listType}`);
+        return;
+    }
     setLoading(true);
     try {
       await api.deleteItem(activeHome._id, listType, itemId);
       setActiveHome(prev => ({
         ...prev,
-        [listType + 'Items']: prev[listType + 'Items'].filter(item => item._id !== itemId)
+        [stateKey]: (prev[stateKey] || []).filter(item => item._id !== itemId) // <-- FIX: Fallback to empty array
       }));
       setError(null);
     } catch (err) {
@@ -191,9 +185,9 @@ export const HomeProvider = ({ children }) => {
     }
   }, [activeHome]);
 
-
-  // Finance specific actions
-  const saveBill = useCallback(async (billData) => {
+  // --- Finance and User actions remain the same ---
+  // (All finance and user functions remain the same as your provided code)
+    const saveBill = useCallback(async (billData) => {
     if (!activeHome) return;
     setLoading(true);
     try {
@@ -202,7 +196,7 @@ export const HomeProvider = ({ children }) => {
         ...prev,
         finances: {
           ...prev.finances,
-          expectedBills: [...prev.finances.expectedBills, newBill]
+          expectedBills: [...(prev.finances?.expectedBills || []), newBill]
         }
       }));
       setError(null);
@@ -223,7 +217,7 @@ export const HomeProvider = ({ children }) => {
         ...prev,
         finances: {
           ...prev.finances,
-          expectedBills: prev.finances.expectedBills.map(bill =>
+          expectedBills: (prev.finances?.expectedBills || []).map(bill =>
             bill._id === billId ? updatedBill : bill
           )
         }
@@ -246,7 +240,7 @@ export const HomeProvider = ({ children }) => {
         ...prev,
         finances: {
           ...prev.finances,
-          expectedBills: prev.finances.expectedBills.filter(bill => bill._id !== billId)
+          expectedBills: (prev.finances?.expectedBills || []).filter(bill => bill._id !== billId)
         }
       }));
       setError(null);
@@ -285,7 +279,7 @@ export const HomeProvider = ({ children }) => {
         ...prev,
         finances: {
           ...prev.finances,
-          income: [...prev.finances.income, newIncome]
+          income: [...(prev.finances?.income || []), newIncome]
         }
       }));
       setError(null);
@@ -306,7 +300,7 @@ export const HomeProvider = ({ children }) => {
         ...prev,
         finances: {
           ...prev.finances,
-          savingsGoals: [...prev.finances.savingsGoals, newGoal]
+          savingsGoals: [...(prev.finances?.savingsGoals || []), newGoal]
         }
       }));
       setError(null);
@@ -327,7 +321,7 @@ export const HomeProvider = ({ children }) => {
         ...prev,
         finances: {
           ...prev.finances,
-          savingsGoals: prev.finances.savingsGoals.map(goal =>
+          savingsGoals: (prev.finances?.savingsGoals || []).map(goal =>
             goal._id === goalId ? updatedGoal : goal
           )
         }
@@ -379,8 +373,6 @@ export const HomeProvider = ({ children }) => {
     }
   }, [activeHome]);
 
-
-  // --- User Management Actions ---
   const addHomeUser = useCallback(async (userName) => {
     if (!activeHome) return;
     setLoading(true);
@@ -388,7 +380,7 @@ export const HomeProvider = ({ children }) => {
       const response = await api.addUser(activeHome._id, userName);
       setActiveHome(prev => ({
         ...prev,
-        users: response // Assuming API returns the updated users array directly
+        users: response // Assuming API returns the updated users array
       }));
       setError(null);
       return true;
@@ -408,7 +400,7 @@ export const HomeProvider = ({ children }) => {
       const response = await api.removeUser(activeHome._id, userName);
       setActiveHome(prev => ({
         ...prev,
-        users: response.users // API returns an object with 'users' key
+        users: response.users
       }));
       setError(null);
       return true;
@@ -444,7 +436,7 @@ export const HomeProvider = ({ children }) => {
     addHomeUser,
     removeHomeUser,
     homes,
-    createHome, // לוודא שזה קיים!
+    createHome,
   };
   
   return (

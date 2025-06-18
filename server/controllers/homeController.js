@@ -32,39 +32,41 @@ exports.getHomeById = async (req, res) => {
 
 // Create a new home
 exports.createHome = async (req, res) => {
-    try {
-        const { name, accessCode, iconClass, colorScheme } = req.body;
-        if (!name || !accessCode) {
-            return res.status(400).json({ message: 'Name and access code are required.' });
-        }
+  const { name, accessCode } = req.body;
 
-        const newHome = new Home({
-            name,
-            accessCode,
-            iconClass: iconClass || 'fas fa-home',
-            colorScheme: colorScheme || 'card-color-1',
-            users: [], // Initialize with an empty users array
-            shoppingItems: [],
-            taskItems: [],
-            finances: {
-                income: [],
-                expectedBills: [],
-                paidBills: [],
-                savingsGoals: [],
-                expenseCategories: [],
-            },
-            templates: [],
-            archivedItems: [],
-        });
+  if (!name || !accessCode) {
+    return res.status(400).json({ message: 'Name and access code are required' });
+  }
 
-        await newHome.save();
-        res.status(201).json({ message: 'Home created successfully', homeId: newHome._id });
-    } catch (error) {
-        if (error.code === 11000) { // Duplicate key error
-            return res.status(409).json({ message: 'Home with this name already exists. Please choose a different name.' });
+  try {
+    const newHome = new Home({
+      name,
+      accessCode,
+      // -- התיקון כאן --
+      // אתחול מפורש של כל מבני הנתונים הנדרשים
+      users: [],
+      shoppingList: [],
+      tasks: [],
+      finances: {
+        expectedBills: [],
+        paidBills: [],
+        income: [],
+        savingsGoals: [],
+        expenseCategories: {
+          'Groceries': 0, 'Utilities': 0, 'Rent': 0, 'Entertainment': 0, 'Other': 0
         }
-        handleError(res, error, 'Error creating home');
+      }
+    });
+
+    await newHome.save();
+    res.status(201).json(newHome);
+  } catch (error) {
+    // Check for duplicate key error (if home name should be unique)
+    if (error.code === 11000) {
+      return res.status(409).json({ message: 'A home with this name already exists.' });
     }
+    res.status(500).json({ message: 'Server error creating home', error: error.message });
+  }
 };
 
 // Login to an existing home
