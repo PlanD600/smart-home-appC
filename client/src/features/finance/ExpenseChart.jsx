@@ -10,6 +10,7 @@ import {
   BarElement,
   Title,
 } from 'chart.js';
+import ChartDataLabels from 'chartjs-plugin-datalabels'; // ייבוא הפלאגין
 
 // Register Chart.js components we will use
 ChartJS.register(
@@ -19,12 +20,14 @@ ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
-  Title
+  Title,
+  ChartDataLabels // רישום הפלאגין
 );
 
+// הצבעים כעת יגיעו מקטגוריות התקציב עצמן
 const DEFAULT_CATEGORY_COLORS = ["#AED581", "#FFB74D", "#4FC3F7", "#BA68C8", "#7986CB", "#F06292", "#4DB6AC", "#90A4AE", "#E57373", "#A1887F"];
 
-const ExpenseChart = ({ paidBills, currency }) => {
+const ExpenseChart = ({ paidBills, expenseCategories, currency }) => { // קבלת expenseCategories כ-prop
   const [view, setView] = useState('monthly'); // 'monthly' or 'yearly'
 
   // --- Data processing for Monthly Doughnut Chart ---
@@ -43,6 +46,12 @@ const ExpenseChart = ({ paidBills, currency }) => {
 
     const labels = Object.keys(categoryTotals);
     const data = Object.values(categoryTotals);
+
+    // מיפוי קטגוריות לצבעים שלהן, שימוש בצבע ברירת מחדל אם לא נמצא צבע לקטגוריה
+    const backgroundColors = labels.map((label, index) => {
+      const category = expenseCategories.find(cat => cat.name === label);
+      return category && category.color ? category.color : DEFAULT_CATEGORY_COLORS[index % DEFAULT_CATEGORY_COLORS.length];
+    });
     
     return {
       hasData: data.length > 0,
@@ -50,7 +59,7 @@ const ExpenseChart = ({ paidBills, currency }) => {
         labels,
         datasets: [{
           data,
-          backgroundColor: DEFAULT_CATEGORY_COLORS,
+          backgroundColor: backgroundColors, // שימוש בצבעים מהקטגוריות
           borderColor: '#fff',
           borderWidth: 2,
         }],
@@ -95,6 +104,46 @@ const ExpenseChart = ({ paidBills, currency }) => {
 
   const { hasData, chartData } = view === 'monthly' ? getMonthlyChartData() : getYearlyChartData();
 
+  // אפשרויות לתרשים העוגה עם הצגת אחוזים
+  const doughnutOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            let label = context.label || '';
+            if (label) {
+              label += ': ';
+            }
+            if (context.parsed !== null) {
+              const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+              const currentValue = context.parsed;
+              const percentage = ((currentValue / total) * 100).toFixed(1);
+              label += `${currentValue.toLocaleString()} ${currency} (${percentage}%)`;
+            }
+            return label;
+          }
+        }
+      },
+      datalabels: { // הגדרות הפלאגין להצגת אחוזים על העוגה
+        color: '#fff', // צבע הטקסט של האחוזים
+        formatter: (value, context) => {
+          const total = context.chart.data.datasets[0].data.reduce((sum, val) => sum + val, 0);
+          const percentage = (value / total * 100).toFixed(1) + '%';
+          return percentage;
+        },
+        font: {
+          weight: 'bold',
+          size: 12,
+        },
+      },
+    },
+  };
+
   return (
     <div id="finance-dashboard-area">
       <div className="chart-controls">
@@ -112,7 +161,7 @@ const ExpenseChart = ({ paidBills, currency }) => {
         {!hasData ? (
           <p id="no-chart-data-msg" style={{ textAlign: 'center', paddingTop: '50px' }}>אין נתונים להצגה</p>
         ) : view === 'monthly' ? (
-          <Doughnut data={chartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }} />
+          <Doughnut data={chartData} options={doughnutOptions} />
         ) : (
           <Bar data={chartData} options={{ responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }} />
         )}

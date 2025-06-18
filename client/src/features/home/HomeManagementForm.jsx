@@ -2,41 +2,36 @@ import React, { useState } from 'react';
 import { useHome } from '../../context/HomeContext';
 import { useModal } from '../../context/ModalContext';
 
-const UserManager = () => { // שינינו את השם ל-UserManager
-  const { activeHome, addHomeUser, removeHomeUser, loading, error: homeContextError } = useHome();
+const HomeManagementForm = () => {
+  const { activeHome, addHomeUser, removeHomeUser, loading } = useHome();
   const { hideModal } = useModal();
   const [newUserName, setNewUserName] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-
-  // Combine internal error state with HomeContext error
-  const currentError = errorMessage || homeContextError;
 
   const currentUsers = activeHome?.users || [];
 
   const handleAddUser = async (e) => {
     e.preventDefault();
-    setErrorMessage(''); // Clear previous errors
     if (newUserName.trim() === '') {
       setErrorMessage('שם משתמש לא יכול להיות ריק.');
       return;
     }
-    
+    setErrorMessage('');
     const success = await addHomeUser(newUserName);
     if (success) {
       setNewUserName(''); // Clear input on success
     } else {
-      // HomeContext already sets an error message, but we can refine here if needed
-      // setErrorMessage('שגיאה בהוספת משתמש. ייתכן שהשם כבר קיים או שגיאת שרת.');
+      // Error message is already set by HomeContext if API call fails
+      setErrorMessage('שגיאה בהוספת משתמש. ייתכן שהשם כבר קיים.');
     }
   };
 
   const handleRemoveUser = async (userName) => {
-    setErrorMessage(''); // Clear previous errors
     if (window.confirm(`האם אתה בטוח שברצונך להסיר את המשתמש ${userName}? פעולה זו תשייך את כל הפריטים המשויכים אליו ל'משותף'.`)) {
+      setErrorMessage('');
       const success = await removeHomeUser(userName);
       if (!success) {
-        // Error message is already set by HomeContext if API call fails
-        // setErrorMessage('שגיאה בהסרת משתמש.');
+        setErrorMessage('שגיאה בהסרת משתמש.');
       }
     }
   };
@@ -75,7 +70,7 @@ const UserManager = () => { // שינינו את השם ל-UserManager
   };
 
   const inputStyle = {
-    width: 'calc(100% - 22px)', 
+    width: 'calc(100% - 22px)', // Adjusted width considering padding
     padding: '10px',
     border: '1px solid var(--border-grey)',
     borderRadius: '4px',
@@ -84,7 +79,7 @@ const UserManager = () => { // שינינו את השם ל-UserManager
   return (
     <form onSubmit={handleAddUser} style={formStyle}>
       <h4>ניהול בני בית</h4>
-      {currentError && <p style={{ color: 'var(--coral-red)', textAlign: 'center' }}>{currentError}</p>}
+      {errorMessage && <p style={{ color: 'var(--coral-red)', textAlign: 'center' }}>{errorMessage}</p>}
 
       <div>
         <label htmlFor="new-user-name">הוסף בן בית חדש:</label>
@@ -96,7 +91,7 @@ const UserManager = () => { // שינינו את השם ל-UserManager
             onChange={(e) => setNewUserName(e.target.value)}
             placeholder="שם משתמש"
             style={{ flexGrow: 1, ...inputStyle }}
-            disabled={loading}
+            disabled={loading} // Disable input while loading
           />
           <button type="submit" className="primary-action" disabled={loading}>
             <i className="fas fa-plus-circle"></i> הוסף
@@ -114,12 +109,12 @@ const UserManager = () => { // שינינו את השם ל-UserManager
           {currentUsers.map((user, index) => (
             <li key={index} style={userItemStyle}>
               <span>{user}</span>
-              {user !== 'אני' && user !== 'משותף' && ( // מונע מחיקה של משתמשי ברירת המחדל
+              {user !== 'אני' && user !== 'משותף' && ( // Prevent deleting 'אני' and 'משותף'
                 <button 
                   type="button" 
                   onClick={() => handleRemoveUser(user)} 
                   style={removeBtnStyle}
-                  disabled={loading}
+                  disabled={loading} // Disable button while loading
                 >
                   <i className="fas fa-trash"></i>
                 </button>
@@ -138,4 +133,4 @@ const UserManager = () => { // שינינו את השם ל-UserManager
   );
 };
 
-export default UserManager;
+export default HomeManagementForm;

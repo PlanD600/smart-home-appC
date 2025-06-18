@@ -22,15 +22,19 @@ router.post('/:homeId/finance/pay-bill/:billId', homeController.payBill);
 router.post('/:homeId/finance/income', homeController.addIncome);
 router.post('/:homeId/finance/savings-goals', homeController.addSavingsGoal);
 router.put('/:homeId/finance/savings-goals/:goalId', homeController.addToSavingsGoal);
+router.get('/:homeId/finances/user-summary/:year/:month', homeController.getUserMonthlyFinanceSummary);
+
+// Route for updating budgets
+// The client-side (BudgetForm) is designed to send the full list of categories,
+// so PUT is the appropriate method for a full replacement/update of the collection.
 router.put('/:homeId/finance/budgets', homeController.updateBudgets);
 
-
-// --- The route that causes the 404 error ---
-// We add a console.log here to see if it's even defined.
-console.log("Defining PUT route for /:homeId/finance/budgets");
-router.post('/:homeId/finance/budgets', homeController.updateBudgets);
+// Remove the problematic POST route for budgets to avoid conflicts.
+// The previous console.log and comment about 404 error suggested this route was causing issues.
+// router.post('/:homeId/finance/budgets', homeController.updateBudgets); // REMOVED
 
 // User Routes
 router.post('/:homeId/users', homeController.addUser);
+router.delete('/:homeId/users/:userName', homeController.removeUser);
 
 module.exports = router;

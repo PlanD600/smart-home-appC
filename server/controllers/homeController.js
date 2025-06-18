@@ -21,7 +21,6 @@ exports.getHomes = async (req, res) => {
 };
 
 // @desc    Create a new home
-// --- THIS IS THE MOST IMPORTANT FIX ---
 exports.createHome = async (req, res) => {
   try {
     const { name, accessCode, iconClass } = req.body;
@@ -32,9 +31,7 @@ exports.createHome = async (req, res) => {
       name,
       accessCode,
       iconClass,
-      // Add the initial user to the users array
       users: ['אני'], 
-      // This part is already fixed, but we ensure it stays
       finances: {
         income: [],
         expectedBills: [],
@@ -186,29 +183,21 @@ exports.updateExpectedBill = async (req, res) => {
   }
 };
 
+// @desc    Update budget categories for a home
 exports.updateBudgets = async (req, res) => {
   try {
     const home = await findHomeById(req.params.homeId, res);
     if (!home) return;
-    const { budgets } = req.body;
-    
-    if (budgets.__newCategory) {
-      const { name, amount } = budgets.__newCategory;
-      if (name && !home.finances.expenseCategories.some(c => c.name === name)) {
-          home.finances.expenseCategories.push({
-              name,
-              budgetAmount: parseFloat(amount) || 0,
-              color: '#cccccc' // Default color for new categories
-          });
-      }
-      delete budgets.__newCategory;
-    }
 
-    home.finances.expenseCategories.forEach(cat => {
-      if (budgets[cat.name] !== undefined) {
-        cat.budgetAmount = parseFloat(budgets[cat.name].amount) || 0;
-        cat.color = budgets[cat.name].color || '#cccccc';
-      }
+    const updatedCategories = req.body; // Expecting an array of category objects from the frontend
+
+    home.finances.expenseCategories = []; // Clear the array
+    updatedCategories.forEach(cat => {
+      home.finances.expenseCategories.push({
+        name: cat.name,
+        budgetAmount: parseFloat(cat.budgetAmount) || 0,
+        color: cat.color || '#cccccc', // Ensure color exists or use default
+      });
     });
     
     await home.save();
@@ -260,31 +249,152 @@ exports.addIncome = async (req, res) => {
   }
 };
 
-// --- User Management ---
+// @desc    Add a user to a home's user list
 exports.addUser = async (req, res) => {
   try {
     const home = await findHomeById(req.params.homeId, res);
     if (!home) return;
 
     const { name } = req.body;
-    if (!name) {
-      return res.status(400).json({ message: 'User name is required' });
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ message: 'שם משתמש נדרש' });
     }
     if (!home.users) {
       home.users = [];
     }
-    // --- End of Defensive Check ---
 
-    if (home.users.includes(name)) {
-      return res.status(400).json({ message: 'User already exists' });
+    const normalizedName = name.trim();
+    if (home.users.includes(normalizedName)) {
+      return res.status(400).json({ message: `המשתמש ${normalizedName} כבר קיים` });
     }
     
-    home.users.push(name);
+    home.users.push(normalizedName);
     await home.save();
     res.status(201).json(home.users);
     
   } catch (error) {
     console.error("Error in addUser controller:", error);
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    res.status(500).json({ message: 'שגיאת שרת', error: error.message });
+  }
+};
+
+// @desc    Remove a user from a home's user list
+exports.removeUser = async (req, res) => {
+  try {
+    const home = await findHomeById(req.params.homeId, res);
+    if (!home) return;
+
+    const userNameToRemove = req.params.userName;
+    
+    if (!home.users.includes(userNameToRemove)) {
+      return res.status(404).json({ message: `המשתמש ${userNameToRemove} לא נמצא בבית זה.` });
+    }
+
+    // Remove user from the users array
+    home.users = home.users.filter(user => user !== userNameToRemove);
+
+    // --- Reset assignedTo for items/finances associated with the removed user ---
+    const defaultAssigned = 'משותף'; // Or any other default string
+
+    // Shopping Items
+    home.shoppingItems.forEach(item => {
+      if (item.assignedTo === userNameToRemove) {
+        item.assignedTo = defaultAssigned;
+      }
+    });
+
+    // Task Items
+    home.taskItems.forEach(item => {
+      if (item.assignedTo === userNameToRemove) {
+        item.assignedTo = defaultAssigned;
+      }
+    });
+
+    // Expected Bills
+    home.finances.expectedBills.forEach(bill => {
+      if (bill.assignedTo === userNameToRemove) {
+        bill.assignedTo = defaultAssigned;
+      }
+    });
+
+    // Paid Bills
+    home.finances.paidBills.forEach(bill => {
+      if (bill.assignedTo === userNameToRemove) {
+        bill.assignedTo = defaultAssigned;
+      }
+    });
+
+    // Income
+    home.finances.income.forEach(inc => {
+      if (inc.assignedTo === userNameToRemove) {
+        inc.assignedTo = defaultAssigned;
+      }
+    });
+    // --- End of assignedTo reset ---
+
+    await home.save();
+    res.status(200).json({ message: `המשתמש ${userNameToRemove} הוסר בהצלחה.`, users: home.users });
+    
+  } catch (error) {
+    console.error("Error in removeUser controller:", error);
+    res.status(500).json({ message: 'שגיאת שרת', error: error.message });
+  }
+};
+
+// @desc    Get user's monthly finance summary (income vs. expenses)
+// @route   GET /api/home/:homeId/finances/user-summary/:year/:month
+// @access  Private (needs auth later)
+exports.getUserMonthlyFinanceSummary = async (req, res) => {
+  try {
+    const home = await findHomeById(req.params.homeId, res);
+    if (!home) return;
+
+    const { year, month } = req.params; // month is 0-indexed in JS Dates, but often 1-indexed in routes
+    const startOfMonth = new Date(Date.UTC(year, month - 1, 1)); // Adjust to 0-indexed month and UTC
+    const endOfMonth = new Date(Date.UTC(year, month - 1, 1));
+    endOfMonth.setUTCMonth(endOfMonth.getUTCMonth() + 1); // Go to next month
+    endOfMonth.setUTCDate(0); // Set to last day of previous month
+
+    const userSummary = {};
+
+    // Initialize all users from home.users to ensure they appear in the summary
+    home.users.forEach(user => {
+      userSummary[user] = { income: 0, expenses: 0, net: 0 };
+    });
+
+    // Aggregate paid bills (expenses)
+    home.finances.paidBills.forEach(bill => {
+      const billDate = new Date(bill.datePaid);
+      if (billDate >= startOfMonth && billDate <= endOfMonth) {
+        const assignedTo = bill.assignedTo || 'משותף';
+        if (!userSummary[assignedTo]) { // Handle cases where assignedTo might be a new user not in home.users yet
+          userSummary[assignedTo] = { income: 0, expenses: 0, net: 0 };
+        }
+        userSummary[assignedTo].expenses += bill.amount;
+      }
+    });
+
+    // Aggregate income
+    home.finances.income.forEach(inc => {
+      const incomeDate = new Date(inc.date);
+      if (incomeDate >= startOfMonth && incomeDate <= endOfMonth) {
+        const assignedTo = inc.assignedTo || 'משותף';
+         if (!userSummary[assignedTo]) { // Handle cases where assignedTo might be a new user not in home.users yet
+          userSummary[assignedTo] = { income: 0, expenses: 0, net: 0 };
+        }
+        userSummary[assignedTo].income += inc.amount;
+      }
+    });
+
+    // Calculate net for each user
+    Object.keys(userSummary).forEach(user => {
+      userSummary[user].net = userSummary[user].income - userSummary[user].expenses;
+    });
+
+    res.status(200).json(userSummary);
+
+  } catch (error) {
+    console.error("Error in getUserMonthlyFinanceSummary controller:", error);
+    res.status(500).json({ message: 'שגיאת שרת', error: error.message });
   }
 };

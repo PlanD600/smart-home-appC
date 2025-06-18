@@ -7,6 +7,7 @@ import PaidBillsList from './PaidBillsList';
 import BudgetTracker from './BudgetTracker';
 import SavingsGoals from './SavingsGoals';
 import IncomeList from './IncomeList';
+import UserFinanceSummary from './UserFinanceSummary'; // ייבוא הקומפוננטה החדשה
 
 const FinanceManagement = () => {
   const { activeHome } = useHome();
@@ -26,11 +27,15 @@ const FinanceManagement = () => {
       <div className="finance-section-content">
         <FinancialSummary finances={finances} />
         <hr />
-        <ExpenseChart paidBills={finances.paidBills} currency={currency} />
+        {/* שילוב קומפוננטת סיכום פיננסי לפי משתמש */}
+        <UserFinanceSummary />
         <hr />
-        <ExpectedBills /> {/* <-- First: Expected Bills */}
+        {/* העברת expenseCategories ל-ExpenseChart */}
+        <ExpenseChart paidBills={finances.paidBills} expenseCategories={finances.expenseCategories} currency={currency} />
         <hr />
-        <PaidBillsList paidBills={finances.paidBills} currency={currency} /> {/* <-- Second: Paid Bills */}
+        <ExpectedBills />
+        <hr />
+        <PaidBillsList paidBills={finances.paidBills} currency={currency} />
         <hr />
         <BudgetTracker paidBills={finances.paidBills} expenseCategories={finances.expenseCategories} currency={currency} />
         <hr />

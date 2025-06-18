@@ -397,9 +397,20 @@ body.lang-rtl .language-switcher .lang-btn:not(:last-child) {
     background-color: rgba(0,0,0,0.6);
 }
 .modal-content {
-    background-color: #fefefe; margin: 5% auto; padding: 25px;
-    border: 1px solid #888; width: 80%; max-width: 500px;
-    border-radius: 8px; position: relative;
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 25px;
+    border: 1px solid #888;
+    width: 90%;
+    max-width: 500px;
+    border-radius: 8px;
+    position: relative;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    
+    /* הוסף את השורות הבאות עבור גלילה על כל הפופאפ */
+    max-height: 80vh; /* או גובה מקסימלי אחר שמתאים לך, לדוגמה calc(100% - 100px) */
+    overflow-y: auto;
+
 }
 .close-modal-btn {
     color: #aaa; position: absolute; top: 10px;

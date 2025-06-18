@@ -44,6 +44,8 @@ const PaidBillsList = ({ paidBills, currency }) => {
                   <span>{bill.text} - {bill.amount.toLocaleString()} {currency}</span>
                   <span className="item-details">
                     שולם ב: {new Date(bill.datePaid).toLocaleDateString('he-IL')} | קטגוריה: {bill.category}
+                    {/* הוספת הצגת המשתמש המשויך */}
+                    {bill.assignedTo && ` | שולם ע"י: ${bill.assignedTo}`}
                   </span>
                 </div>
               </li>
