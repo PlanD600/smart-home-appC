@@ -17,7 +17,7 @@ const handleApiError = (error, defaultMessage = 'An unexpected error occurred.')
 // --- Home related APIs ---
 export const getHomes = async () => {
   try {
-    const response = await api.get('/home');
+    const response = await api.get('/home'); 
     return response.data;
   } catch (error) {
     handleApiError(error, 'Failed to fetch homes.');
@@ -135,7 +135,6 @@ export const addSavingsGoal = async (homeId, goalData) => {
 
 export const addFundsToSavingsGoal = async (homeId, goalId, amount) => {
   try {
-    // השם של הפונקציה תוקן ב-api.js ובקונטקסט
     const response = await api.post(`/home/${homeId}/finance/savings-goals/${goalId}/add-funds`, { amount });
     return response.data;
   } catch (error) {
@@ -164,7 +163,6 @@ export const getUserMonthlyFinanceSummary = async (homeId, year, month) => {
 // --- User management ---
 export const addUser = async (homeId, userName) => {
   try {
-    // **תיקון: נתיב שונה ל-'/users/add' ושם השדה ב-body השתנה ל-userName**
     const response = await api.post(`/home/${homeId}/users/add`, { userName }); 
     return response.data; 
   } catch (error) {
@@ -174,7 +172,6 @@ export const addUser = async (homeId, userName) => {
 
 export const removeUser = async (homeId, userName) => {
   try {
-    // **תיקון: נתיב שונה ל-'/users/remove' ו-method הוא POST, userName ב-body**
     const response = await api.post(`/home/${homeId}/users/remove`, { userName }); 
     return response.data; 
   } catch (error) {

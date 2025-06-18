@@ -4,8 +4,7 @@ import { useModal } from '../context/ModalContext';
 import CreateHomeForm from '../features/auth/CreateHomeForm';
 
 const LoginScreen = () => {
-  // שינוי שם: מ-login ל-initializeHome
-  const { homes, initializeHome, error, loading } = useHome(); // הוספתי loading גם, כי LoginScreen יכול להשתמש בו
+  const { homes, initializeHome, error, loading } = useHome();
   const { showModal } = useModal();
   const [accessCodes, setAccessCodes] = useState({});
 
@@ -19,7 +18,7 @@ const LoginScreen = () => {
       alert('נא להזין קוד כניסה.');
       return;
     }
-    // קריאה לפונקציה בשמה הנכון
+    // הקריאה לפונקציה initializeHome היא תקינה
     await initializeHome(homeId, code);
   };
   
@@ -27,10 +26,10 @@ const LoginScreen = () => {
     showModal(<CreateHomeForm />, { title: 'הוסף בית חדש' });
   };
 
-  if (loading) { // הצגת ספינר טעינה אם נתונים עדיין נטענים
+  if (loading) { 
     return (
       <div id="login-screen" className="screen active" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
-        <p>טוען בתים...</p> {/* הודעת טעינה בסיסית */}
+        <p>טוען בתים...</p> 
       </div>
     );
   }
@@ -40,7 +39,6 @@ const LoginScreen = () => {
       <h1>בחר בית</h1>
       {error && <p style={{ color: 'red', textAlign: 'center' }}>שגיאה: {error}</p>}
       <div className="home-cards-container">
-        {/* וודא ש-homes קיים לפני ביצוע map */}
         {homes && homes.map(home => ( 
           <div key={home._id} className={`home-card ${home.colorClass || 'card-color-1'}`}>
             <div className="icon-placeholder"><i className={home.iconClass}></i></div>

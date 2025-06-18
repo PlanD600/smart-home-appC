@@ -1,31 +1,28 @@
 import React, { useState } from 'react';
-import { useHome } from '../../context/HomeContext'; // ייבוא useHome
+import { useHome } from '../../context/HomeContext'; 
 
 // הגדר רשימת קטגוריות ברירת מחדל.
 // ניתן להתאים אותה לפי הצרכים שלך.
 const DEFAULT_CATEGORIES = ['כללית', 'מצרכים', 'חשבונות', 'בידור', 'שונות', 'עבודה', 'לימודים'];
 
 const AddItemForm = ({ onAddItem, placeholder = "הוסף פריט...", initialCategory = 'כללית' }) => {
-  const { activeHome } = useHome(); // שליפת activeHome
+  const { activeHome } = useHome(); 
   const [text, setText] = useState('');
-  // **תיקון: הסרת שימוש ב-categories prop שהוסר. נשתמש ב-DEFAULT_CATEGORIES**
   const [category, setCategory] = useState(initialCategory || DEFAULT_CATEGORIES[0]); 
-  const [assignedTo, setAssignedTo] = useState('משותף'); // מצב חדש עבור assignedTo
+  const [assignedTo, setAssignedTo] = useState('משותף'); 
 
   // רשימת המשתמשים הזמינים, כולל ברירת המחדל 'משותף'
   let availableUsers = activeHome?.users || ['אני'];
   // נוודא ש'משותף' תמיד קיים כאפשרות
   if (!availableUsers.includes('משותף')) {
-    availableUsers = [...availableUsers, 'משותף']; // יצירת מערך חדש למניעת מוטציה ישירה
+    availableUsers = [...availableUsers, 'משותף']; 
   }
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (text.trim()) {
-      // הוספת assignedTo למטען הנתונים הנשלח
       onAddItem({ text, category, assignedTo }); 
-      setText(''); // ניקוי שדה טקסט
-      // איפוס לקטגוריה/משתמשים ברירת מחדל
+      setText(''); 
       setCategory(initialCategory || DEFAULT_CATEGORIES[0]); 
       setAssignedTo('משותף'); 
     }
@@ -68,7 +65,6 @@ const AddItemForm = ({ onAddItem, placeholder = "הוסף פריט...", initialC
 
   return (
     <form className="add-item-form" onSubmit={handleSubmit} style={formStyle}>
-      {/* **תיקון: שימוש ב-DEFAULT_CATEGORIES במקום categories prop** */}
       <select 
         className="add-item-category-select" 
         value={category} 
@@ -76,13 +72,11 @@ const AddItemForm = ({ onAddItem, placeholder = "הוסף פריט...", initialC
         style={selectStyle}
         aria-label="בחר קטגוריה"
       >
-        {/* אין צורך בבדיקה !categories.includes('כללית') אם DEFAULT_CATEGORIES תמיד כולל אותה */}
         {DEFAULT_CATEGORIES.map(cat => (
           <option key={cat} value={cat}>{cat}</option>
         ))}
       </select>
       
-      {/* רשימה נפתחת לבחירת משתמש */}
       <select 
         className="add-item-assigned-select" 
         value={assignedTo} 

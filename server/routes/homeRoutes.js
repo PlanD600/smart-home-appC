@@ -7,19 +7,18 @@ router.get('/', homeController.getHomes); // קבלת כל הבתים הזמינ
 router.post('/', homeController.createHome); // יצירת בית חדש
 router.post('/login', homeController.loginToHome); // התחברות לבית קיים (שונה ל-loginToHome)
 
-// קבלת פרטי בית לפי מזהה (שונה ל-getHomeDetails)
+// קבלת פרטי בית לפי מזהה
 router.get('/:homeId', homeController.getHomeDetails);
 
-// ניהול פריטים (קניות ומשימות)
-// הנתיב השתנה כדי להיות ספציפי יותר להוספה
+// **הערה חשובה: העברתי את ניהול המשתמשים למעלה**
+// **ניהול משתמשים - נתיבים ספציפיים יותר צריכים לבוא לפני נתיבים גנריים**
+router.post('/:homeId/users/add', homeController.addUser); // הוספת משתמש לבית
+router.post('/:homeId/users/remove', homeController.removeUser); // הסרת משתמש מהבית
+
+// ניהול פריטים (קניות ומשימות) - **ראוטים גנריים יותר**
 router.post('/:homeId/:listType/add', homeController.addItem); 
 router.put('/:homeId/:listType/:itemId', homeController.updateItem);
 router.delete('/:homeId/:listType/:itemId', homeController.deleteItem);
-
-// ניהול משתמשים
-router.post('/:homeId/users/add', homeController.addUser); // הוספת משתמש לבית (שונה ל-addUser)
-// שונה ל-POST כדי לאפשר העברת userName ב-body
-router.post('/:homeId/users/remove', homeController.removeUser); // הסרת משתמש מהבית (שונה ל-removeUser)
 
 // ניהול כספים
 router.post('/:homeId/finance/bills/expected', homeController.addExpectedBill);

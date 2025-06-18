@@ -37,7 +37,6 @@ export const HomeProvider = ({ children }) => {
         setLoading(true);
         setError(null);
         try {
-          // קריאה לפונקציה api.getHomeDetails (שם הפונקציה תוקן כבר ב-api.js)
           const homeDetails = await api.getHomeDetails(storedHomeId);
           setActiveHome(homeDetails);
           localStorage.setItem('homeId', homeDetails._id);
@@ -62,7 +61,6 @@ export const HomeProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      // **תיקון: שינוי מ-api.loginHome ל-api.loginToHome**
       const home = await api.loginToHome(homeId, accessCode); 
       setActiveHome(home);
       localStorage.setItem('homeId', home._id);
@@ -104,7 +102,6 @@ export const HomeProvider = ({ children }) => {
     if (!activeHome) return;
     setLoading(true);
     try {
-      // קריאה לפונקציה api.getHomeDetails (שם הפונקציה תוקן כבר ב-api.js)
       const refreshedHome = await api.getHomeDetails(activeHome._id);
       setActiveHome(refreshedHome);
       setError(null);
@@ -188,7 +185,7 @@ export const HomeProvider = ({ children }) => {
     }
   }, [activeHome]);
 
-  // --- Finance and User actions remain the same ---
+  // --- Finance and User actions ---
   const saveBill = useCallback(async (billData) => {
     if (!activeHome) return;
     setLoading(true);
@@ -318,7 +315,6 @@ export const HomeProvider = ({ children }) => {
     if (!activeHome) return;
     setLoading(true);
     try {
-      // **תיקון: שינוי מ-api.addToSavingsGoal ל-api.addFundsToSavingsGoal**
       const updatedGoal = await api.addFundsToSavingsGoal(activeHome._id, goalId, amount); 
       setActiveHome(prev => ({
         ...prev,
@@ -380,7 +376,6 @@ export const HomeProvider = ({ children }) => {
     if (!activeHome) return;
     setLoading(true);
     try {
-      // **תיקון: שינוי מ-api.addUser ל-api.addUser (שם הפונקציה תוקן ב-api.js)**
       const response = await api.addUser(activeHome._id, userName); 
       setActiveHome(prev => ({
         ...prev,
@@ -401,7 +396,6 @@ export const HomeProvider = ({ children }) => {
     if (!activeHome) return;
     setLoading(true);
     try {
-      // **תיקון: שינוי מ-api.removeUser ל-api.removeUser (שם הפונקציה תוקן ב-api.js)**
       const response = await api.removeUser(activeHome._id, userName); 
       setActiveHome(prev => ({
         ...prev,
@@ -435,7 +429,7 @@ export const HomeProvider = ({ children }) => {
     payExistingBill,
     saveIncome,
     saveSavingsGoal,
-    addFundsToSavingsGoal, // שם הפונקציה בקונטקסט
+    addFundsToSavingsGoal, 
     saveBudgets,
     fetchUserMonthlyFinanceSummary,
     addHomeUser,
