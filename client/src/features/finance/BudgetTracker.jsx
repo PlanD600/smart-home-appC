@@ -18,7 +18,11 @@ const BudgetTracker = ({ paidBills, expenseCategories, currency }) => {
       return acc;
     }, {});
 
-  const budgetedCategories = expenseCategories.filter(cat => cat.budgetAmount > 0);
+  // **תיקון קריטי: טיפול ב-expenseCategories כאובייקט**
+  // ממיר את האובייקט למערך של [שם קטגוריה, סכום תקציב] שניתן לסנן ולמפות
+  const budgetedCategories = Object.entries(expenseCategories || {}) // לוודא שזה אובייקט ולא null/undefined
+    .filter(([categoryName, budgetAmount]) => budgetAmount > 0) // מסנן תקציבים מעל 0
+    .map(([name, budgetAmount]) => ({ name, budgetAmount })); // ממיר בחזרה למבנה אובייקט לכל קטגוריה
 
   return (
     <div id="budget-tracking-section">
@@ -31,6 +35,7 @@ const BudgetTracker = ({ paidBills, expenseCategories, currency }) => {
       <div id="budget-bars-container">
         {budgetedCategories.length > 0 ? (
           budgetedCategories.map(cat => {
+            // cat הוא כעת אובייקט עם name ו-budgetAmount
             const spent = monthlyExpenses[cat.name] || 0;
             const budget = cat.budgetAmount;
             const percentage = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;

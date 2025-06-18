@@ -1,21 +1,18 @@
 import React from 'react';
-import { useHome } from '../../context/HomeContext';
+import { useHome } from '../../context/HomeContext'; 
 import AddItemForm from '../common/AddItemForm';
-import TaskItem from './TaskItem'; // וודא שזה TaskItem ולא ShoppingItem
+import TaskItem from './TaskItem'; // **תיקון: שונה מ-TaskItem22 ל-TaskItem**
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 const TaskList = () => {
-  // הוספת modifyItem, removeItem ל-destructuring מ-useHome
   const { activeHome, saveItem, loading, modifyItem, removeItem } = useHome(); 
 
   if (!activeHome) return <p>טוען נתונים...</p>;
 
-  // **תיקון: שינוי מ-taskItems ל-tasks. הסרנו taskCategories.**
   const tasks = activeHome.tasks || []; 
   
   const handleAddItem = (itemData) => saveItem('tasks', itemData);
 
-  // ממיין את המערך לפני ההצגה. פריטים עם isUrgent=true יופיעו ראשונים.
   const sortedItems = [...tasks].sort((a, b) => Number(b.isUrgent) - Number(a.isUrgent));
 
   return (
@@ -30,7 +27,6 @@ const TaskList = () => {
       <div className="add-area">
         <AddItemForm 
           onAddItem={handleAddItem}
-          // **תיקון: הסרת categories prop שהיה מבוסס על taskCategories**
           placeholder="הוסף מטלה חדשה..."
         />
       </div>
@@ -42,8 +38,8 @@ const TaskList = () => {
               <TaskItem 
                 key={item._id} 
                 item={item} 
-                listType="tasks" // **חשוב: העברת listType**
-                onUpdate={modifyItem} // **העברת פונקציות העדכון והמחיקה**
+                listType="tasks" 
+                onUpdate={modifyItem} 
                 onDelete={removeItem} 
               />
             ))

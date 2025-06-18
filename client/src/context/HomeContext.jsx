@@ -10,10 +10,12 @@ export const HomeProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [homes, setHomes] = useState([]);
+  const [activeTab, setActiveTab] = useState('shopping-list'); // התחל עם 'shopping-list' כדי להתאים ל-MainAppScreen
+
 
   const listTypeToStateKey = {
-    shopping: 'shoppingList', // תואם את המודל המעודכן
-    tasks: 'tasks',         // תואם את המודל המעודכן
+    shopping: 'shoppingList', 
+    tasks: 'tasks',         
   };
 
   const fetchHomes = useCallback(async () => {
@@ -28,7 +30,7 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // אין תלויות, כי לא משתמשים במשתנים חיצוניים שמשתנים
 
   useEffect(() => {
     const storedHomeId = localStorage.getItem('homeId');
@@ -40,6 +42,7 @@ export const HomeProvider = ({ children }) => {
           const homeDetails = await api.getHomeDetails(storedHomeId);
           setActiveHome(homeDetails);
           localStorage.setItem('homeId', homeDetails._id);
+          // אין צורך להגדיר activeTab כאן. הוא מוגדר בעת initializeHome
         } catch (err) {
           console.error("Failed to re-login automatically:", err);
           localStorage.removeItem('homeId');
@@ -55,7 +58,7 @@ export const HomeProvider = ({ children }) => {
     };
 
     attemptReLogin();
-  }, [fetchHomes]);
+  }, [fetchHomes]); // התלות ב-fetchHomes היא הכרחית ומויזת כראוי
 
   const initializeHome = useCallback(async (homeId, accessCode) => {
     setLoading(true);
@@ -64,6 +67,7 @@ export const HomeProvider = ({ children }) => {
       const home = await api.loginToHome(homeId, accessCode); 
       setActiveHome(home);
       localStorage.setItem('homeId', home._id);
+      setActiveTab('shopping-list'); // אתחל את הלשונית הפעילה לאחר כניסה מוצלחת
       return true;
     } catch (err) {
       console.error("Initialization error:", err);
@@ -72,7 +76,7 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // אין תלויות, מכיוון ש-homeId ו-accessCode מועברים כארגומנטים
 
   const createHome = useCallback(async (homeData) => {
     setLoading(true);
@@ -89,17 +93,18 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [fetchHomes]);
+  }, [fetchHomes]); 
 
   const logoutHome = useCallback(() => {
     setActiveHome(null);
     localStorage.removeItem('homeId');
     setHomes([]);
     fetchHomes();
-  }, [fetchHomes]);
+    setActiveTab('shopping-list'); // אפס את הלשונית הפעילה ל-shopping-list לאחר יציאה
+  }, [fetchHomes]); 
 
   const updateHome = useCallback(async () => {
-    if (!activeHome) return;
+    if (!activeHome?._id) return; // השתמש ב-activeHome?._id
     setLoading(true);
     try {
       const refreshedHome = await api.getHomeDetails(activeHome._id);
@@ -111,11 +116,11 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeHome]);
+  }, [activeHome?._id]); // תלוי רק ב-ID של הבית
 
   // --- Item specific actions (Shopping & Tasks) ---
   const saveItem = useCallback(async (listType, itemData) => {
-    if (!activeHome) return;
+    if (!activeHome?._id) return;
     const stateKey = listTypeToStateKey[listType];
     if (!stateKey) {
       console.error(`Invalid list type: ${listType}`);
@@ -135,10 +140,10 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeHome]);
+  }, [activeHome?._id]); // תלוי רק ב-ID של הבית
 
   const modifyItem = useCallback(async (listType, itemId, itemData) => {
-    if (!activeHome) return;
+    if (!activeHome?._id) return;
     const stateKey = listTypeToStateKey[listType];
     if (!stateKey) {
       console.error(`Invalid list type: ${listType}`);
@@ -160,10 +165,10 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeHome]);
+  }, [activeHome?._id]); // תלוי רק ב-ID של הבית
 
   const removeItem = useCallback(async (listType, itemId) => {
-    if (!activeHome) return;
+    if (!activeHome?._id) return;
     const stateKey = listTypeToStateKey[listType];
     if (!stateKey) {
       console.error(`Invalid list type: ${listType}`);
@@ -183,11 +188,11 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeHome]);
+  }, [activeHome?._id]); // תלוי רק ב-ID של הבית
 
   // --- Finance and User actions ---
   const saveBill = useCallback(async (billData) => {
-    if (!activeHome) return;
+    if (!activeHome?._id) return;
     setLoading(true);
     try {
       const newBill = await api.addExpectedBill(activeHome._id, billData);
@@ -205,10 +210,10 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeHome]);
+  }, [activeHome?._id]); // תלוי רק ב-ID של הבית
 
   const modifyBill = useCallback(async (billId, billData) => {
-    if (!activeHome) return;
+    if (!activeHome?._id) return;
     setLoading(true);
     try {
       const updatedBill = await api.updateExpectedBill(activeHome._id, billId, billData);
@@ -228,10 +233,10 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeHome]);
+  }, [activeHome?._id]); // תלוי רק ב-ID של הבית
 
   const deleteBill = useCallback(async (billId) => {
-    if (!activeHome) return;
+    if (!activeHome?._id) return;
     setLoading(true);
     try {
       await api.deleteExpectedBill(activeHome._id, billId);
@@ -249,10 +254,10 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeHome]);
+  }, [activeHome?._id]); // תלוי רק ב-ID של הבית
 
   const payExistingBill = useCallback(async (billId) => {
-    if (!activeHome) return;
+    if (!activeHome?._id) return;
     setLoading(true);
     try {
       const updatedFinances = await api.payBill(activeHome._id, billId);
@@ -267,10 +272,10 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeHome]);
+  }, [activeHome?._id]); // תלוי רק ב-ID של הבית
 
   const saveIncome = useCallback(async (incomeData) => {
-    if (!activeHome) return;
+    if (!activeHome?._id) return;
     setLoading(true);
     try {
       const newIncome = await api.addIncome(activeHome._id, incomeData);
@@ -288,10 +293,10 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeHome]);
+  }, [activeHome?._id]); // תלוי רק ב-ID של הבית
 
   const saveSavingsGoal = useCallback(async (goalData) => {
-    if (!activeHome) return;
+    if (!activeHome?._id) return;
     setLoading(true);
     try {
       const newGoal = await api.addSavingsGoal(activeHome._id, goalData);
@@ -309,10 +314,10 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeHome]);
+  }, [activeHome?._id]); // תלוי רק ב-ID של הבית
 
   const addFundsToSavingsGoal = useCallback(async (goalId, amount) => {
-    if (!activeHome) return;
+    if (!activeHome?._id) return;
     setLoading(true);
     try {
       const updatedGoal = await api.addFundsToSavingsGoal(activeHome._id, goalId, amount); 
@@ -332,11 +337,11 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeHome]);
+  }, [activeHome?._id]); // תלוי רק ב-ID של הבית
 
 
   const saveBudgets = useCallback(async (budgetsData) => {
-    if (!activeHome) return;
+    if (!activeHome?._id) return;
     setLoading(true);
     try {
       const updatedCategories = await api.updateBudgets(activeHome._id, budgetsData);
@@ -354,10 +359,11 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeHome]);
+  }, [activeHome?._id]); // תלוי רק ב-ID של הבית
 
+  // **תיקון קריטי: שינוי תלות מ-activeHome ל-activeHome?._id**
   const fetchUserMonthlyFinanceSummary = useCallback(async (year, month) => {
-    if (!activeHome) return null;
+    if (!activeHome?._id) return null;
     setLoading(true);
     try {
       const summary = await api.getUserMonthlyFinanceSummary(activeHome._id, year, month);
@@ -370,10 +376,10 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeHome]);
+  }, [activeHome?._id]); // **תיקון כאן!**
 
   const addHomeUser = useCallback(async (userName) => {
-    if (!activeHome) return;
+    if (!activeHome?._id) return;
     setLoading(true);
     try {
       const response = await api.addUser(activeHome._id, userName); 
@@ -390,10 +396,10 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeHome]);
+  }, [activeHome?._id]); // תלוי רק ב-ID של הבית
 
   const removeHomeUser = useCallback(async (userName) => {
-    if (!activeHome) return;
+    if (!activeHome?._id) return;
     setLoading(true);
     try {
       const response = await api.removeUser(activeHome._id, userName); 
@@ -410,8 +416,12 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeHome]);
+  }, [activeHome?._id]); // תלוי רק ב-ID של הבית
 
+
+  const changeActiveTab = useCallback((tabName) => {
+    setActiveTab(tabName);
+  }, []); // אין תלויות, כי setActiveTab הוא מ-useState
 
   const contextValue = {
     activeHome,
@@ -431,11 +441,13 @@ export const HomeProvider = ({ children }) => {
     saveSavingsGoal,
     addFundsToSavingsGoal, 
     saveBudgets,
-    fetchUserMonthlyFinanceSummary,
+    fetchUserMonthlyFinanceSummary, 
     addHomeUser,
     removeHomeUser,
     homes,
     createHome,
+    activeTab,      
+    changeActiveTab 
   };
   
   return (

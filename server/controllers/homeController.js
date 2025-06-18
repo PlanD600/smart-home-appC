@@ -19,7 +19,7 @@ const normalizeHomeObject = (home) => {
     homeObject.shoppingList = homeObject.shoppingList || [];
     homeObject.tasks = homeObject.tasks || [];
     homeObject.users = homeObject.users || [];
-    homeObject.templates = homeObject.templates || []; // חדש: לוודא קיום גם של templates
+    homeObject.templates = homeObject.templates || []; 
 
     // ודא שאובייקט הכספים וכל המערכים המקוננים בתוכו קיימים
     homeObject.finances = {
@@ -27,10 +27,26 @@ const normalizeHomeObject = (home) => {
         paidBills: homeObject.finances?.paidBills || [],
         income: homeObject.finances?.income || [],
         savingsGoals: homeObject.finances?.savingsGoals || [],
-        expenseCategories: homeObject.finances?.expenseCategories || {
-            'Groceries': 0, 'Utilities': 0, 'Rent': 0, 'Entertainment': 0, 'Other': 0
-        }
+        expenseCategories: homeObject.finances?.expenseCategories || {} // וודא שזה אובייקט ריק כברירת מחדל
     };
+
+    // וודא ש-expenseCategories הוא אובייקט ולא מערך (אם הסכימה שונתה בעבר)
+    // אם המבנה ב-DB הוא [ { name: 'Cat', budgetAmount: 100 } ], צריך להמיר לאובייקט {'Cat': 100}
+    if (Array.isArray(homeObject.finances.expenseCategories)) {
+        const convertedCategories = {};
+        homeObject.finances.expenseCategories.forEach(cat => {
+            if (cat.name && typeof cat.budgetAmount === 'number') {
+                convertedCategories[cat.name] = cat.budgetAmount;
+            }
+        });
+        homeObject.finances.expenseCategories = convertedCategories;
+    }
+    // וודא שיש קטגוריות ברירת מחדל אם האובייקט ריק
+    if (Object.keys(homeObject.finances.expenseCategories).length === 0) {
+        homeObject.finances.expenseCategories = {
+            'Groceries': 0, 'Utilities': 0, 'Rent': 0, 'Entertainment': 0, 'Other': 0
+        };
+    }
 
     return homeObject;
 };
@@ -40,7 +56,6 @@ const normalizeHomeObject = (home) => {
 // קבל את כל הבתים (למסך הלוגין)
 exports.getHomes = async (req, res) => {
     try {
-        // שלוף את השדות הרלוונטיים למסך הלוגין
         const homes = await Home.find({}, '_id name iconClass colorScheme');
         res.status(200).json(homes);
     } catch (error) {
@@ -56,14 +71,14 @@ exports.getHomeDetails = async (req, res) => {
         if (!home) {
             return res.status(404).json({ message: 'Home not found.' });
         }
-        // השתמש בפונקציית העזר normalizeHomeObject לפני שליחת התגובה
-        res.status(200).json(normalizeHomeObject(home));
+        const normalizedHome = normalizeHomeObject(home);
+        res.status(200).json(normalizedHome);
     } catch (error) {
         handleError(res, error, 'Error fetching home details', 400);
     }
 };
 
-// התחברות לבית ספציפי (מאובטח יותר עם compareAccessCode)
+// התחברות לבית ספציפי
 exports.loginToHome = async (req, res) => {
     try {
         const { homeId, accessCode } = req.body;
@@ -73,20 +88,19 @@ exports.loginToHome = async (req, res) => {
             return res.status(404).json({ message: 'Home not found' });
         }
 
-        // שימוש בפונקציית compareAccessCode (דורש מימוש במודל Home.js)
         const isMatch = await home.compareAccessCode(accessCode);
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid access code' });
         }
 
-        // השתמש בפונקציית normalizeHomeObject לפני שליחת התגובה
-        res.status(200).json(normalizeHomeObject(home));
+        const normalizedHome = normalizeHomeObject(home);
+        res.status(200).json(normalizedHome);
     } catch (error) {
         handleError(res, error, 'Server error during login', 500);
     }
 };
 
-// פונקציה ליצירת בית חדש - עם אתחול מלא (כמו בקוד החדש)
+// פונקציה ליצירת בית חדש - עם אתחול מלא
 exports.createHome = async (req, res) => {
     const { name, accessCode } = req.body;
   
@@ -101,20 +115,19 @@ exports.createHome = async (req, res) => {
         users: [],
         shoppingList: [],
         tasks: [],
-        templates: [], // נוסף - כדי לוודא שקיים מההתחלה
+        templates: [], 
         finances: {
           expectedBills: [],
           paidBills: [],
           income: [],
           savingsGoals: [],
-          expenseCategories: {
+          expenseCategories: { // אתחול כאובייקט
             'Groceries': 0, 'Utilities': 0, 'Rent': 0, 'Entertainment': 0, 'Other': 0
           }
         }
       });
   
       await newHome.save();
-      // נרמל גם את התגובה של יצירת בית חדש
       res.status(201).json(normalizeHomeObject(newHome));
     } catch (error) {
       if (error.code === 11000) {
@@ -124,11 +137,10 @@ exports.createHome = async (req, res) => {
     }
 };
 
-// הוספת פריט (קניות או משימות) - משולב עם שדות מורחבים ו-listType דינמי
+// הוספת פריט (קניות או משימות)
 exports.addItem = async (req, res) => {
     try {
         const { homeId, listType } = req.params;
-        // שדות מורחבים מהקוד הישן
         const { text, category, assignedTo, completed, isUrgent, comment } = req.body; 
 
         if (!text) {
@@ -152,19 +164,17 @@ exports.addItem = async (req, res) => {
             comment: comment || ''
         };
         
-        // שימוש בשמות השדות המעודכנים: shoppingList ו-tasks
         const listField = listType === 'shopping' ? 'shoppingList' : 'tasks';
         home[listField].push(newItem);
         
         await home.save();
-        // מחזיר את הפריט שנוצר עם ה-ID ש-Mongoose יצר
         res.status(201).json(home[listField][home[listField].length - 1]);
     } catch (error) {
         handleError(res, error, 'Error adding item');
     }
 };
 
-// עדכון פריט - משולב עם .id(itemId) מהקוד החדש
+// עדכון פריט
 exports.updateItem = async (req, res) => {
     try {
         const { homeId, listType, itemId } = req.params;
@@ -179,9 +189,8 @@ exports.updateItem = async (req, res) => {
             return res.status(404).json({ message: 'Home not found.' });
         }
 
-        // שימוש בשמות השדות המעודכנים: shoppingList ו-tasks
         const listField = listType === 'shopping' ? 'shoppingList' : 'tasks';
-        const item = home[listField].id(itemId); // שימוש ב-Mongoose subdocument .id()
+        const item = home[listField].id(itemId); 
 
         if (!item) {
             return res.status(404).json({ message: 'Item not found.' });
@@ -195,7 +204,7 @@ exports.updateItem = async (req, res) => {
     }
 };
 
-// מחיקת פריט - משולב עם .pull() מהקוד החדש
+// מחיקת פריט
 exports.deleteItem = async (req, res) => {
     try {
         const { homeId, listType, itemId } = req.params;
@@ -209,23 +218,21 @@ exports.deleteItem = async (req, res) => {
             return res.status(404).json({ message: 'Home not found.' });
         }
 
-        // שימוש בשמות השדות המעודכנים: shoppingList ו-tasks
         const listField = listType === 'shopping' ? 'shoppingList' : 'tasks';
-        // שימוש ב-pull כדי להסיר תת-מסמך ממערך באופן יעיל יותר
         home[listField].pull({ _id: itemId });
         
         await home.save();
-        res.status(204).send(); // 204 No Content for successful deletion
+        res.status(204).send(); 
     } catch (error) {
         handleError(res, error, 'Error deleting item');
     }
 };
 
-// ניהול משתמשים - מאוחד: addUser ו-removeUser
+// ניהול משתמשים
 exports.addUser = async (req, res) => {
     try {
         const { homeId } = req.params;
-        const { userName } = req.body; // עקביות עם הקוד החדש
+        const { userName } = req.body; 
         if (!userName) {
             return res.status(400).json({ message: 'User name is required.' });
         }
@@ -241,7 +248,7 @@ exports.addUser = async (req, res) => {
 
         home.users.push(userName);
         await home.save();
-        res.status(201).json(home.users); // 201 Created, מחזיר את רשימת המשתמשים המעודכנת
+        res.status(201).json(home.users); 
     } catch (error) {
         handleError(res, error, 'Error adding user to home');
     }
@@ -250,29 +257,27 @@ exports.addUser = async (req, res) => {
 exports.removeUser = async (req, res) => {
     try {
         const { homeId } = req.params;
-        const { userName } = req.body; // עקביות עם הקוד החדש, נניח שהשם מגיע ב-body
+        const { userName } = req.body; 
 
         const home = await Home.findOneAndUpdate(
             { _id: homeId },
-            { $pull: { users: userName } }, // הסרת שם המשתמש מהמערך
-            { new: true } // החזרת המסמך המעודכן
+            { $pull: { users: userName } }, 
+            { new: true } 
         );
 
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-        // אם המשתמש לא נמצא וה-findOneAndUpdate לא ביצע שינוי, הוא עדיין יחזיר את המסמך המקורי.
-        // כדי לוודא הסרה בפועל, ניתן לבדוק האם המשתמש עדיין קיים במערך.
-        if (home.users.includes(userName)) { // בדיקה לאחר העדכון
+        if (home.users.includes(userName)) { 
              return res.status(404).json({ message: 'User not found in this home.' });
         }
 
-        res.status(200).json({ users: home.users, message: 'User removed successfully.' }); // מחזיר משתמשים מעודכנים
+        res.status(200).json({ users: home.users, message: 'User removed successfully.' }); 
     } catch (error) {
         handleError(res, error, 'Error removing user from home');
     }
 };
 
-// --- ניהול כספים (נותר כפי שהיה בקוד הישן, עם תיקוני handleError) ---
+// --- ניהול כספים ---
 exports.addExpectedBill = async (req, res) => {
     try {
         const { homeId } = req.params;
@@ -395,7 +400,6 @@ exports.updateBudgets = async (req, res) => {
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-        // חשוב: לוודא ש-expenseCategories אכן אובייקט ולא מערך ב-schema של Home
         home.finances.expenseCategories = expenseCategories; // Replace existing categories
         await home.save();
         res.status(200).json(home.finances.expenseCategories);
@@ -404,6 +408,7 @@ exports.updateBudgets = async (req, res) => {
     }
 };
 
+// **תיקון קריטי: סכום פיננסי לפי משתמש**
 exports.getUserMonthlyFinanceSummary = async (req, res) => {
     try {
         const { homeId, year, month } = req.params;
@@ -416,34 +421,51 @@ exports.getUserMonthlyFinanceSummary = async (req, res) => {
         const startOfMonth = new Date(numericYear, numericMonth - 1, 1);
         const endOfMonth = new Date(numericYear, numericMonth, 0); // Last day of the month
 
-        const monthlyIncome = home.finances.income.filter(inc => {
+        // אתחול אובייקט סיכום לכל המשתמשים ול"משותף"
+        const userSummary = {};
+        const allUsers = [...(home.users || []), 'משותף']; // וודא ש"משותף" נכלל
+        allUsers.forEach(user => {
+            userSummary[user] = { income: 0, expenses: 0, net: 0 };
+        });
+
+        // צבירת הכנסות לפי משתמש
+        home.finances.income.forEach(inc => {
             const incomeDate = new Date(inc.date);
-            return incomeDate >= startOfMonth && incomeDate <= endOfMonth;
+            if (incomeDate >= startOfMonth && incomeDate <= endOfMonth) {
+                const user = inc.assignedTo || 'משותף';
+                if (!userSummary[user]) userSummary[user] = { income: 0, expenses: 0, net: 0 }; 
+                userSummary[user].income += inc.amount;
+            }
         });
 
-        const monthlyPaidBills = home.finances.paidBills.filter(bill => {
-            const paidDate = new Date(bill.paidAt);
-            return paidDate >= startOfMonth && paidDate <= endOfMonth;
+        // צבירת הוצאות (חשבונות ששולמו) לפי משתמש
+        home.finances.paidBills.forEach(bill => {
+            const paidDate = new Date(bill.datePaid); 
+            if (paidDate >= startOfMonth && paidDate <= endOfMonth) {
+                const user = bill.assignedTo || 'משותף';
+                if (!userSummary[user]) userSummary[user] = { income: 0, expenses: 0, net: 0 }; 
+                userSummary[user].expenses += bill.amount;
+            }
         });
 
-        // Sum amounts
-        const totalIncome = monthlyIncome.reduce((sum, inc) => sum + inc.amount, 0);
-        const totalExpenses = monthlyPaidBills.reduce((sum, bill) => sum + bill.amount, 0);
+        // חישוב נטו לכל משתמש
+        Object.keys(userSummary).forEach(user => {
+            userSummary[user].net = userSummary[user].income - userSummary[user].expenses;
+        });
 
-        res.status(200).json({ totalIncome, totalExpenses, monthlyIncome, monthlyPaidBills });
+        res.status(200).json(userSummary); // החזרת הסיכום לפי משתמש
 
     } catch (error) {
         handleError(res, error, 'Error fetching user monthly finance summary');
     }
 };
 
-// --- אינטגרציית Gemini AI (נותר כפי שהיה בקוד הישן, עם תיקוני handleError ושמות שדות) ---
+// --- אינטגרציית Gemini AI ---
 exports.transformRecipeToShoppingList = async (req, res) => {
     try {
         const { homeId } = req.params;
         const { recipeText } = req.body;
         
-        // Mock response:
         const mockShoppingList = [
             { text: "חלב", category: "מוצרי חלב" },
             { text: "ביצים", category: "מוצרי יסוד" },
@@ -453,8 +475,7 @@ exports.transformRecipeToShoppingList = async (req, res) => {
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-        // שימוש בשם השדה המעודכן: shoppingList
-        mockShoppingList.forEach(item => home.shoppingList.push(item));
+        home.shoppingList.push(mockShoppingList); // שימוש בשם השדה המעודכן: shoppingList
         await home.save();
 
         res.status(200).json({ message: "Recipe transformed and items added to shopping list!", newItems: mockShoppingList });
@@ -468,7 +489,6 @@ exports.breakdownComplexTask = async (req, res) => {
         const { homeId } = req.params;
         const { taskText } = req.body;
         
-        // Mock response:
         const mockSubTasks = [
             { text: `תת-משימה 1 מתוך "${taskText}"`, category: "תת-משימה" },
             { text: `תת-משימה 2 מתוך "${taskText}"`, category: "תת-משימה" },
@@ -477,8 +497,7 @@ exports.breakdownComplexTask = async (req, res) => {
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-        // שימוש בשם השדה המעודכן: tasks
-        mockSubTasks.forEach(item => home.tasks.push(item));
+        home.tasks.push(mockSubTasks); // שימוש בשם השדה המעודכן: tasks
         await home.save();
 
         res.status(200).json({ message: "Task broken down and sub-tasks added!", newItems: mockSubTasks });
