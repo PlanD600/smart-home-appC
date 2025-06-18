@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// The base URL for your backend API
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const api = axios.create({
@@ -15,7 +14,7 @@ const handleApiError = (error, defaultMessage = 'An unexpected error occurred.')
   throw new Error(error.response?.data?.message || defaultMessage);
 };
 
-// Home related APIs
+// --- Home related APIs ---
 export const getHomes = async () => {
   try {
     const response = await api.get('/home');
@@ -27,14 +26,14 @@ export const getHomes = async () => {
 
 export const createHome = async (homeData) => {
   try {
-    const response = await api.post('/home', homeData);
+    const response = await api.post('/home', homeData); 
     return response.data;
   } catch (error) {
     handleApiError(error, 'Failed to create home.');
   }
 };
 
-export const loginHome = async (homeId, accessCode) => {
+export const loginToHome = async (homeId, accessCode) => {
   try {
     const response = await api.post(`/home/login`, { homeId, accessCode });
     return response.data;
@@ -43,7 +42,6 @@ export const loginHome = async (homeId, accessCode) => {
   }
 };
 
-// NEW: Get full home details by ID
 export const getHomeDetails = async (homeId) => {
   try {
     const response = await api.get(`/home/${homeId}`);
@@ -54,10 +52,10 @@ export const getHomeDetails = async (homeId) => {
 };
 
 
-// Item (Shopping & Tasks) related APIs
+// --- Item (Shopping & Tasks) related APIs ---
 export const addItem = async (homeId, listType, itemData) => {
   try {
-    const response = await api.post(`/home/${homeId}/${listType}`, itemData);
+    const response = await api.post(`/home/${homeId}/${listType}/add`, itemData); 
     return response.data;
   } catch (error) {
     handleApiError(error, `Failed to add ${listType} item.`);
@@ -81,7 +79,7 @@ export const deleteItem = async (homeId, listType, itemId) => {
   }
 };
 
-// Finance related APIs
+// --- Finance related APIs ---
 export const addExpectedBill = async (homeId, billData) => {
   try {
     const response = await api.post(`/home/${homeId}/finance/bills/expected`, billData);
@@ -111,7 +109,7 @@ export const deleteExpectedBill = async (homeId, billId) => {
 export const payBill = async (homeId, billId) => {
   try {
     const response = await api.post(`/home/${homeId}/finance/bills/pay/${billId}`);
-    return response.data; // Should return updated finances or confirmation
+    return response.data; 
   } catch (error) {
     handleApiError(error, 'Failed to pay bill.');
   }
@@ -135,8 +133,9 @@ export const addSavingsGoal = async (homeId, goalData) => {
   }
 };
 
-export const addToSavingsGoal = async (homeId, goalId, amount) => {
+export const addFundsToSavingsGoal = async (homeId, goalId, amount) => {
   try {
+    // השם של הפונקציה תוקן ב-api.js ובקונטקסט
     const response = await api.post(`/home/${homeId}/finance/savings-goals/${goalId}/add-funds`, { amount });
     return response.data;
   } catch (error) {
@@ -147,7 +146,7 @@ export const addToSavingsGoal = async (homeId, goalId, amount) => {
 export const updateBudgets = async (homeId, budgetsData) => {
   try {
     const response = await api.put(`/home/${homeId}/finance/budgets`, { expenseCategories: budgetsData });
-    return response.data; // Assuming it returns the updated categories
+    return response.data; 
   } catch (error) {
     handleApiError(error, 'Failed to update budgets.');
   }
@@ -162,11 +161,12 @@ export const getUserMonthlyFinanceSummary = async (homeId, year, month) => {
   }
 };
 
-// User management
+// --- User management ---
 export const addUser = async (homeId, userName) => {
   try {
-    const response = await api.post(`/home/${homeId}/users`, { name: userName });
-    return response.data; // Assuming this returns the updated users array or the new user
+    // **תיקון: נתיב שונה ל-'/users/add' ושם השדה ב-body השתנה ל-userName**
+    const response = await api.post(`/home/${homeId}/users/add`, { userName }); 
+    return response.data; 
   } catch (error) {
     handleApiError(error, 'Failed to add user to home.');
   }
@@ -174,15 +174,16 @@ export const addUser = async (homeId, userName) => {
 
 export const removeUser = async (homeId, userName) => {
   try {
-    const response = await api.delete(`/home/${homeId}/users/${userName}`);
-    return response.data; // Assuming this returns the updated users array
+    // **תיקון: נתיב שונה ל-'/users/remove' ו-method הוא POST, userName ב-body**
+    const response = await api.post(`/home/${homeId}/users/remove`, { userName }); 
+    return response.data; 
   } catch (error) {
     handleApiError(error, 'Failed to remove user from home.');
   }
 };
 
-// Gemini integration
-export const transformRecipe = async (homeId, recipeText) => {
+// --- Gemini integration ---
+export const transformRecipeToShoppingList = async (homeId, recipeText) => {
   try {
     const response = await api.post(`/home/${homeId}/gemini/recipe-to-shopping`, { recipeText });
     return response.data;
@@ -191,7 +192,7 @@ export const transformRecipe = async (homeId, recipeText) => {
   }
 };
 
-export const breakdownTask = async (homeId, taskText) => {
+export const breakdownComplexTask = async (homeId, taskText) => {
   try {
     const response = await api.post(`/home/${homeId}/gemini/breakdown-task`, { taskText });
     return response.data;

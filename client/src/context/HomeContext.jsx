@@ -12,8 +12,8 @@ export const HomeProvider = ({ children }) => {
   const [homes, setHomes] = useState([]);
 
   const listTypeToStateKey = {
-    shopping: 'shoppingList',
-    tasks: 'tasks',
+    shopping: 'shoppingList', // תואם את המודל המעודכן
+    tasks: 'tasks',         // תואם את המודל המעודכן
   };
 
   const fetchHomes = useCallback(async () => {
@@ -37,6 +37,7 @@ export const HomeProvider = ({ children }) => {
         setLoading(true);
         setError(null);
         try {
+          // קריאה לפונקציה api.getHomeDetails (שם הפונקציה תוקן כבר ב-api.js)
           const homeDetails = await api.getHomeDetails(storedHomeId);
           setActiveHome(homeDetails);
           localStorage.setItem('homeId', homeDetails._id);
@@ -61,7 +62,8 @@ export const HomeProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const home = await api.loginHome(homeId, accessCode);
+      // **תיקון: שינוי מ-api.loginHome ל-api.loginToHome**
+      const home = await api.loginToHome(homeId, accessCode); 
       setActiveHome(home);
       localStorage.setItem('homeId', home._id);
       return true;
@@ -102,6 +104,7 @@ export const HomeProvider = ({ children }) => {
     if (!activeHome) return;
     setLoading(true);
     try {
+      // קריאה לפונקציה api.getHomeDetails (שם הפונקציה תוקן כבר ב-api.js)
       const refreshedHome = await api.getHomeDetails(activeHome._id);
       setActiveHome(refreshedHome);
       setError(null);
@@ -113,20 +116,20 @@ export const HomeProvider = ({ children }) => {
     }
   }, [activeHome]);
 
-  // --- Item specific actions (Shopping & Tasks) with FIX ---
+  // --- Item specific actions (Shopping & Tasks) ---
   const saveItem = useCallback(async (listType, itemData) => {
     if (!activeHome) return;
     const stateKey = listTypeToStateKey[listType];
     if (!stateKey) {
-        console.error(`Invalid list type: ${listType}`);
-        return;
+      console.error(`Invalid list type: ${listType}`);
+      return;
     }
     setLoading(true);
     try {
       const newItem = await api.addItem(activeHome._id, listType, itemData);
       setActiveHome(prev => ({
         ...prev,
-        [stateKey]: [...(prev[stateKey] || []), newItem] // <-- FIX: Fallback to empty array
+        [stateKey]: [...(prev[stateKey] || []), newItem] 
       }));
       setError(null);
     } catch (err) {
@@ -141,15 +144,15 @@ export const HomeProvider = ({ children }) => {
     if (!activeHome) return;
     const stateKey = listTypeToStateKey[listType];
     if (!stateKey) {
-        console.error(`Invalid list type: ${listType}`);
-        return;
+      console.error(`Invalid list type: ${listType}`);
+      return;
     }
     setLoading(true);
     try {
       const updatedItem = await api.updateItem(activeHome._id, listType, itemId, itemData);
       setActiveHome(prev => ({
         ...prev,
-        [stateKey]: (prev[stateKey] || []).map(item => // <-- FIX: Fallback to empty array
+        [stateKey]: (prev[stateKey] || []).map(item => 
           item._id === itemId ? updatedItem : item
         )
       }));
@@ -165,16 +168,16 @@ export const HomeProvider = ({ children }) => {
   const removeItem = useCallback(async (listType, itemId) => {
     if (!activeHome) return;
     const stateKey = listTypeToStateKey[listType];
-     if (!stateKey) {
-        console.error(`Invalid list type: ${listType}`);
-        return;
+    if (!stateKey) {
+      console.error(`Invalid list type: ${listType}`);
+      return;
     }
     setLoading(true);
     try {
       await api.deleteItem(activeHome._id, listType, itemId);
       setActiveHome(prev => ({
         ...prev,
-        [stateKey]: (prev[stateKey] || []).filter(item => item._id !== itemId) // <-- FIX: Fallback to empty array
+        [stateKey]: (prev[stateKey] || []).filter(item => item._id !== itemId) 
       }));
       setError(null);
     } catch (err) {
@@ -186,8 +189,7 @@ export const HomeProvider = ({ children }) => {
   }, [activeHome]);
 
   // --- Finance and User actions remain the same ---
-  // (All finance and user functions remain the same as your provided code)
-    const saveBill = useCallback(async (billData) => {
+  const saveBill = useCallback(async (billData) => {
     if (!activeHome) return;
     setLoading(true);
     try {
@@ -316,7 +318,8 @@ export const HomeProvider = ({ children }) => {
     if (!activeHome) return;
     setLoading(true);
     try {
-      const updatedGoal = await api.addToSavingsGoal(activeHome._id, goalId, amount);
+      // **תיקון: שינוי מ-api.addToSavingsGoal ל-api.addFundsToSavingsGoal**
+      const updatedGoal = await api.addFundsToSavingsGoal(activeHome._id, goalId, amount); 
       setActiveHome(prev => ({
         ...prev,
         finances: {
@@ -377,7 +380,8 @@ export const HomeProvider = ({ children }) => {
     if (!activeHome) return;
     setLoading(true);
     try {
-      const response = await api.addUser(activeHome._id, userName);
+      // **תיקון: שינוי מ-api.addUser ל-api.addUser (שם הפונקציה תוקן ב-api.js)**
+      const response = await api.addUser(activeHome._id, userName); 
       setActiveHome(prev => ({
         ...prev,
         users: response // Assuming API returns the updated users array
@@ -397,7 +401,8 @@ export const HomeProvider = ({ children }) => {
     if (!activeHome) return;
     setLoading(true);
     try {
-      const response = await api.removeUser(activeHome._id, userName);
+      // **תיקון: שינוי מ-api.removeUser ל-api.removeUser (שם הפונקציה תוקן ב-api.js)**
+      const response = await api.removeUser(activeHome._id, userName); 
       setActiveHome(prev => ({
         ...prev,
         users: response.users
@@ -430,7 +435,7 @@ export const HomeProvider = ({ children }) => {
     payExistingBill,
     saveIncome,
     saveSavingsGoal,
-    addFundsToSavingsGoal,
+    addFundsToSavingsGoal, // שם הפונקציה בקונטקסט
     saveBudgets,
     fetchUserMonthlyFinanceSummary,
     addHomeUser,

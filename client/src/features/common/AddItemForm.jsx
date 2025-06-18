@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
 import { useHome } from '../../context/HomeContext'; // ייבוא useHome
-// אין צורך ב-useModal כאן
 
-const AddItemForm = ({ onAddItem, categories, placeholder }) => {
+// הגדר רשימת קטגוריות ברירת מחדל.
+// ניתן להתאים אותה לפי הצרכים שלך.
+const DEFAULT_CATEGORIES = ['כללית', 'מצרכים', 'חשבונות', 'בידור', 'שונות', 'עבודה', 'לימודים'];
+
+const AddItemForm = ({ onAddItem, placeholder = "הוסף פריט...", initialCategory = 'כללית' }) => {
   const { activeHome } = useHome(); // שליפת activeHome
   const [text, setText] = useState('');
-  const [category, setCategory] = useState('כללית');
+  // **תיקון: הסרת שימוש ב-categories prop שהוסר. נשתמש ב-DEFAULT_CATEGORIES**
+  const [category, setCategory] = useState(initialCategory || DEFAULT_CATEGORIES[0]); 
   const [assignedTo, setAssignedTo] = useState('משותף'); // מצב חדש עבור assignedTo
 
   // רשימת המשתמשים הזמינים, כולל ברירת המחדל 'משותף'
-  const availableUsers = activeHome?.users || ['אני'];
+  let availableUsers = activeHome?.users || ['אני'];
   // נוודא ש'משותף' תמיד קיים כאפשרות
   if (!availableUsers.includes('משותף')) {
-    availableUsers.push('משותף');
+    availableUsers = [...availableUsers, 'משותף']; // יצירת מערך חדש למניעת מוטציה ישירה
   }
 
   const handleSubmit = (e) => {
@@ -21,9 +25,9 @@ const AddItemForm = ({ onAddItem, categories, placeholder }) => {
       // הוספת assignedTo למטען הנתונים הנשלח
       onAddItem({ text, category, assignedTo }); 
       setText(''); // ניקוי שדה טקסט
-      // אין צורך לאפס את category או assignedTo אם רוצים שהבחירה האחרונה תשמר
-      // setCategory('כללית'); 
-      // setAssignedTo('משותף');
+      // איפוס לקטגוריה/משתמשים ברירת מחדל
+      setCategory(initialCategory || DEFAULT_CATEGORIES[0]); 
+      setAssignedTo('משותף'); 
     }
   };
 
@@ -31,7 +35,7 @@ const AddItemForm = ({ onAddItem, categories, placeholder }) => {
     display: 'flex',
     gap: '10px',
     flexWrap: 'wrap',
-    marginBottom: '25px', // מונע מגע עם כפתור 'הוסף פריט'
+    marginBottom: '25px', 
   };
 
   const inputStyle = {
@@ -62,18 +66,18 @@ const AddItemForm = ({ onAddItem, categories, placeholder }) => {
     justifyContent: 'center',
   };
 
-
   return (
     <form className="add-item-form" onSubmit={handleSubmit} style={formStyle}>
+      {/* **תיקון: שימוש ב-DEFAULT_CATEGORIES במקום categories prop** */}
       <select 
         className="add-item-category-select" 
         value={category} 
         onChange={(e) => setCategory(e.target.value)}
         style={selectStyle}
+        aria-label="בחר קטגוריה"
       >
-        {/* וודא ש"כללית" תמיד תהיה אפשרות */}
-        {!categories.includes('כללית') && <option value="כללית">כללית</option>}
-        {categories.map(cat => (
+        {/* אין צורך בבדיקה !categories.includes('כללית') אם DEFAULT_CATEGORIES תמיד כולל אותה */}
+        {DEFAULT_CATEGORIES.map(cat => (
           <option key={cat} value={cat}>{cat}</option>
         ))}
       </select>
@@ -84,6 +88,7 @@ const AddItemForm = ({ onAddItem, categories, placeholder }) => {
         value={assignedTo} 
         onChange={(e) => setAssignedTo(e.target.value)}
         style={selectStyle}
+        aria-label="הקצה למשתמש"
       >
         {availableUsers.map(user => (
           <option key={user} value={user}>{user}</option>
@@ -97,6 +102,7 @@ const AddItemForm = ({ onAddItem, categories, placeholder }) => {
         value={text}
         onChange={(e) => setText(e.target.value)}
         style={inputStyle}
+        aria-label="טקסט פריט"
       />
       <button type="submit" className="add-item-btn" style={buttonStyle}>
         <i className="fas fa-plus"></i>

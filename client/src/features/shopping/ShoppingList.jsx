@@ -1,24 +1,25 @@
 import React from 'react';
-import { useHome } from '../../context/HomeContext'; //
+import { useHome } from '../../context/HomeContext';
 import AddItemForm from '../common/AddItemForm';
 import ShoppingItem from './ShoppingItem';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 const ShoppingList = () => {
-  const { activeHome, saveItem, loading } = useHome(); // שינוי: מ-addItemToList, isLoading ל-saveItem, loading
+  const { activeHome, saveItem, loading, modifyItem, removeItem } = useHome(); // הוספתי modifyItem, removeItem
 
   if (!activeHome) {
     return <p>טוען נתונים...</p>;
   }
 
-  const { shoppingItems, shoppingCategories } = activeHome;
+  // **תיקון: שינוי מ-shoppingItems ל-shoppingList. הסרנו shoppingCategories**
+  const shoppingList = activeHome.shoppingList || []; 
 
   const handleAddItem = (itemData) => {
-    saveItem('shopping', itemData); // שינוי: מ-addItemToList ל-saveItem
+    saveItem('shopping', itemData);
   };
 
   // ממיין את המערך לפני ההצגה. פריטים עם isUrgent=true יופיעו ראשונים.
-  const sortedItems = [...shoppingItems].sort((a, b) => Number(b.isUrgent) - Number(a.isUrgent));
+  const sortedItems = [...shoppingList].sort((a, b) => Number(b.isUrgent) - Number(a.isUrgent));
   
   return (
     <section id="shopping-list" className="list-section active">
@@ -29,29 +30,37 @@ const ShoppingList = () => {
         </div>
       </div>
       
-      <div className="list-filters">
+      {/* **תיקון: הסרת אזור הסינון לפי קטגוריות, מכיוון ש-shoppingCategories הוסר מהמודל** */}
+      {/* <div className="list-filters">
         <label>קטגוריה:</label>
         <select className="category-filter">
           <option value="all">הכל</option>
           {shoppingCategories?.map(cat => <option key={cat} value={cat}>{cat}</option>)}
         </select>
-      </div>
+      </div> */}
       
       <div className="add-area">
         <AddItemForm 
           onAddItem={handleAddItem}
-          categories={shoppingCategories || ['כללית']}
+          // **תיקון: הסרת categories prop שהיה מבוסס על shoppingCategories**
+          // ניתן להחזיר רשימת קטגוריות סטטית אם נחוץ, או לתת ל-AddItemForm לנהל את הקטגוריות שלו
           placeholder="הוסף פריט חדש לקניות..."
         />
       </div>
       
-      {loading && <LoadingSpinner />} {/* שימוש ב-loading מהקונטקסט */}
+      {loading && <LoadingSpinner />} 
 
       <div className="item-list">
         <ul className="item-list-ul">
           {sortedItems && sortedItems.length > 0 ? (
             sortedItems.map(item => (
-              <ShoppingItem key={item._id} item={item} />
+              <ShoppingItem 
+                key={item._id} 
+                item={item} 
+                listType="shopping" // חשוב להעביר את listType
+                onUpdate={modifyItem} // העברת פונקציות העדכון והמחיקה
+                onDelete={removeItem} 
+              />
             ))
           ) : (
             <li style={{ textAlign: 'center', padding: '15px', color: '#777' }}>
