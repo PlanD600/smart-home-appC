@@ -1,400 +1,452 @@
 const Home = require('../models/Home');
 
-// Helper function to find home and handle errors
-const findHomeById = async (id, res) => {
-  const home = await Home.findById(id);
-  if (!home) {
-    res.status(404).json({ message: 'Home not found' });
-    return null;
-  }
-  return home;
+// Helper function to handle common error responses
+const handleError = (res, error, defaultMessage = 'An error occurred', statusCode = 500) => {
+    console.error(error);
+    res.status(statusCode).json({ message: error.message || defaultMessage });
 };
 
-// @desc    Get all homes (for login screen)
+// Get all homes (for login screen)
 exports.getHomes = async (req, res) => {
-  try {
-    const homes = await Home.find({}, 'name iconClass colorClass');
-    res.status(200).json(homes);
-  } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
-  }
+    try {
+        const homes = await Home.find().select('_id name iconClass colorScheme');
+        res.status(200).json(homes);
+    } catch (error) {
+        handleError(res, error, 'Error fetching homes');
+    }
 };
 
-// @desc    Create a new home
+// NEW: Get home by ID (for fetching full details)
+exports.getHomeById = async (req, res) => {
+    try {
+        const { homeId } = req.params;
+        const home = await Home.findById(homeId);
+        if (!home) {
+            return res.status(404).json({ message: 'Home not found.' });
+        }
+        res.status(200).json(home);
+    } catch (error) {
+        handleError(res, error, 'Error fetching home details', 400);
+    }
+};
+
+// Create a new home
 exports.createHome = async (req, res) => {
-  try {
-    const { name, accessCode, iconClass } = req.body;
-    if (!name || !accessCode) {
-      return res.status(400).json({ message: 'Name and access code are required' });
+    try {
+        const { name, accessCode, iconClass, colorScheme } = req.body;
+        if (!name || !accessCode) {
+            return res.status(400).json({ message: 'Name and access code are required.' });
+        }
+
+        const newHome = new Home({
+            name,
+            accessCode,
+            iconClass: iconClass || 'fas fa-home',
+            colorScheme: colorScheme || 'card-color-1',
+            users: [], // Initialize with an empty users array
+            shoppingItems: [],
+            taskItems: [],
+            finances: {
+                income: [],
+                expectedBills: [],
+                paidBills: [],
+                savingsGoals: [],
+                expenseCategories: [],
+            },
+            templates: [],
+            archivedItems: [],
+        });
+
+        await newHome.save();
+        res.status(201).json({ message: 'Home created successfully', homeId: newHome._id });
+    } catch (error) {
+        if (error.code === 11000) { // Duplicate key error
+            return res.status(409).json({ message: 'Home with this name already exists. Please choose a different name.' });
+        }
+        handleError(res, error, 'Error creating home');
     }
-    const newHome = new Home({
-      name,
-      accessCode,
-      iconClass,
-      users: ['אני'], 
-      finances: {
-        income: [],
-        expectedBills: [],
-        paidBills: [],
-        savingsGoals: [],
-        expenseCategories: [
-          { name: "דיור ושכירות", budgetAmount: 0, color: "#AED581" },
-          { name: "מזון ומשקאות", budgetAmount: 0, color: "#FFB74D" },
-          { name: "חשבונות ותקשורת", budgetAmount: 0, color: "#4FC3F7" },
-          { name: "תחבורה ורכב", budgetAmount: 0, color: "#BA68C8" },
-          { name: "בילוי ופנאי", budgetAmount: 0, color: "#F06292" },
-          { name: "ביגוד והנעלה", budgetAmount: 0, color: "#4DB6AC" },
-          { name: "בריאות וטיפוח", budgetAmount: 0, color: "#FF8A65" },
-          { name: "חינוך וילדים", budgetAmount: 0, color: "#7986CB" },
-          { name: "מתנות ותרומות", budgetAmount: 0, color: "#E57373" },
-          { name: "שונות", budgetAmount: 0, color: "#90A4AE" }
-        ],
-        financeSettings: { currency: "ש\"ח" }
-      }
-    });
-    await newHome.save();
-    res.status(201).json(newHome);
-  } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
-  }
 };
 
-// @desc    Get full home data by access code
-exports.getHomeByAccessCode = async (req, res) => {
-  try {
-    const { homeId, accessCode } = req.body;
-    const home = await Home.findById(homeId);
-    if (!home || home.accessCode !== accessCode) {
-      return res.status(401).json({ message: 'Invalid access code' });
+// Login to an existing home
+exports.loginHome = async (req, res) => {
+    try {
+        const { homeId, accessCode } = req.body;
+        const home = await Home.findById(homeId);
+
+        if (!home || home.accessCode !== accessCode) {
+            return res.status(401).json({ message: 'Invalid Home ID or Access Code.' });
+        }
+
+        // Return the full home object upon successful login
+        res.status(200).json(home);
+    } catch (error) {
+        handleError(res, error, 'Error logging in', 400);
     }
-    res.status(200).json(home);
-  } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
-  }
 };
 
-// --- Item Management ---
+// Add item to shopping or tasks list
 exports.addItem = async (req, res) => {
-  try {
-    const home = await findHomeById(req.params.homeId, res);
-    if (!home) return;
-    const { listType } = req.params;
-    const listKey = listType === 'shopping' ? 'shoppingItems' : 'taskItems';
-    const newItem = home[listKey].create(req.body);
-    home[listKey].push(newItem);
-    await home.save();
-    res.status(201).json(newItem);
-  } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
-  }
+    try {
+        const { homeId, listType } = req.params;
+        const { text, category, assignedTo, completed, isUrgent, comment } = req.body; // Added 'comment'
+
+        if (!text) {
+            return res.status(400).json({ message: 'Item text is required.' });
+        }
+        if (!['shopping', 'tasks'].includes(listType)) {
+            return res.status(400).json({ message: 'Invalid list type.' });
+        }
+
+        const home = await Home.findById(homeId);
+        if (!home) {
+            return res.status(404).json({ message: 'Home not found.' });
+        }
+
+        const newItem = {
+            text,
+            category: category || 'כללית',
+            assignedTo: assignedTo || 'משותף',
+            completed: completed || false,
+            isUrgent: isUrgent || false,
+            comment: comment || '' // Initialize comment
+        };
+
+        if (listType === 'shopping') {
+            home.shoppingItems.push(newItem);
+        } else {
+            home.taskItems.push(newItem);
+        }
+
+        await home.save();
+        res.status(201).json(newItem);
+    } catch (error) {
+        handleError(res, error, 'Error adding item');
+    }
 };
 
+// Update an item in shopping or tasks list
 exports.updateItem = async (req, res) => {
     try {
-        const home = await findHomeById(req.params.homeId, res);
-        if (!home) return;
-        const { listType, itemId } = req.params;
-        const listKey = listType === 'shopping' ? 'shoppingItems' : 'taskItems';
-        const item = home[listKey].id(itemId);
-        if (!item) return res.status(404).json({ message: 'Item not found' });
-        Object.assign(item, req.body);
+        const { homeId, listType, itemId } = req.params;
+        const updateData = req.body;
+
+        if (!['shopping', 'tasks'].includes(listType)) {
+            return res.status(400).json({ message: 'Invalid list type.' });
+        }
+
+        const home = await Home.findById(homeId);
+        if (!home) {
+            return res.status(404).json({ message: 'Home not found.' });
+        }
+
+        const items = home[listType + 'Items'];
+        const itemIndex = items.findIndex(item => item._id.toString() === itemId);
+
+        if (itemIndex === -1) {
+            return res.status(404).json({ message: 'Item not found.' });
+        }
+
+        // Update specific fields of the item
+        Object.keys(updateData).forEach(key => {
+            items[itemIndex][key] = updateData[key];
+        });
+
         await home.save();
-        res.status(200).json(item);
+        res.status(200).json(items[itemIndex]);
     } catch (error) {
-        res.status(500).json({ message: 'Server Error', error: error.message });
+        handleError(res, error, 'Error updating item');
     }
 };
 
+// Delete an item from shopping or tasks list
 exports.deleteItem = async (req, res) => {
     try {
-        const home = await findHomeById(req.params.homeId, res);
-        if (!home) return;
-        const { listType, itemId } = req.params;
-        const listKey = listType === 'shopping' ? 'shoppingItems' : 'taskItems';
-        home[listKey].pull({ _id: itemId });
+        const { homeId, listType, itemId } = req.params;
+
+        if (!['shopping', 'tasks'].includes(listType)) {
+            return res.status(400).json({ message: 'Invalid list type.' });
+        }
+
+        const home = await Home.findById(homeId);
+        if (!home) {
+            return res.status(404).json({ message: 'Home not found.' });
+        }
+
+        // Filter out the item to be deleted
+        home[listType + 'Items'] = home[listType + 'Items'].filter(item => item._id.toString() !== itemId);
+
         await home.save();
-        res.status(200).json({ message: 'Item deleted successfully', itemId });
+        res.status(200).json({ message: 'Item deleted successfully.' });
     } catch (error) {
-        res.status(500).json({ message: 'Server Error', error: error.message });
+        handleError(res, error, 'Error deleting item');
     }
 };
 
-// --- Finance Management ---
+
+// User Management
+exports.addUserToHome = async (req, res) => {
+    try {
+        const { homeId } = req.params;
+        const { name } = req.body;
+        if (!name) {
+            return res.status(400).json({ message: 'User name is required.' });
+        }
+
+        const home = await Home.findById(homeId);
+        if (!home) {
+            return res.status(404).json({ message: 'Home not found.' });
+        }
+
+        if (home.users.includes(name)) {
+            return res.status(409).json({ message: 'User with this name already exists in this home.' });
+        }
+
+        home.users.push(name);
+        await home.save();
+        res.status(200).json(home.users); // Return the updated list of users
+    } catch (error) {
+        handleError(res, error, 'Error adding user to home');
+    }
+};
+
+exports.removeUserFromHome = async (req, res) => {
+    try {
+        const { homeId, userName } = req.params;
+
+        const home = await Home.findById(homeId);
+        if (!home) {
+            return res.status(404).json({ message: 'Home not found.' });
+        }
+
+        const initialUserCount = home.users.length;
+        home.users = home.users.filter(user => user !== userName);
+
+        if (home.users.length === initialUserCount) {
+            return res.status(404).json({ message: 'User not found in this home.' });
+        }
+
+        await home.save();
+        res.status(200).json({ message: 'User removed successfully', users: home.users }); // Return updated users
+    } catch (error) {
+        handleError(res, error, 'Error removing user from home');
+    }
+};
+
+
+// Finance Management
 exports.addExpectedBill = async (req, res) => {
-  try {
-    const home = await findHomeById(req.params.homeId, res);
-    if (!home) return;
-    const newBill = home.finances.expectedBills.create(req.body);
-    home.finances.expectedBills.push(newBill);
-    await home.save();
-    res.status(201).json(newBill);
-  } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
-  }
-};
+    try {
+        const { homeId } = req.params;
+        const billData = req.body;
+        const home = await Home.findById(homeId);
+        if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-exports.payBill = async (req, res) => {
-  try {
-    const home = await findHomeById(req.params.homeId, res);
-    if (!home) return;
-    const { billId } = req.params;
-    const billToPay = home.finances.expectedBills.id(billId);
-    if (!billToPay) return res.status(404).json({ message: 'Bill not found' });
-    const paidBill = { text: billToPay.text, amount: billToPay.amount, datePaid: new Date(), category: billToPay.category, assignedTo: billToPay.assignedTo, comment: billToPay.comment };
-    home.finances.paidBills.push(paidBill);
-    if (billToPay.recurring && billToPay.recurring.frequency) {
-      const nextDueDate = new Date(billToPay.dueDate);
-      if (billToPay.recurring.frequency === 'monthly') nextDueDate.setMonth(nextDueDate.getMonth() + 1);
-      else if (billToPay.recurring.frequency === 'yearly') nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
-      const nextBill = { ...billToPay.toObject(), _id: undefined, dueDate: nextDueDate, isUrgent: false };
-      home.finances.expectedBills.push(nextBill);
+        home.finances.expectedBills.push(billData);
+        await home.save();
+        res.status(201).json(billData);
+    } catch (error) {
+        handleError(res, error, 'Error adding expected bill');
     }
-    home.finances.expectedBills.pull({ _id: billId });
-    await home.save();
-    res.status(200).json(home.finances);
-  } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
-  }
-};
-
-exports.deleteExpectedBill = async (req, res) => {
-  try {
-    const home = await findHomeById(req.params.homeId, res);
-    if (!home) return;
-    home.finances.expectedBills.pull({ _id: req.params.billId });
-    await home.save();
-    res.status(200).json({ message: 'Bill deleted successfully', billId: req.params.billId });
-  } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
-  }
 };
 
 exports.updateExpectedBill = async (req, res) => {
-  try {
-    const home = await findHomeById(req.params.homeId, res);
-    if (!home) return;
-    const bill = home.finances.expectedBills.id(req.params.billId);
-    if (!bill) return res.status(404).json({ message: 'Bill not found' });
-    Object.assign(bill, req.body);
-    await home.save();
-    res.status(200).json(bill);
-  } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
-  }
+    try {
+        const { homeId, billId } = req.params;
+        const billData = req.body;
+        const home = await Home.findById(homeId);
+        if (!home) return res.status(404).json({ message: 'Home not found.' });
+
+        const billIndex = home.finances.expectedBills.findIndex(bill => bill._id.toString() === billId);
+        if (billIndex === -1) return res.status(404).json({ message: 'Bill not found.' });
+
+        Object.assign(home.finances.expectedBills[billIndex], billData);
+        await home.save();
+        res.status(200).json(home.finances.expectedBills[billIndex]);
+    } catch (error) {
+        handleError(res, error, 'Error updating expected bill');
+    }
 };
 
-// @desc    Update budget categories for a home
-exports.updateBudgets = async (req, res) => {
-  try {
-    const home = await findHomeById(req.params.homeId, res);
-    if (!home) return;
+exports.deleteExpectedBill = async (req, res) => {
+    try {
+        const { homeId, billId } = req.params;
+        const home = await Home.findById(homeId);
+        if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-    const updatedCategories = req.body; // Expecting an array of category objects from the frontend
-
-    home.finances.expenseCategories = []; // Clear the array
-    updatedCategories.forEach(cat => {
-      home.finances.expenseCategories.push({
-        name: cat.name,
-        budgetAmount: parseFloat(cat.budgetAmount) || 0,
-        color: cat.color || '#cccccc', // Ensure color exists or use default
-      });
-    });
-    
-    await home.save();
-    res.status(200).json(home.finances.expenseCategories);
-  } catch (error) {
-    console.error("Error in updateBudgets:", error);
-    res.status(500).json({ message: 'Server Error', error: error.message });
-  }
+        home.finances.expectedBills = home.finances.expectedBills.filter(bill => bill._id.toString() !== billId);
+        await home.save();
+        res.status(200).json({ message: 'Bill deleted successfully.' });
+    } catch (error) {
+        handleError(res, error, 'Error deleting expected bill');
+    }
 };
 
-exports.addSavingsGoal = async (req, res) => {
-  try {
-    const home = await findHomeById(req.params.homeId, res);
-    if (!home) return;
-    const newGoal = home.finances.savingsGoals.create(req.body);
-    home.finances.savingsGoals.push(newGoal);
-    await home.save();
-    res.status(201).json(newGoal);
-  } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
-  }
-};
+exports.payBill = async (req, res) => {
+    try {
+        const { homeId, billId } = req.params;
+        const home = await Home.findById(homeId);
+        if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-exports.addToSavingsGoal = async (req, res) => {
-  try {
-    const home = await findHomeById(req.params.homeId, res);
-    if (!home) return;
-    const goal = home.finances.savingsGoals.id(req.params.goalId);
-    if (!goal) return res.status(404).json({ message: 'Savings goal not found' });
-    const { amountToAdd } = req.body;
-    goal.currentAmount += parseFloat(amountToAdd) || 0;
-    await home.save();
-    res.status(200).json(goal);
-  } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
-  }
+        const billIndex = home.finances.expectedBills.findIndex(bill => bill._id.toString() === billId);
+        if (billIndex === -1) return res.status(404).json({ message: 'Bill not found in expected bills.' });
+
+        const paidBill = { ...home.finances.expectedBills[billIndex], paidAt: new Date() };
+        home.finances.paidBills.push(paidBill);
+        home.finances.expectedBills.splice(billIndex, 1); // Remove from expected
+
+        await home.save();
+        res.status(200).json(home.finances); // Return updated finances object
+    } catch (error) {
+        handleError(res, error, 'Error paying bill');
+    }
 };
 
 exports.addIncome = async (req, res) => {
-  try {
-    const home = await findHomeById(req.params.homeId, res);
-    if (!home) return;
-    const newIncome = home.finances.income.create(req.body);
-    home.finances.income.push(newIncome);
-    await home.save();
-    res.status(201).json(newIncome);
-  } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
-  }
+    try {
+        const { homeId } = req.params;
+        const incomeData = req.body;
+        const home = await Home.findById(homeId);
+        if (!home) return res.status(404).json({ message: 'Home not found.' });
+
+        home.finances.income.push(incomeData);
+        await home.save();
+        res.status(201).json(incomeData);
+    } catch (error) {
+        handleError(res, error, 'Error adding income');
+    }
 };
 
-// @desc    Add a user to a home's user list
-exports.addUser = async (req, res) => {
-  try {
-    const home = await findHomeById(req.params.homeId, res);
-    if (!home) return;
+exports.addSavingsGoal = async (req, res) => {
+    try {
+        const { homeId } = req.params;
+        const goalData = req.body;
+        const home = await Home.findById(homeId);
+        if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-    const { name } = req.body;
-    if (!name || name.trim() === '') {
-      return res.status(400).json({ message: 'שם משתמש נדרש' });
+        home.finances.savingsGoals.push(goalData);
+        await home.save();
+        res.status(201).json(goalData);
+    } catch (error) {
+        handleError(res, error, 'Error adding savings goal');
     }
-    if (!home.users) {
-      home.users = [];
-    }
-
-    const normalizedName = name.trim();
-    if (home.users.includes(normalizedName)) {
-      return res.status(400).json({ message: `המשתמש ${normalizedName} כבר קיים` });
-    }
-    
-    home.users.push(normalizedName);
-    await home.save();
-    res.status(201).json(home.users);
-    
-  } catch (error) {
-    console.error("Error in addUser controller:", error);
-    res.status(500).json({ message: 'שגיאת שרת', error: error.message });
-  }
 };
 
-// @desc    Remove a user from a home's user list
-exports.removeUser = async (req, res) => {
-  try {
-    const home = await findHomeById(req.params.homeId, res);
-    if (!home) return;
+exports.addFundsToSavingsGoal = async (req, res) => {
+    try {
+        const { homeId, goalId } = req.params;
+        const { amount } = req.body;
+        const home = await Home.findById(homeId);
+        if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-    const userNameToRemove = req.params.userName;
-    
-    if (!home.users.includes(userNameToRemove)) {
-      return res.status(404).json({ message: `המשתמש ${userNameToRemove} לא נמצא בבית זה.` });
+        const goal = home.finances.savingsGoals.id(goalId);
+        if (!goal) return res.status(404).json({ message: 'Savings goal not found.' });
+
+        goal.currentAmount += amount;
+        await home.save();
+        res.status(200).json(goal);
+    } catch (error) {
+        handleError(res, error, 'Error adding funds to savings goal');
     }
-
-    // Remove user from the users array
-    home.users = home.users.filter(user => user !== userNameToRemove);
-
-    // --- Reset assignedTo for items/finances associated with the removed user ---
-    const defaultAssigned = 'משותף'; // Or any other default string
-
-    // Shopping Items
-    home.shoppingItems.forEach(item => {
-      if (item.assignedTo === userNameToRemove) {
-        item.assignedTo = defaultAssigned;
-      }
-    });
-
-    // Task Items
-    home.taskItems.forEach(item => {
-      if (item.assignedTo === userNameToRemove) {
-        item.assignedTo = defaultAssigned;
-      }
-    });
-
-    // Expected Bills
-    home.finances.expectedBills.forEach(bill => {
-      if (bill.assignedTo === userNameToRemove) {
-        bill.assignedTo = defaultAssigned;
-      }
-    });
-
-    // Paid Bills
-    home.finances.paidBills.forEach(bill => {
-      if (bill.assignedTo === userNameToRemove) {
-        bill.assignedTo = defaultAssigned;
-      }
-    });
-
-    // Income
-    home.finances.income.forEach(inc => {
-      if (inc.assignedTo === userNameToRemove) {
-        inc.assignedTo = defaultAssigned;
-      }
-    });
-    // --- End of assignedTo reset ---
-
-    await home.save();
-    res.status(200).json({ message: `המשתמש ${userNameToRemove} הוסר בהצלחה.`, users: home.users });
-    
-  } catch (error) {
-    console.error("Error in removeUser controller:", error);
-    res.status(500).json({ message: 'שגיאת שרת', error: error.message });
-  }
 };
 
-// @desc    Get user's monthly finance summary (income vs. expenses)
-// @route   GET /api/home/:homeId/finances/user-summary/:year/:month
-// @access  Private (needs auth later)
+exports.updateBudgets = async (req, res) => {
+    try {
+        const { homeId } = req.params;
+        const { expenseCategories } = req.body; // Expecting an array of categories
+        const home = await Home.findById(homeId);
+        if (!home) return res.status(404).json({ message: 'Home not found.' });
+
+        home.finances.expenseCategories = expenseCategories; // Replace existing categories
+        await home.save();
+        res.status(200).json(home.finances.expenseCategories);
+    } catch (error) {
+        handleError(res, error, 'Error updating budgets');
+    }
+};
+
 exports.getUserMonthlyFinanceSummary = async (req, res) => {
-  try {
-    const home = await findHomeById(req.params.homeId, res);
-    if (!home) return;
+    try {
+        const { homeId, year, month } = req.params;
+        const home = await Home.findById(homeId);
+        if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-    const { year, month } = req.params; // month is 0-indexed in JS Dates, but often 1-indexed in routes
-    const startOfMonth = new Date(Date.UTC(year, month - 1, 1)); // Adjust to 0-indexed month and UTC
-    const endOfMonth = new Date(Date.UTC(year, month - 1, 1));
-    endOfMonth.setUTCMonth(endOfMonth.getUTCMonth() + 1); // Go to next month
-    endOfMonth.setUTCDate(0); // Set to last day of previous month
+        const numericYear = parseInt(year);
+        const numericMonth = parseInt(month); // 1-12 for month
 
-    const userSummary = {};
+        const startOfMonth = new Date(numericYear, numericMonth - 1, 1);
+        const endOfMonth = new Date(numericYear, numericMonth, 0); // Last day of the month
 
-    // Initialize all users from home.users to ensure they appear in the summary
-    home.users.forEach(user => {
-      userSummary[user] = { income: 0, expenses: 0, net: 0 };
-    });
+        const monthlyIncome = home.finances.income.filter(inc => {
+            const incomeDate = new Date(inc.date);
+            return incomeDate >= startOfMonth && incomeDate <= endOfMonth;
+        });
 
-    // Aggregate paid bills (expenses)
-    home.finances.paidBills.forEach(bill => {
-      const billDate = new Date(bill.datePaid);
-      if (billDate >= startOfMonth && billDate <= endOfMonth) {
-        const assignedTo = bill.assignedTo || 'משותף';
-        if (!userSummary[assignedTo]) { // Handle cases where assignedTo might be a new user not in home.users yet
-          userSummary[assignedTo] = { income: 0, expenses: 0, net: 0 };
-        }
-        userSummary[assignedTo].expenses += bill.amount;
-      }
-    });
+        const monthlyPaidBills = home.finances.paidBills.filter(bill => {
+            const paidDate = new Date(bill.paidAt);
+            return paidDate >= startOfMonth && paidDate <= endOfMonth;
+        });
 
-    // Aggregate income
-    home.finances.income.forEach(inc => {
-      const incomeDate = new Date(inc.date);
-      if (incomeDate >= startOfMonth && incomeDate <= endOfMonth) {
-        const assignedTo = inc.assignedTo || 'משותף';
-         if (!userSummary[assignedTo]) { // Handle cases where assignedTo might be a new user not in home.users yet
-          userSummary[assignedTo] = { income: 0, expenses: 0, net: 0 };
-        }
-        userSummary[assignedTo].income += inc.amount;
-      }
-    });
+        // Sum amounts
+        const totalIncome = monthlyIncome.reduce((sum, inc) => sum + inc.amount, 0);
+        const totalExpenses = monthlyPaidBills.reduce((sum, bill) => sum + bill.amount, 0);
 
-    // Calculate net for each user
-    Object.keys(userSummary).forEach(user => {
-      userSummary[user].net = userSummary[user].income - userSummary[user].expenses;
-    });
+        res.status(200).json({ totalIncome, totalExpenses, monthlyIncome, monthlyPaidBills });
 
-    res.status(200).json(userSummary);
+    } catch (error) {
+        handleError(res, error, 'Error fetching user monthly finance summary');
+    }
+};
 
-  } catch (error) {
-    console.error("Error in getUserMonthlyFinanceSummary controller:", error);
-    res.status(500).json({ message: 'שגיאת שרת', error: error.message });
-  }
+// Gemini AI Integration
+exports.transformRecipeToShoppingList = async (req, res) => {
+    try {
+        const { homeId } = req.params;
+        const { recipeText } = req.body;
+        // In a real application, you'd send `recipeText` to a Gemini AI service
+        // and receive a structured shopping list. For now, a mock response.
+        
+        // Mock response:
+        const mockShoppingList = [
+            { text: "חלב", category: "מוצרי חלב" },
+            { text: "ביצים", category: "מוצרי יסוד" },
+            { text: "קמח", category: "אפייה" },
+        ];
+
+        // You would then save these items to the home's shopping list
+        const home = await Home.findById(homeId);
+        if (!home) return res.status(404).json({ message: 'Home not found.' });
+
+        mockShoppingList.forEach(item => home.shoppingItems.push(item));
+        await home.save();
+
+        res.status(200).json({ message: "Recipe transformed and items added to shopping list!", newItems: mockShoppingList });
+    } catch (error) {
+        handleError(res, error, 'Error transforming recipe with Gemini');
+    }
+};
+
+exports.breakdownComplexTask = async (req, res) => {
+    try {
+        const { homeId } = req.params;
+        const { taskText } = req.body;
+        // In a real application, you'd send `taskText` to a Gemini AI service
+        // and receive a structured breakdown of sub-tasks. For now, a mock response.
+
+        // Mock response:
+        const mockSubTasks = [
+            { text: `תת-משימה 1 מתוך "${taskText}"`, category: "תת-משימה" },
+            { text: `תת-משימה 2 מתוך "${taskText}"`, category: "תת-משימה" },
+        ];
+
+        // You would then save these sub-tasks to the home's tasks list
+        const home = await Home.findById(homeId);
+        if (!home) return res.status(404).json({ message: 'Home not found.' });
+
+        mockSubTasks.forEach(item => home.taskItems.push(item));
+        await home.save();
+
+        res.status(200).json({ message: "Task broken down and sub-tasks added!", newItems: mockSubTasks });
+    } catch (error) {
+        handleError(res, error, 'Error breaking down task with Gemini');
+    }
 };

@@ -1,141 +1,85 @@
 import React, { useState } from 'react';
 import { useHome } from '../../context/HomeContext';
 import { useModal } from '../../context/ModalContext';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
-const UserManager = () => { // שינינו את השם ל-UserManager
-  const { activeHome, addHomeUser, removeHomeUser, loading, error: homeContextError } = useHome();
-  const { hideModal } = useModal();
-  const [newUserName, setNewUserName] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+const UserManager = () => {
+    const { activeHome, addHomeUser, removeHomeUser, loading, error } = useHome();
+    const { showModal, hideModal } = useModal();
+    const [newUserName, setNewUserName] = useState('');
 
-  // Combine internal error state with HomeContext error
-  const currentError = errorMessage || homeContextError;
+    const handleAddUser = async (e) => {
+        e.preventDefault();
+        if (!newUserName.trim()) return;
+        const success = await addHomeUser(newUserName.trim());
+        if (success) {
+            setNewUserName('');
+        }
+    };
 
-  const currentUsers = activeHome?.users || [];
+    const confirmRemoveUser = (userName) => {
+        showModal(
+            <div>
+                <p>האם אתה בטוח שברצונך להסיר את {userName} מהבית?</p>
+                <div className="flex justify-end gap-4 mt-4">
+                    <button onClick={hideModal} className="btn btn-secondary">ביטול</button>
+                    <button onClick={() => handleRemoveUser(userName)} className="btn btn-danger">הסר</button>
+                </div>
+            </div>,
+            { title: 'אישור מחיקה' }
+        );
+    };
 
-  const handleAddUser = async (e) => {
-    e.preventDefault();
-    setErrorMessage(''); // Clear previous errors
-    if (newUserName.trim() === '') {
-      setErrorMessage('שם משתמש לא יכול להיות ריק.');
-      return;
+    const handleRemoveUser = async (userName) => {
+        await removeHomeUser(userName);
+        hideModal(); // Close the confirmation modal after action
+    };
+
+    if (loading && !activeHome?.users) {
+        return <LoadingSpinner />;
     }
-    
-    const success = await addHomeUser(newUserName);
-    if (success) {
-      setNewUserName(''); // Clear input on success
-    } else {
-      // HomeContext already sets an error message, but we can refine here if needed
-      // setErrorMessage('שגיאה בהוספת משתמש. ייתכן שהשם כבר קיים או שגיאת שרת.');
-    }
-  };
 
-  const handleRemoveUser = async (userName) => {
-    setErrorMessage(''); // Clear previous errors
-    if (window.confirm(`האם אתה בטוח שברצונך להסיר את המשתמש ${userName}? פעולה זו תשייך את כל הפריטים המשויכים אליו ל'משותף'.`)) {
-      const success = await removeHomeUser(userName);
-      if (!success) {
-        // Error message is already set by HomeContext if API call fails
-        // setErrorMessage('שגיאה בהסרת משתמש.');
-      }
-    }
-  };
+    return (
+        <div className="p-4 bg-gray-50 rounded-lg max-w-md mx-auto">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4 text-center">בני הבית הנוכחיים</h3>
+            {activeHome?.users && activeHome.users.length > 0 ? (
+                <ul className="space-y-3 mb-6">
+                    {activeHome.users.map((user) => (
+                        <li key={user} className="flex items-center justify-between p-3 bg-white rounded-md shadow-sm transition-shadow hover:shadow-md">
+                            <span className="text-gray-700 font-medium">{user}</span>
+                            <button 
+                                onClick={() => confirmRemoveUser(user)} 
+                                className="text-red-500 hover:text-red-700 transition-colors"
+                                aria-label={`Remove ${user}`}
+                            >
+                                <i className="fas fa-trash-alt"></i>
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            ) : (
+                <p className="text-gray-500 text-center mb-6">עדיין אין בני בית.</p>
+            )}
 
-  const formStyle = {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '15px',
-  };
+            <hr className="my-6" />
 
-  const userListStyle = {
-    listStyle: 'none',
-    padding: 0,
-    margin: 0,
-    maxHeight: '200px', // Example height for scrolling if many users
-    overflowY: 'auto',
-    border: '1px solid var(--border-grey)',
-    borderRadius: '4px',
-    backgroundColor: 'var(--light-grey)',
-  };
-
-  const userItemStyle = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '10px 15px',
-    borderBottom: '1px solid #eee',
-  };
-
-  const removeBtnStyle = {
-    background: 'none',
-    border: 'none',
-    color: 'var(--coral-red)',
-    cursor: 'pointer',
-    fontSize: '1.2em',
-  };
-
-  const inputStyle = {
-    width: 'calc(100% - 22px)', 
-    padding: '10px',
-    border: '1px solid var(--border-grey)',
-    borderRadius: '4px',
-  };
-
-  return (
-    <form onSubmit={handleAddUser} style={formStyle}>
-      <h4>ניהול בני בית</h4>
-      {currentError && <p style={{ color: 'var(--coral-red)', textAlign: 'center' }}>{currentError}</p>}
-
-      <div>
-        <label htmlFor="new-user-name">הוסף בן בית חדש:</label>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <input
-            type="text"
-            id="new-user-name"
-            value={newUserName}
-            onChange={(e) => setNewUserName(e.target.value)}
-            placeholder="שם משתמש"
-            style={{ flexGrow: 1, ...inputStyle }}
-            disabled={loading}
-          />
-          <button type="submit" className="primary-action" disabled={loading}>
-            <i className="fas fa-plus-circle"></i> הוסף
-          </button>
-        </div>
-      </div>
-
-      <hr />
-
-      <h4>בני בית קיימים:</h4>
-      {currentUsers.length === 0 ? (
-        <p style={{ textAlign: 'center', color: '#777' }}>אין בני בית מוגדרים.</p>
-      ) : (
-        <ul style={userListStyle}>
-          {currentUsers.map((user, index) => (
-            <li key={index} style={userItemStyle}>
-              <span>{user}</span>
-              {user !== 'אני' && user !== 'משותף' && ( // מונע מחיקה של משתמשי ברירת המחדל
-                <button 
-                  type="button" 
-                  onClick={() => handleRemoveUser(user)} 
-                  style={removeBtnStyle}
-                  disabled={loading}
-                >
-                  <i className="fas fa-trash"></i>
+            <h3 className="text-xl font-semibold text-gray-800 mb-4 text-center">הוספת בן בית חדש</h3>
+            <form onSubmit={handleAddUser} className="flex flex-col sm:flex-row gap-3">
+                <input
+                    type="text"
+                    value={newUserName}
+                    onChange={(e) => setNewUserName(e.target.value)}
+                    placeholder="שם בן הבית"
+                    className="input input-bordered flex-grow"
+                    required
+                />
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                    {loading ? <LoadingSpinner size="sm" /> : 'הוסף'}
                 </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className="modal-footer">
-        <button type="button" className="secondary-action" onClick={hideModal}>
-          סגור
-        </button>
-      </div>
-    </form>
-  );
+            </form>
+            {error && <p className="text-red-500 text-sm mt-2 text-center">{error}</p>}
+        </div>
+    );
 };
 
 export default UserManager;

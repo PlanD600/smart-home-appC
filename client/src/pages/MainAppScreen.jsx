@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useHome } from '../context/HomeContext';
-import { useModal } from '../context/ModalContext';
+import { useHome } from '../context/HomeContext'; //
+import { useModal } from '../context/ModalContext'; //
 
 // Import all the main components for the tabs
 import ShoppingList from '../features/shopping/ShoppingList';
@@ -13,14 +13,14 @@ import TemplateManager from '../features/templates/TemplateManager';
 import ArchiveView from '../components/ArchiveView';
 
 const MainAppScreen = () => {
-  const { activeHome, logout } = useHome();
-  const { showModal } = useModal();
+  const { activeHome, logoutHome } = useHome(); // שינוי: מ-logout ל-logoutHome
+  const { showModal } = useModal(); //
   const [activeTab, setActiveTab] = useState('shopping-list'); 
 
   // --- Functions to open modals from the header ---
-  const openUserManager = () => showModal(<UserManager />, { title: 'ניהול בני בית' });
-  const openTemplateManager = () => showModal(<TemplateManager />, { title: 'ניהול תבניות' });
-  const openArchiveView = () => showModal(<ArchiveView />, { title: 'ארכיון' });
+  const openUserManager = () => showModal(<UserManager />, { title: 'ניהול בני בית' }); //
+  const openTemplateManager = () => showModal(<TemplateManager />, { title: 'ניהול תבניות' }); //
+  const openArchiveView = () => showModal(<ArchiveView />, { title: 'ארכיון' }); //
 
   // Function to render the correct component based on the active tab
   const renderActiveTab = () => {
@@ -55,7 +55,7 @@ const MainAppScreen = () => {
         </div>
         <div className="header-buttons right">
             {/* Language switcher can be implemented later */}
-            <button id="logout-btn-header" className="logout-btn" onClick={logout}>
+            <button id="logout-btn-header" className="logout-btn" onClick={logoutHome}> {/* שינוי: מ-logout ל-logoutHome */}
                 <i className="fas fa-sign-out-alt"></i> החלף בית
             </button>
         </div>

@@ -1,76 +1,132 @@
 import React, { useState } from 'react';
-import { useHome } from '../../context/HomeContext';
-import { useModal } from '../../context/ModalContext';
+import { useHome } from '../../context/HomeContext'; // תיקון נתיב הייבוא
+import { useModal } from '../../context/ModalContext'; // תיקון נתיב הייבוא
 
-const AVAILABLE_ICONS = ["fas fa-home", "fas fa-user-friends", "fas fa-briefcase", "fas fa-heart", "fas fa-star"];
+const AVAILABLE_ICONS = [
+  'fas fa-home',
+  'fas fa-house-user',
+  'fas fa-door-open',
+  'fas fa-city',
+  'fas fa-building',
+  'fas fa-couch',
+  'fas fa-tree',
+  'fas fa-lightbulb',
+];
 
-const CreateHomeForm = () => {
-  // הוסף את שורת הלוג הזו מיד אחרי useHome()
+const AVAILABLE_COLORS = [
+  'card-color-1', // Mint Green
+  'card-color-2', // Light Yellow
+  'card-color-3', // Turquoise
+];
+
+const CreateHomeForm = ({ onClose }) => {
   const homeContext = useHome();
   console.log("CreateHomeForm: Value from useHome():", homeContext);
 
-  // עכשיו נבצע את ה-destructure מתוך המשתנה homeContext
-  const { createHome, error } = homeContext; 
-  const { hideModal } = useModal();
+  const { createHome, loading, error } = homeContext;
+  const { showModal, hideModal } = useModal();
 
   const [name, setName] = useState('');
   const [accessCode, setAccessCode] = useState('');
   const [selectedIcon, setSelectedIcon] = useState(AVAILABLE_ICONS[0]);
+  const [selectedColor, setSelectedColor] = useState(AVAILABLE_COLORS[0]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name || !accessCode) {
-      alert('נא למלא שם וקוד כניסה.');
-      return;
-    }
-    // וודא ש-createHome היא אכן פונקציה לפני הקריאה
-    if (typeof createHome !== 'function') {
-      console.error("CreateHomeForm: createHome is NOT a function!", createHome);
-      alert('שגיאה פנימית: פונקציית יצירת בית אינה זמינה.');
+    if (!name.trim() || !accessCode.trim()) {
+      showModal(<div>נא למלא את כל השדות.</div>, { title: "שגיאה" });
       return;
     }
 
-    const newHome = await createHome({ name, accessCode, iconClass: selectedIcon });
-    if (newHome) {
-      alert(`בית "${name}" נוצר בהצלחה!`);
-      hideModal();
+    if (typeof createHome !== 'function') {
+      console.error("CreateHomeForm: createHome is NOT a function!", createHome);
+      showModal(<div>שגיאה פנימית: פונקציית יצירת בית אינה זמינה.</div>, { title: "שגיאה" });
+      return;
+    }
+
+    const success = await createHome({ name, accessCode, iconClass: selectedIcon, colorScheme: selectedColor });
+    if (success) {
+      showModal(<div>הבית "{name}" נוצר בהצלחה!</div>, { title: "הצלחה" });
+      if (onClose) onClose(); // Close the modal on successful creation if onClose prop is provided
+      hideModal(); // Also hide the modal via context
+    } else {
+      // Error message is already set by HomeContext and can be displayed here
+      showModal(<div>שגיאה ביצירת הבית: {error || "נסה שוב."}</div>, { title: "שגיאה" });
     }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <label htmlFor="new-home-name">שם הבית:</label>
-      <input type="text" id="new-home-name" value={name} onChange={(e) => setName(e.target.value)} />
+    <div className="login-card-form">
+      <h4>צור בית חדש</h4>
+      <form onSubmit={handleSubmit}>
+        <label htmlFor="homeName">שם הבית:</label>
+        <input
+          type="text"
+          id="homeName"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="לדוגמה: בית משפחת כהן"
+          required
+        />
 
-      <label htmlFor="new-home-code">קוד כניסה:</label>
-      <input type="password" id="new-home-code" value={accessCode} onChange={(e) => setAccessCode(e.target.value)} />
+        <label htmlFor="accessCode">קוד גישה (לשיתוף):</label>
+        <input
+          type="password"
+          id="accessCode"
+          value={accessCode}
+          onChange={(e) => setAccessCode(e.target.value)}
+          placeholder="בחר קוד קל לזכירה"
+          required
+        />
 
-      <label>בחר אייקון:</label>
-      <div>
-        {AVAILABLE_ICONS.map(icon => (
-          <span 
-            key={icon} 
-            onClick={() => setSelectedIcon(icon)}
-            style={{ 
-              fontSize: '24px', 
-              padding: '5px', 
-              cursor: 'pointer',
-              border: selectedIcon === icon ? '2px solid blue' : '2px solid transparent'
-            }}
-          >
-            <i className={icon}></i>
-          </span>
-        ))}
-      </div>
-      
-      {/* הצגת שגיאות מ-HomeContext */}
-      {error && <p style={{color: 'red'}}>{error}</p>}
+        <label>בחר אייקון:</label>
+        <div className="icon-selector">
+          {AVAILABLE_ICONS.map((icon) => (
+            <i
+              key={icon}
+              className={`${icon} ${selectedIcon === icon ? 'selected' : ''}`}
+              onClick={() => setSelectedIcon(icon)}
+            ></i>
+          ))}
+        </div>
 
-      <div className="modal-footer">
-        <button type="submit" className="primary-action">צור</button>
-        <button type="button" className="secondary-action" onClick={hideModal}>בטל</button>
-      </div>
-    </form>
+        <label>בחר צבע כרטיס:</label>
+        <div className="icon-selector">
+          {AVAILABLE_COLORS.map((color) => (
+            <div
+              key={color}
+              className={`color-box ${color} ${selectedColor === color ? 'selected' : ''}`}
+              onClick={() => setSelectedColor(color)}
+              // Inline style for color boxes for direct visual feedback
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                border: selectedColor === color ? '3px solid var(--dark-grey)' : '1px solid #ccc',
+                cursor: 'pointer',
+                display: 'inline-block',
+                // Set background color for each color option
+                backgroundColor: 
+                    color === 'card-color-1' ? 'var(--mint-green)' :
+                    color === 'card-color-2' ? 'var(--light-yellow)' :
+                    color === 'card-color-3' ? 'var(--turquoise)' : 'transparent'
+              }}
+            ></div>
+          ))}
+        </div>
+
+        {error && <p className="error-message">{error}</p>}
+
+        <div className="modal-footer">
+          <button type="submit" className="primary-action" disabled={loading}>
+            {loading ? 'יוצר...' : 'צור בית'}
+          </button>
+          <button type="button" className="secondary-action" onClick={() => { hideModal(); if (onClose) onClose(); }}>
+            בטל
+          </button>
+        </div>
+      </form>
+    </div>
   );
 };
 

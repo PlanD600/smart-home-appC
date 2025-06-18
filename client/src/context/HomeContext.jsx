@@ -20,6 +20,7 @@ export const HomeProvider = ({ children }) => {
     try {
       const allHomes = await api.getHomes(); // קורא ל-API כדי לקבל את כל הבתים
       setHomes(allHomes);
+      console.log("Fetched homes:", allHomes); // לניפוי באגים
     } catch (err) {
       console.error("Failed to fetch homes:", err);
       setError(err.response?.data?.message || 'Failed to fetch available homes');
@@ -28,28 +29,38 @@ export const HomeProvider = ({ children }) => {
     }
   }, []);
 
-  // Load homeId from localStorage on initial render and fetch homes
+  // Load homeId from localStorage on initial render and try to re-login or fetch homes
   useEffect(() => {
     const storedHomeId = localStorage.getItem('homeId');
-    if (storedHomeId) {
-      const reLogin = async () => {
+    const attemptReLogin = async () => {
+      if (storedHomeId) {
         setLoading(true);
+        setError(null);
         try {
-          await fetchHomes(); // אם אין לוגין אוטומטי, נטען את רשימת הבתים
+          // Attempt to re-login - in a real app, you'd use a token or a more secure re-authentication
+          // For now, we're assuming a simple re-login by homeId if possible without access code on frontend.
+          // If the backend requires access code for ALL logins, even re-logins, this needs to be adjusted.
+          // For now, let's try to get home details if homeId exists.
+          const homeDetails = await api.getHomeDetails(storedHomeId); // Assuming an API to get home details by ID
+          setActiveHome(homeDetails);
+          localStorage.setItem('homeId', homeDetails._id);
+          console.log("Re-logged in to home:", homeDetails); // לניפוי באגים
         } catch (err) {
-          console.error("Failed to re-login home or fetch homes:", err);
+          console.error("Failed to re-login automatically:", err);
           localStorage.removeItem('homeId'); // Clear invalid ID
           setActiveHome(null); // Ensure no active home
-          setError(err.response?.data?.message || 'Failed to reconnect to home');
-          await fetchHomes(); // בכל מקרה של שגיאה בלוגין אוטומטי, נציג את רשימת הבתים
+          setError(err.response?.data?.message || 'Failed to reconnect to home. Please log in again.');
+          await fetchHomes(); // If re-login fails, fetch homes for new login
         } finally {
           setLoading(false);
         }
-      };
-      reLogin();
-    } else {
-      fetchHomes(); // אם אין homeId שמור, נטען את רשימת הבתים
-    }
+      } else {
+        // Only fetch homes if no homeId is stored, or after a re-login attempt fails.
+        fetchHomes();
+      }
+    };
+
+    attemptReLogin();
   }, [fetchHomes]);
 
 
@@ -58,11 +69,11 @@ export const HomeProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      // The API call to loginHome should fetch the full home data
       const home = await api.loginHome(homeId, accessCode);
       setActiveHome(home);
       localStorage.setItem('homeId', home._id); // Store home ID
       hideModal(); // Hide any login modal
+      console.log("Logged in to home:", home); // לניפוי באגים
       return true;
     } catch (err) {
       console.error("Initialization error:", err);
@@ -79,10 +90,7 @@ export const HomeProvider = ({ children }) => {
     setError(null);
     try {
       const newHome = await api.createHome(homeData); // קורא ל-API ליצירת בית
-      // לאחר יצירת בית, נעדכן את רשימת הבתים ו/או נבצע לוגין אוטומטי לבית החדש
       await fetchHomes(); // רענן את רשימת הבתים במסך הלוגין
-      // Optionally, automatically log in to the newly created home
-      // await initializeHome(newHome._id, homeData.accessCode); // אם רוצים לוגין אוטומטי
       setError(null);
       return true;
     } catch (err) {
@@ -92,7 +100,7 @@ export const HomeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [fetchHomes]); // תלוי ב-fetchHomes כדי לרענן את הרשימה
+  }, [fetchHomes]);
 
 
   const logoutHome = useCallback(() => {
@@ -107,8 +115,15 @@ export const HomeProvider = ({ children }) => {
     if (!activeHome) return;
     setLoading(true);
     try {
-      const updatedHomeData = await api.loginHome(activeHome._id, 'some_code'); // Re-fetching full home data - needs a proper way to get code
-      setActiveHome(updatedHomeData);
+      // In a real app, you'd have a specific update API endpoint for general home details.
+      // For now, if activeHome itself changes, we'd need to re-fetch it or re-set it.
+      // Assuming updateHome is primarily for fields like `templates`, `users` etc. that are
+      // handled by separate API calls or sub-updates.
+      // If this function is meant to update the *current activeHome object* directly in state,
+      // it should ideally call an API that returns the updated home object.
+      // For now, let's refresh the entire home state to reflect changes.
+      const refreshedHome = await api.getHomeDetails(activeHome._id); // Assuming getHomeDetails API exists
+      setActiveHome(refreshedHome);
       setError(null);
     } catch (err) {
       console.error("Failed to update home:", err);
@@ -429,11 +444,9 @@ export const HomeProvider = ({ children }) => {
     addHomeUser,
     removeHomeUser,
     homes,
-    createHome, // הוספת createHome ל-contextValue
+    createHome, // לוודא שזה קיים!
   };
   
-console.log("HomeContext: contextValue being provided:", contextValue); // הוסף שורה זו
-
   return (
     <HomeContext.Provider value={contextValue}>
       {children}

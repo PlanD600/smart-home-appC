@@ -1,102 +1,201 @@
 import axios from 'axios';
 
-const API_URL = '/api/home';
+// The base URL for your backend API
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// General Home Operations
+const handleApiError = (error, defaultMessage = 'An unexpected error occurred.') => {
+  console.error("API Error:", error.response || error.message || error);
+  throw new Error(error.response?.data?.message || defaultMessage);
+};
+
+// Home related APIs
 export const getHomes = async () => {
-  const response = await api.get('/');
-  return response.data;
+  try {
+    const response = await api.get('/home');
+    return response.data;
+  } catch (error) {
+    handleApiError(error, 'Failed to fetch homes.');
+  }
 };
 
 export const createHome = async (homeData) => {
-  const response = await api.post('/', homeData);
-  return response.data;
+  try {
+    const response = await api.post('/home', homeData);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, 'Failed to create home.');
+  }
 };
 
 export const loginHome = async (homeId, accessCode) => {
-  const response = await api.post('/login', { homeId, accessCode });
-  return response.data;
+  try {
+    const response = await api.post(`/home/login`, { homeId, accessCode });
+    return response.data;
+  } catch (error) {
+    handleApiError(error, 'Failed to login to home. Check ID and access code.');
+  }
 };
 
-// Item Operations (Shopping & Tasks)
+// NEW: Get full home details by ID
+export const getHomeDetails = async (homeId) => {
+  try {
+    const response = await api.get(`/home/${homeId}`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, `Failed to fetch details for home ${homeId}.`);
+  }
+};
+
+
+// Item (Shopping & Tasks) related APIs
 export const addItem = async (homeId, listType, itemData) => {
-  const response = await api.post(`/${homeId}/${listType}`, itemData);
-  return response.data;
+  try {
+    const response = await api.post(`/home/${homeId}/${listType}`, itemData);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, `Failed to add ${listType} item.`);
+  }
 };
 
 export const updateItem = async (homeId, listType, itemId, itemData) => {
-  const response = await api.put(`/${homeId}/${listType}/${itemId}`, itemData);
-  return response.data;
+  try {
+    const response = await api.put(`/home/${homeId}/${listType}/${itemId}`, itemData);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, `Failed to update ${listType} item.`);
+  }
 };
 
 export const deleteItem = async (homeId, listType, itemId) => {
-  const response = await api.delete(`/${homeId}/${listType}/${itemId}`);
-  return response.data;
+  try {
+    await api.delete(`/home/${homeId}/${listType}/${itemId}`);
+  } catch (error) {
+    handleApiError(error, `Failed to delete ${listType} item.`);
+  }
 };
 
-// Finance Operations
+// Finance related APIs
 export const addExpectedBill = async (homeId, billData) => {
-  const response = await api.post(`/${homeId}/finance/expected-bills`, billData);
-  return response.data;
+  try {
+    const response = await api.post(`/home/${homeId}/finance/bills/expected`, billData);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, 'Failed to add expected bill.');
+  }
 };
 
 export const updateExpectedBill = async (homeId, billId, billData) => {
-  const response = await api.put(`/${homeId}/finance/expected-bills/${billId}`, billData);
-  return response.data;
+  try {
+    const response = await api.put(`/home/${homeId}/finance/bills/expected/${billId}`, billData);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, 'Failed to update expected bill.');
+  }
 };
 
 export const deleteExpectedBill = async (homeId, billId) => {
-  const response = await api.delete(`/${homeId}/finance/expected-bills/${billId}`);
-  return response.data;
+  try {
+    await api.delete(`/home/${homeId}/finance/bills/expected/${billId}`);
+  } catch (error) {
+    handleApiError(error, 'Failed to delete expected bill.');
+  }
 };
 
 export const payBill = async (homeId, billId) => {
-  const response = await api.post(`/${homeId}/finance/pay-bill/${billId}`);
-  return response.data;
+  try {
+    const response = await api.post(`/home/${homeId}/finance/bills/pay/${billId}`);
+    return response.data; // Should return updated finances or confirmation
+  } catch (error) {
+    handleApiError(error, 'Failed to pay bill.');
+  }
 };
 
 export const addIncome = async (homeId, incomeData) => {
-  const response = await api.post(`/${homeId}/finance/income`, incomeData);
-  return response.data;
+  try {
+    const response = await api.post(`/home/${homeId}/finance/income`, incomeData);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, 'Failed to add income.');
+  }
 };
 
 export const addSavingsGoal = async (homeId, goalData) => {
-  const response = await api.post(`/${homeId}/finance/savings-goals`, goalData);
-  return response.data;
+  try {
+    const response = await api.post(`/home/${homeId}/finance/savings-goals`, goalData);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, 'Failed to add savings goal.');
+  }
 };
 
-export const addToSavingsGoal = async (homeId, goalId, amountToAdd) => {
-  const response = await api.put(`/${homeId}/finance/savings-goals/${goalId}`, { amountToAdd });
-  return response.data;
+export const addToSavingsGoal = async (homeId, goalId, amount) => {
+  try {
+    const response = await api.post(`/home/${homeId}/finance/savings-goals/${goalId}/add-funds`, { amount });
+    return response.data;
+  } catch (error) {
+    handleApiError(error, 'Failed to add funds to savings goal.');
+  }
 };
 
 export const updateBudgets = async (homeId, budgetsData) => {
-  const response = await api.put(`/${homeId}/finance/budgets`, budgetsData);
-  return response.data;
+  try {
+    const response = await api.put(`/home/${homeId}/finance/budgets`, { expenseCategories: budgetsData });
+    return response.data; // Assuming it returns the updated categories
+  } catch (error) {
+    handleApiError(error, 'Failed to update budgets.');
+  }
 };
 
 export const getUserMonthlyFinanceSummary = async (homeId, year, month) => {
-  const response = await api.get(`/${homeId}/finances/user-summary/${year}/${month}`);
-  return response.data;
+  try {
+    const response = await api.get(`/home/${homeId}/finance/summary/${year}/${month}`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, 'Failed to fetch user monthly finance summary.');
+  }
 };
 
-
-// User Management Operations (New)
+// User management
 export const addUser = async (homeId, userName) => {
-  const response = await api.post(`/${homeId}/users`, { name: userName });
-  return response.data; // Should return updated users array
+  try {
+    const response = await api.post(`/home/${homeId}/users`, { name: userName });
+    return response.data; // Assuming this returns the updated users array or the new user
+  } catch (error) {
+    handleApiError(error, 'Failed to add user to home.');
+  }
 };
 
 export const removeUser = async (homeId, userName) => {
-  const response = await api.delete(`/${homeId}/users/${userName}`);
-  return response.data; // Should return updated users array and a message
+  try {
+    const response = await api.delete(`/home/${homeId}/users/${userName}`);
+    return response.data; // Assuming this returns the updated users array
+  } catch (error) {
+    handleApiError(error, 'Failed to remove user from home.');
+  }
 };
 
-export default api;
+// Gemini integration
+export const transformRecipe = async (homeId, recipeText) => {
+  try {
+    const response = await api.post(`/home/${homeId}/gemini/recipe-to-shopping`, { recipeText });
+    return response.data;
+  } catch (error) {
+    handleApiError(error, 'Failed to transform recipe using Gemini.');
+  }
+};
+
+export const breakdownTask = async (homeId, taskText) => {
+  try {
+    const response = await api.post(`/home/${homeId}/gemini/breakdown-task`, { taskText });
+    return response.data;
+  } catch (error) {
+    handleApiError(error, 'Failed to breakdown task using Gemini.');
+  }
+};

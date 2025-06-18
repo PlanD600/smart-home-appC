@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { useHome } from '../../../context/HomeContext';
+import { useHome } from '../../../context/HomeContext'; //
 
 const AddUserForm = () => {
-  const { addUser } = useHome();
+  const { addHomeUser } = useHome(); // שינוי: מ-addUser ל-addHomeUser
   const [name, setName] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    addUser(name.trim());
+    addHomeUser(name.trim()); // שינוי: מ-addUser ל-addHomeUser
     setName('');
   };
 

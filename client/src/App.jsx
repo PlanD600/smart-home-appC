@@ -1,47 +1,38 @@
 import React, { useEffect } from 'react';
 import { useHome } from './context/HomeContext';
-import { useModal } from './context/ModalContext';
 import { useLanguage } from './context/LanguageContext';
 import LoginScreen from './pages/LoginScreen';
 import MainAppScreen from './pages/MainAppScreen';
-import Modal from './components/Modal';
 import LoadingSpinner from './components/LoadingSpinner';
 
 const AppContent = () => {
-  const { activeHome, loading, error, /* initializeHome */ } = useHome(); // initializeHome כבר לא נקרא ישירות כאן
-  const { isModalOpen, modalContent, modalTitle, hideModal } = useModal();
+  const { activeHome, loading } = useHome();
   const { setDirection } = useLanguage();
 
   useEffect(() => {
-    // הגדרת כיווניות השפה
-    setDirection('rtl'); // או דינמית לפי הגדרות שפה בפועל
-
-    // הסרת הקריאה ל-initializeHome מכאן.
-    // HomeContext כבר מטפל בטעינה ראשונית של רשימת הבתים
-    // או ניסיון התחברות מחדש אם homeId שמור.
-    // initializeHome(); // שורה זו הוסרה/הוערה
-  }, [setDirection]); // initializeHome הוסר מהתלויות
+    // This defines the language direction for the app
+    setDirection('rtl');
+  }, [setDirection]);
 
   if (loading) {
-    return <LoadingSpinner />;
+    return <LoadingSpinner fullPage={true} />;
   }
 
-  // קובע אם להציג את מסך ההתחברות או את האפליקציה הראשית
+  // Determines whether to show the login screen or the main app
   const showLogin = !activeHome;
 
   return (
     <>
       {showLogin ? <LoginScreen /> : <MainAppScreen />}
-      <Modal isOpen={isModalOpen} onClose={hideModal} title={modalTitle}>
-        {modalContent}
-      </Modal>
+      {/* The Modal component is no longer rendered here. 
+        It's now handled centrally by the ModalProvider, which is the correct approach.
+      */}
     </>
   );
 };
 
 const App = () => (
-  // LanguageProvider כבר עוטף את App ב-main.jsx
-  <AppContent /> 
+  <AppContent />
 );
 
 export default App;

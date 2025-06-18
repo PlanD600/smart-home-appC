@@ -1,18 +1,17 @@
 import React from 'react';
-import { useHome } from '../../context/HomeContext';
+import { useHome } from '../../context/HomeContext'; //
 import AddItemForm from '../common/AddItemForm';
 import TaskItem from './TaskItem';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 const TaskList = () => {
-  const { activeHome, addItemToList, isLoading } = useHome();
+  const { activeHome, saveItem, loading } = useHome(); // שינוי: מ-addItemToList, isLoading ל-saveItem, loading
 
   if (!activeHome) return <p>טוען נתונים...</p>;
 
   const { taskItems, taskCategories } = activeHome;
-  const handleAddItem = (itemData) => addItemToList('tasks', itemData);
+  const handleAddItem = (itemData) => saveItem('tasks', itemData); // שינוי: מ-addItemToList ל-saveItem
 
-  // --- התיקון כאן ---
   const sortedItems = [...taskItems].sort((a, b) => Number(b.isUrgent) - Number(a.isUrgent));
 
   return (
@@ -31,11 +30,10 @@ const TaskList = () => {
           placeholder="הוסף מטלה חדשה..."
         />
       </div>
-      {isLoading && <LoadingSpinner />}
+      {loading && <LoadingSpinner />} {/* שימוש ב-loading מהקונטקסט */}
       <div className="item-list">
         <ul className="item-list-ul">
           {sortedItems && sortedItems.length > 0 ? (
-             // --- שימוש במערך הממוין ---
             sortedItems.map(item => <TaskItem key={item._id} item={item} />)
           ) : (
             <li style={{ textAlign: 'center', padding: '15px', color: '#777' }}>אין משימות להצגה.</li>

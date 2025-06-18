@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { useHome } from '../../../context/HomeContext';
-import { useModal } from '../../../context/ModalContext';
+import { useHome } from '../../../context/HomeContext'; //
+import { useModal } from '../../../context/ModalContext'; //
 
 const SavingsGoalForm = () => {
-  const { addGoal } = useHome();
-  const { hideModal } = useModal();
+  const { saveSavingsGoal } = useHome(); // שינוי: מ-addGoal ל-saveSavingsGoal
+  const { hideModal } = useModal(); //
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
 
   const handleSubmit = e => {
     e.preventDefault();
     if (!name || !targetAmount) return;
-    addGoal({ name, targetAmount: parseFloat(targetAmount), currentAmount: 0 });
+    saveSavingsGoal({ name, targetAmount: parseFloat(targetAmount), currentAmount: 0 }); // שינוי: מ-addGoal ל-saveSavingsGoal
     hideModal();
   };
 

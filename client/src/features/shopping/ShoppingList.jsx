@@ -1,11 +1,11 @@
 import React from 'react';
-import { useHome } from '../../context/HomeContext';
+import { useHome } from '../../context/HomeContext'; //
 import AddItemForm from '../common/AddItemForm';
 import ShoppingItem from './ShoppingItem';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 const ShoppingList = () => {
-  const { activeHome, addItemToList, isLoading } = useHome();
+  const { activeHome, saveItem, loading } = useHome(); // שינוי: מ-addItemToList, isLoading ל-saveItem, loading
 
   if (!activeHome) {
     return <p>טוען נתונים...</p>;
@@ -14,10 +14,9 @@ const ShoppingList = () => {
   const { shoppingItems, shoppingCategories } = activeHome;
 
   const handleAddItem = (itemData) => {
-    addItemToList('shopping', itemData);
+    saveItem('shopping', itemData); // שינוי: מ-addItemToList ל-saveItem
   };
 
-  // --- התיקון כאן ---
   // ממיין את המערך לפני ההצגה. פריטים עם isUrgent=true יופיעו ראשונים.
   const sortedItems = [...shoppingItems].sort((a, b) => Number(b.isUrgent) - Number(a.isUrgent));
   
@@ -46,12 +45,11 @@ const ShoppingList = () => {
         />
       </div>
       
-      {isLoading && <LoadingSpinner />}
+      {loading && <LoadingSpinner />} {/* שימוש ב-loading מהקונטקסט */}
 
       <div className="item-list">
         <ul className="item-list-ul">
           {sortedItems && sortedItems.length > 0 ? (
-            // --- שימוש במערך הממוין ---
             sortedItems.map(item => (
               <ShoppingItem key={item._id} item={item} />
             ))

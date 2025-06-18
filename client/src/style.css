@@ -276,10 +276,17 @@ body.lang-rtl .language-switcher .lang-btn:not(:last-child) {
     border-bottom: 1px solid #eee; transition: background-color 0.2s;
 }
 .item-list li:hover { background-color: #f9f9f9; }
+
+/* סגנון לפריט דחוף */
 .item-list li.urgent-item {
     background-color: var(--urgent-highlight); 
     border-inline-start: 4px solid var(--coral-red); 
     font-weight: bold; 
+}
+/* סגנון לכפתור הדחיפות כשהוא פעיל */
+.item-list li.urgent-item .priority-btn i {
+    color: var(--coral-red); /* צובע את הכוכב באדום */
+    font-weight: 900; /* הופך את הכוכב למלא */
 }
 
 /* Checkbox for regular lists */
@@ -290,6 +297,7 @@ body.lang-rtl .language-switcher .lang-btn:not(:last-child) {
 
 .item-text { flex-grow: 1; padding: 0 10px; word-break: break-word; }
 
+/* סגנון לקו החוצה על פריט שהושלם */
 .item-list li.completed .item-text { 
     text-decoration: line-through; 
     color: #aaa; 

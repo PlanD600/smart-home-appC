@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { useHome } from '../../../context/HomeContext';
-import { useModal } from '../../../context/ModalContext';
+import { useHome } from '../../../context/HomeContext'; //
+import { useModal } from '../../../context/ModalContext'; //
 
 const AddFundsForm = ({ goal }) => {
-  const { addFundsToGoal } = useHome();
-  const { hideModal } = useModal();
+  const { addFundsToSavingsGoal } = useHome(); // שינוי: מ-addFundsToGoal ל-addFundsToSavingsGoal
+  const { hideModal } = useModal(); //
   const [amountToAdd, setAmountToAdd] = useState('');
 
   const handleSubmit = e => {
     e.preventDefault();
     if (!amountToAdd) return;
-    addFundsToGoal(goal._id, parseFloat(amountToAdd));
+    addFundsToSavingsGoal(goal._id, parseFloat(amountToAdd)); // שינוי: מ-addFundsToGoal ל-addFundsToSavingsGoal
     hideModal();
   };
 
