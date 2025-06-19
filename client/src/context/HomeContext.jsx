@@ -9,15 +9,17 @@ export const HomeProvider = ({ children }) => {
     const [activeHome, setActiveHome] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [homes, setHomes] = useState([]);
+    const [homes, setHomes] = useState([]); // רשימת כל הבתים הזמינים
     const [activeTab, setActiveTab] = useState('shopping-list');
 
 
+    // המרה בין שם קצר (לשימוש קל יותר בקומפוננטות) לשם המלא (כפי שמוגדר במודל וב-API)
     const listTypeToStateKey = {
-        shopping: 'shoppingList',
+        shopping: 'shoppingList', // 'shopping' כ-key לצורך הפשטה בקומפוננטות
         tasks: 'tasks',
     };
 
+    // פונקציה לטעינת כל הבתים הזמינים (למסך הלוגין)
     const fetchHomes = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -32,6 +34,7 @@ export const HomeProvider = ({ children }) => {
         }
     }, []);
 
+    // ניסיון התחברות אוטומטית בהתבסס על HomeId ב-LocalStorage
     useEffect(() => {
         const storedHomeId = localStorage.getItem('homeId');
         const attemptReLogin = async () => {
@@ -41,24 +44,25 @@ export const HomeProvider = ({ children }) => {
                 try {
                     const homeDetails = await api.getHomeDetails(storedHomeId);
                     setActiveHome(homeDetails);
-                    localStorage.setItem('homeId', homeDetails._id);
+                    localStorage.setItem('homeId', homeDetails._id); // וודא שזה קיים ורצוי
                 } catch (err) {
                     console.error("Failed to re-login automatically:", err);
-                    localStorage.removeItem('homeId');
+                    localStorage.removeItem('homeId'); // הסר ID אם הכניסה נכשלה
                     setActiveHome(null);
                     setError(err.response?.data?.message || 'Failed to reconnect. Please log in again.');
-                    await fetchHomes();
+                    await fetchHomes(); // טען מחדש את רשימת הבתים לאחר כישלון התחברות
                 } finally {
                     setLoading(false);
                 }
             } else {
-                fetchHomes();
+                fetchHomes(); // אם אין ID שמור, טען את רשימת הבתים
             }
         };
 
         attemptReLogin();
     }, [fetchHomes]);
 
+    // פונקציה לכניסה לבית (ממסך הלוגין)
     const initializeHome = useCallback(async (homeId, accessCode) => {
         setLoading(true);
         setError(null);
@@ -66,42 +70,73 @@ export const HomeProvider = ({ children }) => {
             const home = await api.loginToHome(homeId, accessCode);
             setActiveHome(home);
             localStorage.setItem('homeId', home._id);
-            setActiveTab('shopping-list');
+            setActiveTab('shopping-list'); // הגדר טאב ברירת מחדל
             return true;
         } catch (err) {
             console.error("Initialization error:", err);
-            setError(err.response?.data?.message || 'Failed to connect to home');
+            // === תיקון: מיפוי הודעות שגיאה ספציפיות בעברית גם כאן ===
+            let userFriendlyMessage = err.response?.data?.message || 'Failed to connect to home';
+            if (userFriendlyMessage.includes('Invalid access code')) {
+                userFriendlyMessage = 'קוד גישה שגוי.';
+            } else if (userFriendlyMessage.includes('Home not found')) {
+                userFriendlyMessage = 'הבית לא נמצא במערכת.';
+            }
+            // ... ניתן להוסיף עוד מיפויים כאן
+            setError(userFriendlyMessage);
             return false;
         } finally {
             setLoading(false);
         }
     }, []);
 
+    // פונקציה ליצירת בית חדש
     const createHome = useCallback(async (homeData) => {
         setLoading(true);
         setError(null);
         try {
-            await api.createHome(homeData);
-            await fetchHomes();
+            const newHome = await api.createHome(homeData);
+            setActiveHome(newHome); // הגדר את הבית שנוצר כ-activeHome
+            localStorage.setItem('homeId', newHome._id); // שמור את ה-ID שלו
+            
+            // === תיקון 1: וודא ש-fetchHomes מסתיים לפני החזרה מ-createHome ===
+            // זה מבטיח שהרשימה 'homes' תהיה מעודכנת עם הבית החדש מיד.
+            await fetchHomes(); // השתמש ב-await
+            // ===================================================================
+
             setError(null);
             return true;
         } catch (err) {
             console.error("Failed to create home:", err);
-            setError(err.response?.data?.message || 'Failed to create home');
+            // === הוספת console.log לאבחון מדויק יותר ===
+            console.log("RAW Server Error Message for createHome:", err.response?.data?.message);
+            // ===========================================
+
+            let userFriendlyMessage = err.response?.data?.message || 'Failed to create home';
+            // === תיקון 2: שימוש ב-toLowerCase() להשוואה חסינת רישיות ===
+            if (userFriendlyMessage.toLowerCase().includes('a home with this name already exists.')) {
+                userFriendlyMessage = 'שם בית זה כבר קיים במערכת.';
+            } else if (userFriendlyMessage.includes('Name and access code are required')) {
+                userFriendlyMessage = 'שם הבית וקוד הגישה נדרשים.';
+            } else if (userFriendlyMessage.includes('At least one user is required to create a home.')) {
+                userFriendlyMessage = 'נדרש לפחות משתמש אחד ליצירת בית.';
+            }
+            setError(userFriendlyMessage);
             return false;
         } finally {
             setLoading(false);
         }
     }, [fetchHomes]);
 
+    // פונקציה להתנתקות מהבית הנוכחי
     const logoutHome = useCallback(() => {
         setActiveHome(null);
         localStorage.removeItem('homeId');
-        setHomes([]);
-        fetchHomes();
+        setHomes([]); // איפוס רשימת הבתים (ייתכן ותרצה לטעון אותם מחדש)
+        fetchHomes(); // טען את רשימת הבתים למסך הלוגין
         setActiveTab('shopping-list');
     }, [fetchHomes]);
 
+    // פונקציה לרענון נתוני הבית הנוכחי
     const updateHome = useCallback(async () => {
         if (!activeHome?._id) return;
         setLoading(true);
@@ -117,16 +152,18 @@ export const HomeProvider = ({ children }) => {
         }
     }, [activeHome?._id]);
 
+    // פונקציות לניהול פריטים (קניות ומשימות)
     const saveItem = useCallback(async (listType, itemData) => {
         if (!activeHome?._id) return;
         const stateKey = listTypeToStateKey[listType];
         if (!stateKey) {
             console.error(`Invalid list type: ${listType}`);
+            setError(`Invalid list type: ${listType}`);
             return;
         }
         setLoading(true);
         try {
-            const newItem = await api.addItem(activeHome._id, listType, itemData);
+            const newItem = await api.addItemToList(activeHome._id, stateKey, itemData);
             setActiveHome(prev => ({
                 ...prev,
                 [stateKey]: [...(prev[stateKey] || []), newItem]
@@ -145,11 +182,12 @@ export const HomeProvider = ({ children }) => {
         const stateKey = listTypeToStateKey[listType];
         if (!stateKey) {
             console.error(`Invalid list type: ${listType}`);
+            setError(`Invalid list type: ${listType}`);
             return;
         }
         setLoading(true);
         try {
-            const updatedItem = await api.updateItem(activeHome._id, listType, itemId, itemData);
+            const updatedItem = await api.updateItemInList(activeHome._id, stateKey, itemId, itemData);
             setActiveHome(prev => ({
                 ...prev,
                 [stateKey]: (prev[stateKey] || []).map(item =>
@@ -170,11 +208,12 @@ export const HomeProvider = ({ children }) => {
         const stateKey = listTypeToStateKey[listType];
         if (!stateKey) {
             console.error(`Invalid list type: ${listType}`);
+            setError(`Invalid list type: ${listType}`);
             return;
         }
         setLoading(true);
         try {
-            await api.deleteItem(activeHome._id, listType, itemId);
+            await api.deleteItemFromList(activeHome._id, stateKey, itemId);
             setActiveHome(prev => ({
                 ...prev,
                 [stateKey]: (prev[stateKey] || []).filter(item => item._id !== itemId)
@@ -188,6 +227,7 @@ export const HomeProvider = ({ children }) => {
         }
     }, [activeHome?._id]);
 
+    // פונקציות לניהול כספים
     const saveBill = useCallback(async (billData) => {
         if (!activeHome?._id) return;
         setLoading(true);
@@ -380,7 +420,7 @@ export const HomeProvider = ({ children }) => {
             const response = await api.addUser(activeHome._id, userName);
             setActiveHome(prev => ({
                 ...prev,
-                users: response
+                users: response // response אמור להיות מערך המשתמשים החדש
             }));
             setError(null);
             return true;
@@ -400,7 +440,7 @@ export const HomeProvider = ({ children }) => {
             const response = await api.removeUser(activeHome._id, userName);
             setActiveHome(prev => ({
                 ...prev,
-                users: response.users
+                users: response.users // נשתמש במערך ה-users מתוך התגובה
             }));
             setError(null);
             return true;
@@ -417,7 +457,67 @@ export const HomeProvider = ({ children }) => {
         setActiveTab(tabName);
     }, []);
 
-    // *** התיקון הקריטי נמצא כאן: שימוש ב-useMemo ***
+    // === פונקציית בדיקת בידוד חדשה ===
+    const runIsolatedTest = useCallback(async () => {
+        console.log("--- Starting Isolated Test ---");
+        setLoading(true);
+        setError(null);
+
+        const testHomeName = `TestHome_${Date.now()}`;
+        const testAccessCode = "test1234";
+        const testIcon = "fas fa-tree";
+        const testInitialUser = "TesterAdmin";
+
+        const homeData = {
+            name: testHomeName,
+            accessCode: testAccessCode,
+            iconClass: testIcon,
+            colorClass: "card-color-1", // צבע ברירת מחדל
+            users: [{ name: testInitialUser, isAdmin: true }],
+            currency: "ILS",
+        };
+
+        try {
+            console.log(`Attempting to create home: ${testHomeName}`);
+            const createSuccess = await createHome(homeData); // קורא לפונקציית createHome של הקונטקסט
+            
+            if (createSuccess) {
+                console.log(`Home '${testHomeName}' created successfully via createHome.`);
+                console.log("Active Home after creation:", activeHome); // זה יהיה עדיין null כאן כי ה-state לא עודכן
+                // מאחר ש-createHome כבר מגדיר activeHome ו-localStorage, הבית אמור להיות פעיל.
+                // ננסה לוודא את זה על ידי בדיקה ישירה של ה-activeHome מהסטייט
+                // או על ידי ניסיון לאחזר פרטים.
+                
+                // הדרך הטובה ביותר לוודא התחברות:
+                // מכיוון ש-createHome כבר קורא ל-setActiveHome, נצפה ש-activeHome יתעדכן.
+                // נצטרך לעטוף את זה ב-setTimeout או לרוץ מחוץ ל-useCallback כדי לראות את השינוי ב-activeHome.
+                // לעכשיו, נסתמך על כך ש-createHome מחזיר true אם התחברנו.
+
+                if (activeHome?._id) { // בדיקה שה-activeHome כבר נקבע
+                     console.log(`Successfully connected to newly created home: ${activeHome.name} (ID: ${activeHome._id})`);
+                } else {
+                     console.warn("activeHome was not immediately set after createHome success. This might be a timing issue in React state updates.");
+                     // ננסה לבצע initializeHome במפורש כדי לבדוק
+                     console.log(`Attempting explicit login to ${testHomeName} (ID: ${newHome._id}) with code: ${testAccessCode}`);
+                     const explicitLoginSuccess = await initializeHome(newHome._id, testAccessCode);
+                     if(explicitLoginSuccess) {
+                         console.log(`Explicit login to '${testHomeName}' successful!`);
+                     } else {
+                         console.error(`Explicit login to '${testHomeName}' FAILED. Error: ${error}`);
+                     }
+                }
+
+            } else {
+                console.error(`Failed to create home '${testHomeName}'. Context Error: ${error}`);
+            }
+        } catch (testErr) {
+            console.error("Error during isolated test:", testErr);
+        } finally {
+            setLoading(false);
+            console.log("--- Isolated Test Finished ---");
+        }
+    }, [createHome, initializeHome, activeHome, error]); // תלויות
+
     const contextValue = useMemo(() => ({
         activeHome,
         loading,
@@ -442,9 +542,12 @@ export const HomeProvider = ({ children }) => {
         addHomeUser,
         removeHomeUser,
         createHome,
-        changeActiveTab
+        changeActiveTab,
+        runIsolatedTest // הוספת פונקציית הבדיקה לקונטקסט
     }), [
         activeHome,
+        loading,
+        error,
         homes,
         activeTab,
         initializeHome,
@@ -465,7 +568,8 @@ export const HomeProvider = ({ children }) => {
         addHomeUser,
         removeHomeUser,
         createHome,
-        changeActiveTab
+        changeActiveTab,
+        runIsolatedTest // הוספה לתלויות
     ]);
 
     return (

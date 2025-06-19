@@ -32,7 +32,9 @@ const handleApiError = (error, defaultMessage = 'An unexpected error occurred.')
  */
 export const getHomes = async () => {
   try {
-    const response = await api.get('/homes'); // נתיב תואם ל-Backend (ללא /api/home)
+    // === התיקון כאן: שינוי מ-'/homes' ל-'/home' ===
+    // השרת מצפה ל-GET /api/home (כי ה-router מותקן ב-/api/home ומוגדר כ-'/').
+    const response = await api.get('/home'); 
     return response.data;
   } catch (error) {
     handleApiError(error, 'Failed to fetch homes.');
@@ -46,7 +48,7 @@ export const getHomes = async () => {
  */
 export const createHome = async (homeData) => {
   try {
-    const response = await api.post('/home', homeData);
+    const response = await api.post('/home', homeData); 
     return response.data;
   } catch (error) {
     handleApiError(error, 'Failed to create home.');
@@ -94,7 +96,7 @@ export const getHomeDetails = async (homeId) => {
  */
 export const addItemToList = async (homeId, listType, itemData) => {
   try {
-    // === התיקון הקריטי כאן: הסרת '/add' מהנתיב כדי להתאים ל-Backend ===
+    // הנתיב תואם ל-Backend
     const response = await api.post(`/home/${homeId}/${listType}`, itemData);
     return response.data;
   } catch (error) {
@@ -110,9 +112,9 @@ export const addItemToList = async (homeId, listType, itemData) => {
  * @param {object} itemData - הנתונים לעדכון הפריט.
  * @returns {Promise<object>} - אובייקט הפריט המעודכן.
  */
-export const updateItemInList = async (homeId, listType, itemId, itemData) => { // שם הפונקציה שונה ל-updateItemInList
+export const updateItemInList = async (homeId, listType, itemId, itemData) => {
   try {
-    // הנתיב תואם ל-Backend: PUT /api/home/:homeId/:listType/:itemId
+    // הנתיב תואם ל-Backend
     const response = await api.put(`/home/${homeId}/${listType}/${itemId}`, itemData);
     return response.data;
   } catch (error) {
@@ -127,9 +129,9 @@ export const updateItemInList = async (homeId, listType, itemId, itemData) => { 
  * @param {string} itemId - ה-ID של הפריט למחיקה.
  * @returns {Promise<void>}
  */
-export const deleteItemFromList = async (homeId, listType, itemId) => { // שם הפונקציה שונה ל-deleteItemFromList
+export const deleteItemFromList = async (homeId, listType, itemId) => {
   try {
-    // הנתיב תואם ל-Backend: DELETE /api/home/:homeId/:listType/:itemId
+    // הנתיב תואם ל-Backend
     await api.delete(`/home/${homeId}/${listType}/${itemId}`);
   } catch (error) {
     handleApiError(error, `Failed to delete ${listType} item.`);
@@ -146,7 +148,7 @@ export const deleteItemFromList = async (homeId, listType, itemId) => { // שם 
  */
 export const addExpectedBill = async (homeId, billData) => {
   try {
-    const response = await api.post(`/home/${homeId}/finances/expected-bills`, billData); // נתיב תואם
+    const response = await api.post(`/home/${homeId}/finances/expected-bills`, billData);
     return response.data;
   } catch (error) {
     handleApiError(error, 'Failed to add expected bill.');
@@ -162,7 +164,7 @@ export const addExpectedBill = async (homeId, billData) => {
  */
 export const updateExpectedBill = async (homeId, billId, billData) => {
   try {
-    const response = await api.put(`/home/${homeId}/finances/expected-bills/${billId}`, billData); // נתיב תואם
+    const response = await api.put(`/home/${homeId}/finances/expected-bills/${billId}`, billData);
     return response.data;
   } catch (error) {
     handleApiError(error, 'Failed to update expected bill.');
@@ -177,7 +179,7 @@ export const updateExpectedBill = async (homeId, billId, billData) => {
  */
 export const deleteExpectedBill = async (homeId, billId) => {
   try {
-    await api.delete(`/home/${homeId}/finances/expected-bills/${billId}`); // נתיב תואם
+    await api.delete(`/home/${homeId}/finances/expected-bills/${billId}`);
   } catch (error) {
     handleApiError(error, 'Failed to delete expected bill.');
   }
@@ -191,8 +193,8 @@ export const deleteExpectedBill = async (homeId, billId) => {
  */
 export const payBill = async (homeId, billId) => {
   try {
-    const response = await api.post(`/home/${homeId}/finances/pay-bill/${billId}`); // נתיב תואם
-    return response.data;
+    const response = await api.post(`/home/${homeId}/finances/pay-bill/${billId}`);
+    return response.data; 
   } catch (error) {
     handleApiError(error, 'Failed to pay bill.');
   }
@@ -206,7 +208,7 @@ export const payBill = async (homeId, billId) => {
  */
 export const addIncome = async (homeId, incomeData) => {
   try {
-    const response = await api.post(`/home/${homeId}/finances/income`, incomeData); // נתיב תואם
+    const response = await api.post(`/home/${homeId}/finances/income`, incomeData);
     return response.data;
   } catch (error) {
     handleApiError(error, 'Failed to add income.');
@@ -221,7 +223,7 @@ export const addIncome = async (homeId, incomeData) => {
  */
 export const addSavingsGoal = async (homeId, goalData) => {
   try {
-    const response = await api.post(`/home/${homeId}/finances/savings-goals`, goalData); // נתיב תואם
+    const response = await api.post(`/home/${homeId}/finances/savings-goals`, goalData);
     return response.data;
   } catch (error) {
     handleApiError(error, 'Failed to add savings goal.');
@@ -237,7 +239,7 @@ export const addSavingsGoal = async (homeId, goalData) => {
  */
 export const addFundsToSavingsGoal = async (homeId, goalId, amount) => {
   try {
-    const response = await api.patch(`/home/${homeId}/finances/savings-goals/${goalId}/add-funds`, { amount }); // נתיב תואם (PATCH במקום POST)
+    const response = await api.patch(`/home/${homeId}/finances/savings-goals/${goalId}/add-funds`, { amount });
     return response.data;
   } catch (error) {
     handleApiError(error, 'Failed to add funds to savings goal.');
@@ -252,10 +254,10 @@ export const addFundsToSavingsGoal = async (homeId, goalId, amount) => {
  */
 export const updateBudgets = async (homeId, budgetsData) => {
     try {
-        const response = await api.put(`/home/${homeId}/finances/budgets`, budgetsData); // נתיב תואם
+        const response = await api.put(`/home/${homeId}/finances/budgets`, budgetsData);
         return response.data;
     } catch (error) {
-        throw handleApiError(error, 'Failed to update budgets.'); // זריקה לטיפול בקונטקסט
+        throw handleApiError(error, 'Failed to update budgets.');
     }
 };
 
@@ -268,7 +270,7 @@ export const updateBudgets = async (homeId, budgetsData) => {
  */
 export const getUserMonthlyFinanceSummary = async (homeId, year, month) => {
   try {
-    const response = await api.get(`/home/${homeId}/finances/summary/${year}/${month}`); // נתיב תואם
+    const response = await api.get(`/home/${homeId}/finances/summary/${year}/${month}`);
     return response.data;
   } catch (error) {
     handleApiError(error, 'Failed to fetch user monthly finance summary.');
@@ -285,7 +287,7 @@ export const getUserMonthlyFinanceSummary = async (homeId, year, month) => {
  */
 export const addUser = async (homeId, userName) => {
   try {
-    const response = await api.post(`/home/${homeId}/users`, { userName }); // נתיב תואם (ללא /add)
+    const response = await api.post(`/home/${homeId}/users`, { userName });
     return response.data;
   } catch (error) {
     handleApiError(error, 'Failed to add user to home.');
@@ -300,10 +302,7 @@ export const addUser = async (homeId, userName) => {
  */
 export const removeUser = async (homeId, userName) => {
   try {
-    // שינוי ל-DELETE request עם body (אם השרת שלך תומך, אחרת שקול POST)
-    // הערה: חלק מהספריות/שרתים לא תומכים ב-body ב-DELETE. אם נתקלים בבעיות, אפשר להחזיר ל-POST או להעביר כ-query param.
-    // הקוד ב-Backend שתומך ב-DELETE עם body יידרש לטפל בזה. אם לא, אולי נצטרך לשנות ל-POST.
-    const response = await api.delete(`/home/${homeId}/users`, { data: { userName } }); // נתיב תואם (ללא /remove)
+    const response = await api.delete(`/home/${homeId}/users`, { data: { userName } });
     return response.data;
   } catch (error) {
     handleApiError(error, 'Failed to remove user from home.');
@@ -320,7 +319,7 @@ export const removeUser = async (homeId, userName) => {
  */
 export const transformRecipeToShoppingList = async (homeId, recipeText) => {
   try {
-    const response = await api.post(`/home/${homeId}/ai/transform-recipe`, { recipeText }); // נתיב תואם
+    const response = await api.post(`/home/${homeId}/ai/transform-recipe`, { recipeText });
     return response.data;
   } catch (error) {
     handleApiError(error, 'Failed to transform recipe using Gemini.');
@@ -335,7 +334,7 @@ export const transformRecipeToShoppingList = async (homeId, recipeText) => {
  */
 export const breakdownComplexTask = async (homeId, taskText) => {
   try {
-    const response = await api.post(`/home/${homeId}/ai/breakdown-task`, { taskText }); // נתיב תואם
+    const response = await api.post(`/home/${homeId}/ai/breakdown-task`, { taskText });
     return response.data;
   } catch (error) {
     handleApiError(error, 'Failed to breakdown task using Gemini.');
