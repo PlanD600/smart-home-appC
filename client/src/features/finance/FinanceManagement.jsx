@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { useHome } from '../../context/HomeContext';
 import FinancialSummary from './FinancialSummary';
 import ExpenseChart from './ExpenseChart';
@@ -7,44 +7,48 @@ import PaidBillsList from './PaidBillsList';
 import BudgetTracker from './BudgetTracker';
 import SavingsGoals from './SavingsGoals';
 import IncomeList from './IncomeList';
-import UserFinanceSummary from './UserFinanceSummary'; // ייבוא הקומפוננטה החדשה
+
+// הסרנו את הייבוא הכפול. נשארה רק הגרסה הדינאמית
+const UserFinanceSummary = lazy(() => import('./UserFinanceSummary'));
 
 const FinanceManagement = () => {
-  const { activeHome } = useHome();
+  const { activeHome } = useHome();
 
-  if (!activeHome || !activeHome.finances) {
-    return <div>טוען נתונים פיננסיים...</div>;
-  }
-  
-  const { finances } = activeHome;
-  const currency = finances.financeSettings?.currency || 'ש"ח';
+  if (!activeHome || !activeHome.finances) {
+    return <div>טוען נתונים פיננסיים...</div>;
+  }
+  
+  const { finances } = activeHome;
+  const currency = finances.financeSettings?.currency || 'ש"ח';
 
-  return (
-    <section id="finance-management" className="list-section active">
-      <div className="list-title-container">
-        <h3><span data-lang-key="finance_management">ניהול כספים</span></h3>
-      </div>
-      <div className="finance-section-content">
-        <FinancialSummary finances={finances} />
-        <hr />
-        {/* שילוב קומפוננטת סיכום פיננסי לפי משתמש */}
-        <UserFinanceSummary />
-        <hr />
-        {/* העברת expenseCategories ל-ExpenseChart */}
-        <ExpenseChart paidBills={finances.paidBills} expenseCategories={finances.expenseCategories} currency={currency} />
-        <hr />
-        <ExpectedBills />
-        <hr />
-        <PaidBillsList paidBills={finances.paidBills} currency={currency} />
-        <hr />
-        <BudgetTracker paidBills={finances.paidBills} expenseCategories={finances.expenseCategories} currency={currency} />
-        <hr />
-        <SavingsGoals savingsGoals={finances.savingsGoals} currency={currency} />
-        <hr />
-        <IncomeList income={finances.income} currency={currency} />
-      </div>
-    </section>
-  );
+  return (
+    <section id="finance-management" className="list-section active">
+      <div className="list-title-container">
+        <h3><span data-lang-key="finance_management">ניהול כספים</span></h3>
+      </div>
+      <div className="finance-section-content">
+        <FinancialSummary finances={finances} />
+        <hr />
+        
+        <Suspense fallback={<div>טוען רכיב סיכום...</div>}>
+          <UserFinanceSummary />
+        </Suspense>
+
+        <hr />
+        <ExpenseChart paidBills={finances.paidBills} expenseCategories={finances.expenseCategories} currency={currency} />
+        <hr />
+        <ExpectedBills />
+        <hr />
+        <PaidBillsList paidBills={finances.paidBills} currency={currency} />
+        <hr />
+        <BudgetTracker paidBills={finances.paidBills} expenseCategories={finances.expenseCategories} currency={currency} />
+        <hr />
+        <SavingsGoals savingsGoals={finances.savingsGoals} currency={currency} />
+        <hr />
+        <IncomeList income={finances.income} currency={currency} />
+      </div>
+    </section>
+  );
 };
 
 export default FinanceManagement;
