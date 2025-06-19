@@ -445,8 +445,6 @@ export const HomeProvider = ({ children }) => {
         changeActiveTab
     }), [
         activeHome,
-        loading,
-        error,
         homes,
         activeTab,
         initializeHome,

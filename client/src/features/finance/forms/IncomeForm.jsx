@@ -1,90 +1,88 @@
+// client/src/features/finance/forms/IncomeForm.jsx
+
 import React, { useState } from 'react';
-import { useHome } from '../../../context/HomeContext'; // ייבוא useHome
+import { useHome } from '../../../context/HomeContext';
 import { useModal } from '../../../context/ModalContext';
+import LoadingSpinner from '../../../components/LoadingSpinner';
 
-const IncomeForm = () => {
-  const { addIncome, activeHome } = useHome(); // שליפת addIncome ו-activeHome
-  const { hideModal } = useModal();
-  const [text, setText] = useState('');
-  const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [assignedTo, setAssignedTo] = useState('משותף'); // מצב חדש עבור assignedTo
+const IncomeForm = ({ initialData }) => {
+    const { activeHome, saveIncome } = useHome();
+    const { hideModal } = useModal();
+    
+    // State לניהול הטופס, הטעינה והשגיאות
+    const [formData, setFormData] = useState({
+        description: initialData?.description || '',
+        amount: initialData?.amount || '',
+        user: initialData?.user || 'משותף',
+        date: initialData?.date ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState('');
 
-  // רשימת המשתמשים הזמינים, כולל ברירת המחדל 'משותף'
-  const availableUsers = activeHome?.users || ['אני'];
-  // נוודא ש'משותף' תמיד קיים כאפשרות
-  if (!availableUsers.includes('משותף')) {
-    availableUsers.push('משותף');
-  }
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+    
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!formData.description || !formData.amount) {
+            setError('יש למלא תיאור וסכום.');
+            return;
+        }
+        setIsSubmitting(true);
+        setError('');
+        try {
+            await saveIncome(formData);
+            hideModal(); // סגירת הפופ-אפ בהצלחה
+        } catch (err) {
+            console.error("Failed to save income:", err);
+            setError(err.message || 'שגיאה בשמירת ההכנסה.');
+        } finally {
+            // נוודא שהכפתור חוזר למצבו הרגיל גם אם יש שגיאה
+            setIsSubmitting(false);
+        }
+    };
 
-  const handleSubmit = e => {
-    e.preventDefault();
-    if (!text.trim() || !amount) { // וודא ששדה הטקסט אינו ריק וגם המספר אינו ריק
-      return;
-    }
-    // קריאה ל-addIncome מהקונטקסט עם הוספת assignedTo
-    addIncome({ text, amount: parseFloat(amount), date, assignedTo }); 
-    hideModal();
-  };
+    return (
+        // אנחנו משאירים את הלוגיקה בתוך קובץ זה
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+            <h3 className="text-lg font-bold">{initialData ? 'עריכת הכנסה' : 'הוספת הכנסה חדשה'}</h3>
+            
+            {/* כל שדות הטופס נשארים זהים */}
+            <div className="form-control">
+                <label className="label"><span className="label-text">תיאור</span></label>
+                <input type="text" name="description" value={formData.description} onChange={handleChange} className="input input-bordered" required />
+            </div>
+            <div className="form-control">
+                <label className="label"><span className="label-text">סכום</span></label>
+                <input type="number" name="amount" value={formData.amount} onChange={handleChange} className="input input-bordered" required />
+            </div>
+            <div className="form-control">
+                <label className="label"><span className="label-text">משתמש</span></label>
+                <select name="user" value={formData.user} onChange={handleChange} className="select select-bordered">
+                    <option value="משותף">משותף</option>
+                    {activeHome?.users?.map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+            </div>
+            <div className="form-control">
+                <label className="label"><span className="label-text">תאריך</span></label>
+                <input type="date" name="date" value={formData.date} onChange={handleChange} className="input input-bordered" />
+            </div>
 
-  const formStyle = {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '15px'
-  };
+            {error && <p className="text-error text-sm text-center">{error}</p>}
 
-  const inputStyle = {
-    width: 'calc(100% - 22px)', // Adjusted width considering padding
-    padding: '10px',
-    marginBottom: '15px',
-    border: '1px solid var(--border-grey)',
-    borderRadius: '4px',
-  };
-
-  const labelStyle = {
-    display: 'block',
-    marginBottom: '5px',
-    fontWeight: 'bold',
-  };
-
-  const selectStyle = {
-    width: '100%', // Full width
-    padding: '10px',
-    marginBottom: '15px',
-    border: '1px solid var(--border-grey)',
-    borderRadius: '4px',
-    backgroundColor: 'var(--white)',
-  };
-
-  return (
-    <form onSubmit={handleSubmit} style={formStyle}>
-      <label style={labelStyle}>תיאור ההכנסה:</label>
-      <input type="text" value={text} onChange={e => setText(e.target.value)} required style={inputStyle} />
-      
-      <label style={labelStyle}>סכום:</label>
-      <input type="number" value={amount} onChange={e => setAmount(e.target.value)} required style={inputStyle} />
-      
-      <label style={labelStyle}>תאריך:</label>
-      <input type="date" value={date} onChange={e => setDate(e.target.value)} required style={inputStyle} />
-      
-      {/* רשימה נפתחת לבחירת משתמש */}
-      <label style={labelStyle}>משויך ל:</label>
-      <select 
-        value={assignedTo} 
-        onChange={e => setAssignedTo(e.target.value)} 
-        style={selectStyle}
-        required
-      >
-        {availableUsers.map(user => (
-          <option key={user} value={user}>{user}</option>
-        ))}
-      </select>
-
-      <div className="modal-footer">
-        <button type="submit" className="primary-action">הוסף</button>
-      </div>
-    </form>
-  );
+            {/* ================================================================= */}
+            {/* מבנה הכפתורים הסטנדרטי של DaisyUI - בלי קומפוננטה חיצונית */}
+            <div className="modal-action mt-6">
+                <button type="button" onClick={hideModal} className="btn btn-ghost">ביטול</button>
+                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                    {isSubmitting ? <LoadingSpinner size="sm" /> : (initialData ? 'עדכן' : 'הוסף')}
+                </button>
+            </div>
+            {/* ================================================================= */}
+        </form>
+    );
 };
 
 export default IncomeForm;

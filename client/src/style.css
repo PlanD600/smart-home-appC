@@ -878,3 +878,17 @@ body.lang-ltr .sticky-note-container { right: 25px; left: auto; }
   font-size: 12px;
   font-weight: bold;
 }
+
+
+.modal-box {
+  padding: 1.5rem; /* 24px */
+}
+
+.modal-action {
+ 
+  border-top: 1px solid hsl(var(--b2));
+  
+  padding-top: 1rem; /* 16px */
+
+  margin-top: 1.5rem; /* 24px */
+}

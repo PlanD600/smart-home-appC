@@ -2,51 +2,54 @@ const Home = require('../models/Home');
 
 // --- פונקציות עזר ---
 
-// Helper function to handle common error responses
 const handleError = (res, error, defaultMessage = 'An error occurred', statusCode = 500) => {
-    console.error(error); // לצרכי דיבוג בשרת
+    console.error(error);
     res.status(statusCode).json({ message: error.message || defaultMessage });
 };
 
-// "מנרמלת" את אובייקט הבית כדי להבטיח שכל השדות קיימים לפני השליחה לקליינט
+// "מנרמלת" את אובייקט הבית כדי להבטיח מבנה נתונים אחיד ונכון לקליינט
 const normalizeHomeObject = (home) => {
     if (!home) return null;
 
-    // המרת מסמך Mongoose לאובייקט JavaScript רגיל
-    const homeObject = home.toObject();
+    const homeObject = home.toObject ? home.toObject() : home;
 
-    // ודא שמערכים ברמה העליונה קיימים
+    homeObject.users = homeObject.users || [];
     homeObject.shoppingList = homeObject.shoppingList || [];
     homeObject.tasks = homeObject.tasks || [];
-    homeObject.users = homeObject.users || [];
-    homeObject.templates = homeObject.templates || []; 
+    homeObject.templates = homeObject.templates || [];
 
-    // ודא שאובייקט הכספים וכל המערכים המקוננים בתוכו קיימים
-    homeObject.finances = {
-        expectedBills: homeObject.finances?.expectedBills || [],
-        paidBills: homeObject.finances?.paidBills || [],
-        income: homeObject.finances?.income || [],
-        savingsGoals: homeObject.finances?.savingsGoals || [],
-        expenseCategories: homeObject.finances?.expenseCategories || {} // וודא שזה אובייקט ריק כברירת מחדל
-    };
+    homeObject.finances = homeObject.finances || {};
+    const finances = homeObject.finances;
 
-    // וודא ש-expenseCategories הוא אובייקט ולא מערך (אם הסכימה שונתה בעבר)
-    // אם המבנה ב-DB הוא [ { name: 'Cat', budgetAmount: 100 } ], צריך להמיר לאובייקט {'Cat': 100}
-    if (Array.isArray(homeObject.finances.expenseCategories)) {
-        const convertedCategories = {};
-        homeObject.finances.expenseCategories.forEach(cat => {
-            if (cat.name && typeof cat.budgetAmount === 'number') {
-                convertedCategories[cat.name] = cat.budgetAmount;
-            }
-        });
-        homeObject.finances.expenseCategories = convertedCategories;
+    finances.expectedBills = finances.expectedBills || [];
+    finances.paidBills = finances.paidBills || [];
+    finances.income = finances.income || [];
+    finances.savingsGoals = finances.savingsGoals || [];
+
+    // **תיקון לוגיקה קריטי**: מוודאים ש-expenseCategories הוא תמיד מערך של אובייקטים
+    let categories = finances.expenseCategories || [];
+    
+    // אם הנתונים ב-DB הם בטעות אובייקט, נמיר אותם למערך
+    if (!Array.isArray(categories)) {
+        categories = Object.entries(categories).map(([name, data]) => ({
+            name: name,
+            budgetAmount: (typeof data === 'number' ? data : data.budgetAmount) || 0,
+            color: data.color || '#cccccc'
+        }));
     }
-    // וודא שיש קטגוריות ברירת מחדל אם האובייקט ריק
-    if (Object.keys(homeObject.finances.expenseCategories).length === 0) {
-        homeObject.finances.expenseCategories = {
-            'Groceries': 0, 'Utilities': 0, 'Rent': 0, 'Entertainment': 0, 'Other': 0
-        };
+    
+    // אם המערך ריק, ניצור קטגוריות ברירת מחדל
+    if (categories.length === 0) {
+        categories = [
+            { name: 'Groceries', budgetAmount: 0, color: '#FFD700' },
+            { name: 'Utilities', budgetAmount: 0, color: '#87CEEB' },
+            { name: 'Rent', budgetAmount: 0, color: '#FFA07A' },
+            { name: 'Entertainment', budgetAmount: 0, color: '#98FB98' },
+            { name: 'Other', budgetAmount: 0, color: '#D3D3D3' },
+        ];
     }
+    
+    finances.expenseCategories = categories;
 
     return homeObject;
 };
@@ -54,7 +57,7 @@ const normalizeHomeObject = (home) => {
 // --- פונקציות ה-Controller ---
 
 // קבל את כל הבתים (למסך הלוגין)
-exports.getHomes = async (req, res) => {
+const getHomes = async (req, res) => {
     try {
         const homes = await Home.find({}, '_id name iconClass colorScheme');
         res.status(200).json(homes);
@@ -64,7 +67,7 @@ exports.getHomes = async (req, res) => {
 };
 
 // קבל פרטים מלאים של בית יחיד
-exports.getHomeDetails = async (req, res) => {
+const getHomeDetails = async (req, res) => {
     try {
         const { homeId } = req.params;
         const home = await Home.findById(homeId);
@@ -79,7 +82,7 @@ exports.getHomeDetails = async (req, res) => {
 };
 
 // התחברות לבית ספציפי
-exports.loginToHome = async (req, res) => {
+const loginToHome = async (req, res) => {
     try {
         const { homeId, accessCode } = req.body;
         const home = await Home.findById(homeId);
@@ -101,7 +104,7 @@ exports.loginToHome = async (req, res) => {
 };
 
 // פונקציה ליצירת בית חדש - עם אתחול מלא
-exports.createHome = async (req, res) => {
+const createHome = async (req, res) => {
     const { name, accessCode } = req.body;
   
     if (!name || !accessCode) {
@@ -138,7 +141,7 @@ exports.createHome = async (req, res) => {
 };
 
 // הוספת פריט (קניות או משימות)
-exports.addItem = async (req, res) => {
+const addItem = async (req, res) => {
     try {
         const { homeId, listType } = req.params;
         const { text, category, assignedTo, completed, isUrgent, comment } = req.body; 
@@ -175,7 +178,7 @@ exports.addItem = async (req, res) => {
 };
 
 // עדכון פריט
-exports.updateItem = async (req, res) => {
+const updateItem = async (req, res) => {
     try {
         const { homeId, listType, itemId } = req.params;
         const updateData = req.body;
@@ -205,7 +208,7 @@ exports.updateItem = async (req, res) => {
 };
 
 // מחיקת פריט
-exports.deleteItem = async (req, res) => {
+const deleteItem = async (req, res) => {
     try {
         const { homeId, listType, itemId } = req.params;
 
@@ -229,7 +232,7 @@ exports.deleteItem = async (req, res) => {
 };
 
 // ניהול משתמשים
-exports.addUser = async (req, res) => {
+const addUser = async (req, res) => {
     try {
         const { homeId } = req.params;
         const { userName } = req.body; 
@@ -254,7 +257,7 @@ exports.addUser = async (req, res) => {
     }
 };
 
-exports.removeUser = async (req, res) => {
+const removeUser = async (req, res) => {
     try {
         const { homeId } = req.params;
         const { userName } = req.body; 
@@ -278,7 +281,7 @@ exports.removeUser = async (req, res) => {
 };
 
 // --- ניהול כספים ---
-exports.addExpectedBill = async (req, res) => {
+const addExpectedBill = async (req, res) => {
     try {
         const { homeId } = req.params;
         const billData = req.body;
@@ -293,7 +296,7 @@ exports.addExpectedBill = async (req, res) => {
     }
 };
 
-exports.updateExpectedBill = async (req, res) => {
+const updateExpectedBill = async (req, res) => {
     try {
         const { homeId, billId } = req.params;
         const billData = req.body;
@@ -311,7 +314,7 @@ exports.updateExpectedBill = async (req, res) => {
     }
 };
 
-exports.deleteExpectedBill = async (req, res) => {
+const deleteExpectedBill = async (req, res) => {
     try {
         const { homeId, billId } = req.params;
         const home = await Home.findById(homeId);
@@ -325,7 +328,7 @@ exports.deleteExpectedBill = async (req, res) => {
     }
 };
 
-exports.payBill = async (req, res) => {
+const payBill = async (req, res) => {
     try {
         const { homeId, billId } = req.params;
         const home = await Home.findById(homeId);
@@ -345,7 +348,7 @@ exports.payBill = async (req, res) => {
     }
 };
 
-exports.addIncome = async (req, res) => {
+const addIncome = async (req, res) => {
     try {
         const { homeId } = req.params;
         const incomeData = req.body;
@@ -360,7 +363,7 @@ exports.addIncome = async (req, res) => {
     }
 };
 
-exports.addSavingsGoal = async (req, res) => {
+const addSavingsGoal = async (req, res) => {
     try {
         const { homeId } = req.params;
         const goalData = req.body;
@@ -375,7 +378,7 @@ exports.addSavingsGoal = async (req, res) => {
     }
 };
 
-exports.addFundsToSavingsGoal = async (req, res) => {
+const addFundsToSavingsGoal = async (req, res) => {
     try {
         const { homeId, goalId } = req.params;
         const { amount } = req.body;
@@ -393,23 +396,8 @@ exports.addFundsToSavingsGoal = async (req, res) => {
     }
 };
 
-exports.updateBudgets = async (req, res) => {
-    try {
-        const { homeId } = req.params;
-        const { expenseCategories } = req.body; // Expecting an object of categories with amounts
-        const home = await Home.findById(homeId);
-        if (!home) return res.status(404).json({ message: 'Home not found.' });
-
-        home.finances.expenseCategories = expenseCategories; // Replace existing categories
-        await home.save();
-        res.status(200).json(home.finances.expenseCategories);
-    } catch (error) {
-        handleError(res, error, 'Error updating budgets');
-    }
-};
-
 // **תיקון קריטי: סכום פיננסי לפי משתמש**
-exports.getUserMonthlyFinanceSummary = async (req, res) => {
+const getUserMonthlyFinanceSummary = async (req, res) => {
     try {
         const { homeId, year, month } = req.params;
         const home = await Home.findById(homeId);
@@ -461,7 +449,7 @@ exports.getUserMonthlyFinanceSummary = async (req, res) => {
 };
 
 // --- אינטגרציית Gemini AI ---
-exports.transformRecipeToShoppingList = async (req, res) => {
+const transformRecipeToShoppingList = async (req, res) => {
     try {
         const { homeId } = req.params;
         const { recipeText } = req.body;
@@ -484,7 +472,7 @@ exports.transformRecipeToShoppingList = async (req, res) => {
     }
 };
 
-exports.breakdownComplexTask = async (req, res) => {
+const breakdownComplexTask = async (req, res) => {
     try {
         const { homeId } = req.params;
         const { taskText } = req.body;
@@ -504,4 +492,45 @@ exports.breakdownComplexTask = async (req, res) => {
     } catch (error) {
         handleError(res, error, 'Error breaking down task with Gemini');
     }
+};
+
+const updateBudgets = async (req, res) => {
+    try {
+        const home = await Home.findById(req.params.homeId);
+        if (!home) return res.status(404).json({ message: 'Home not found.' });
+
+        const updatedCategories = req.body;
+        if (!Array.isArray(updatedCategories)) {
+            return res.status(400).json({ message: 'Invalid data format. Expected an array.' });
+        }
+
+        home.finances.expenseCategories = updatedCategories;
+        await home.save();
+        res.status(200).json(home.finances.expenseCategories);
+    } catch (error) {
+        handleError(res, error, 'Error updating budgets');
+    }
+};
+
+module.exports = {
+    getHomes,
+    getHomeDetails,
+    loginToHome,
+    createHome,
+    addItem,
+    updateItem,
+    deleteItem,
+    addUser,
+    removeUser,
+    addExpectedBill,
+    updateExpectedBill,
+    deleteExpectedBill,
+    payBill,
+    addIncome,
+    addSavingsGoal,
+    addFundsToSavingsGoal,
+    updateBudgets, // הפונקציה שלנו עכשיו מיוצאת!
+    getUserMonthlyFinanceSummary,
+    transformRecipeToShoppingList,
+    breakdownComplexTask
 };

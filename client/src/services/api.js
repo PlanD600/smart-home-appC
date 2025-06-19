@@ -143,12 +143,14 @@ export const addFundsToSavingsGoal = async (homeId, goalId, amount) => {
 };
 
 export const updateBudgets = async (homeId, budgetsData) => {
-  try {
-    const response = await api.put(`/home/${homeId}/finance/budgets`, { expenseCategories: budgetsData });
-    return response.data; 
-  } catch (error) {
-    handleApiError(error, 'Failed to update budgets.');
-  }
+    try {
+        // הכתובת הנכונה, ללא '/items/'
+        const response = await api.put(`/homes/${homeId}/budgets`, budgetsData);
+        return response.data;
+    } catch (error) {
+        // שגיאה תיזרק ותטופל על ידי הקונטקסט
+        throw handleApiError(error);
+    }
 };
 
 export const getUserMonthlyFinanceSummary = async (homeId, year, month) => {
