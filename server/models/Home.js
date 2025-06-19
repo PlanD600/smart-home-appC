@@ -1,62 +1,53 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs'); // נדרש לגיבוב קוד הגישה ולאבטחה
+const bcrypt = require('bcryptjs');
 const ItemSchema = require('./ItemSchema');
 const FinanceSchema = require('./FinanceSchema');
 
 const HomeSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Home name is required'],
-    trim: true,
-    unique: true, // הוסף unique לוודא ששם הבית ייחודי
+    required: [true, 'Please provide a home name'],
+    unique: true,
   },
   accessCode: {
     type: String,
-    required: [true, 'Access code is required'],
+    required: [true, 'Please provide an access code'],
+    minlength: 4,
   },
-  iconClass: {
+  currency: {
     type: String,
-    default: 'fas fa-home',
+    // FIX: Changed default currency from "ש"ח" to the correct ISO code "ILS"
+    default: 'ILS', 
+    required: true,
   },
-  colorClass: {
-    type: String,
-    default: 'card-color-1',
-  },
-  users: {
-    type: [String],
-    default: ['אני'],
-  },
-  // שדות shoppingCategories ו-taskCategories הוסרו כי הם לא בשימוש
-  
-  // שינוי שם מ-shoppingItems ל-shoppingList
-  shoppingList: [ItemSchema], 
-  // שינוי שם מ-taskItems ל-tasks
-  tasks: [ItemSchema], 
-  // שינוי שמות שדות הארכיון לעקביות
-  archivedShoppingList: [ItemSchema],
-  archivedTasksList: [ItemSchema],
-  templates: [
-    {
-      name: String,
-      type: String, // 'shopping', 'task', 'finance'
-      items: mongoose.Schema.Types.Mixed, // או סכימה מפורטת יותר אם יש מבנה קבוע
-    },
-  ],
-  finances: FinanceSchema,
-}, { timestamps: true }); // הוספת timestamps לשדות createdAt ו-updatedAt אוטומטית
-
-// Middleware - גיבוב קוד הגישה לפני שמירה
-HomeSchema.pre('save', async function(next) {
-  if (this.isModified('accessCode')) {
-    // רק אם קוד הגישה השתנה או נוצר, בצע גיבוב
-    this.accessCode = await bcrypt.hash(this.accessCode, 10);
+  users: [{
+    name: { type: String, required: true },
+    isAdmin: { type: Boolean, default: false },
+  }],
+  shoppingList: [ItemSchema],
+  tasks: [ItemSchema],
+  templates: [{
+    name: String,
+    items: [ItemSchema]
+  }],
+  finances: {
+    type: FinanceSchema,
+    default: () => ({})
   }
-  next();
+}, { timestamps: true });
+
+// Hash access code before saving
+HomeSchema.pre('save', async function (next) {
+  if (!this.isModified('accessCode')) {
+    next();
+  }
+  const salt = await bcrypt.genSalt(10);
+  this.accessCode = await bcrypt.hash(this.accessCode, salt);
 });
 
-// שיטה להשוואת קוד הגישה
-HomeSchema.methods.compareAccessCode = async function(candidateAccessCode) {
-  return await bcrypt.compare(candidateAccessCode, this.accessCode);
+// Method to compare entered access code with hashed access code
+HomeSchema.methods.compareAccessCode = async function (enteredCode) {
+  return await bcrypt.compare(enteredCode, this.accessCode);
 };
 
 module.exports = mongoose.model('Home', HomeSchema);

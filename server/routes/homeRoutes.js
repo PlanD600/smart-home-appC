@@ -32,8 +32,8 @@ router.post('/:homeId/gemini/breakdown-task', homeController.breakdownComplexTas
 
 // --- Generic Item Routes (for Shopping and Tasks) ---
 // These are last because their pattern is very general.
-router.post('/:homeId/:listType/add', homeController.addItem);
-router.put('/:homeId/:listType/:itemId', homeController.updateItem);
-router.delete('/:homeId/:listType/:itemId', homeController.deleteItem);
+router.post('/:homeId/:listType/add', homeController.addItemToList);
+router.put('/:homeId/:listType/:itemId', homeController.updateItemInList);
+router.delete('/:homeId/:listType/:itemId', homeController.deleteItemFromList);
 
 module.exports = router;

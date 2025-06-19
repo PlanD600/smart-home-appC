@@ -1,106 +1,87 @@
 import React, { useState } from 'react';
 import { useHome } from '../../context/HomeContext'; 
 
-// הגדר רשימת קטגוריות ברירת מחדל.
-// ניתן להתאים אותה לפי הצרכים שלך.
+// הגדרת קטגוריות ברירת מחדל, כפי שהיה בקוד המקורי
 const DEFAULT_CATEGORIES = ['כללית', 'מצרכים', 'חשבונות', 'בידור', 'שונות', 'עבודה', 'לימודים'];
 
-const AddItemForm = ({ onAddItem, placeholder = "הוסף פריט...", initialCategory = 'כללית' }) => {
+const AddItemForm = ({ onAddItem, onCancel }) => {
   const { activeHome } = useHome(); 
-  const [text, setText] = useState('');
-  const [category, setCategory] = useState(initialCategory || DEFAULT_CATEGORIES[0]); 
-  const [assignedTo, setAssignedTo] = useState('משותף'); 
-
-  // רשימת המשתמשים הזמינים, כולל ברירת המחדל 'משותף'
-  let availableUsers = activeHome?.users || ['אני'];
-  // נוודא ש'משותף' תמיד קיים כאפשרות
-  if (!availableUsers.includes('משותף')) {
-    availableUsers = [...availableUsers, 'משותף']; 
-  }
+  
+  // FIX: חזרה להשתמש במשתנה 'text' כפי שהשרת מצפה
+  const [text, setText] = useState(''); 
+  const [category, setCategory] = useState(DEFAULT_CATEGORIES[0]);
+  
+  const users = activeHome?.users && Array.isArray(activeHome.users) ? activeHome.users : [];
+  const [assignedTo, setAssignedTo] = useState(users.length > 0 ? users[0].name : '');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (text.trim()) {
-      onAddItem({ text, category, assignedTo }); 
-      setText(''); 
-      setCategory(initialCategory || DEFAULT_CATEGORIES[0]); 
-      setAssignedTo('משותף'); 
+    // FIX: בדיקה של המשתנה 'text' ושליחת אובייקט עם השדה 'text'
+    if (text.trim() && onAddItem) {
+      // קריאה לפונקציה שהועברה מהאב עם המידע הנכון שהשרת מצפה לו
+      onAddItem({ text, category, assignedTo });
+      
+      // איפוס הטופס למצב התחלתי
+      setText(''); // איפוס המשתנה הנכון
+      setCategory(DEFAULT_CATEGORIES[0]);
+      if (onCancel) onCancel();
     }
   };
 
-  const formStyle = {
-    display: 'flex',
-    gap: '10px',
-    flexWrap: 'wrap',
-    marginBottom: '25px', 
-  };
-
-  const inputStyle = {
-    flexGrow: 1,
-    padding: '10px',
-    border: '1px solid var(--border-grey)',
-    borderRadius: '4px',
-    fontSize: '16px',
-  };
-
-  const selectStyle = {
-    padding: '10px',
-    border: '1px solid var(--border-grey)',
-    borderRadius: '4px',
-    backgroundColor: 'var(--white)',
-  };
-
-  const buttonStyle = {
-    padding: '10px 20px',
-    backgroundColor: 'var(--mint-green)',
-    color: 'var(--white)',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '20px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  };
-
   return (
-    <form className="add-item-form" onSubmit={handleSubmit} style={formStyle}>
-      <select 
-        className="add-item-category-select" 
-        value={category} 
-        onChange={(e) => setCategory(e.target.value)}
-        style={selectStyle}
-        aria-label="בחר קטגוריה"
-      >
-        {DEFAULT_CATEGORIES.map(cat => (
-          <option key={cat} value={cat}>{cat}</option>
-        ))}
-      </select>
+    <form onSubmit={handleSubmit} className="p-4 bg-gray-700 rounded-lg shadow-inner space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* FIX: המשתנה והפונקציה המעודכנת הם 'text' ו-'setText' */}
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={"הוסף פריט או משימה..."}
+          className="w-full sm:col-span-2 p-2 text-white bg-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          autoFocus
+        />
+        <button 
+          type="submit" 
+          className="w-full px-4 py-2 font-bold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+        >
+          הוסף
+        </button>
+      </div>
       
-      <select 
-        className="add-item-assigned-select" 
-        value={assignedTo} 
-        onChange={(e) => setAssignedTo(e.target.value)}
-        style={selectStyle}
-        aria-label="הקצה למשתמש"
-      >
-        {availableUsers.map(user => (
-          <option key={user} value={user}>{user}</option>
-        ))}
-      </select>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="w-full p-2 text-white bg-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {DEFAULT_CATEGORIES.map(cat => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
 
-      <input 
-        type="text" 
-        className="add-item-input" 
-        placeholder={placeholder}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        style={inputStyle}
-        aria-label="טקסט פריט"
-      />
-      <button type="submit" className="add-item-btn" style={buttonStyle}>
-        <i className="fas fa-plus"></i>
-      </button>
+        <select
+          value={assignedTo}
+          onChange={(e) => setAssignedTo(e.target.value)}
+          className="w-full p-2 text-white bg-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {/* התיקון למניעת קריסת האפליקציה נשאר */}
+          {users.map((user) => (
+            <option key={user._id} value={user.name}>
+              {user.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {onCancel && (
+          <button 
+            type="button" 
+            onClick={onCancel} 
+            className="w-full mt-2 px-4 py-2 font-semibold text-white bg-gray-600 rounded-md hover:bg-gray-500 focus:outline-none"
+          >
+            ביטול
+          </button>
+        )}
     </form>
   );
 };
