@@ -48,8 +48,9 @@ const normalizeHomeObject = (home) => {
             { name: 'Other', budgetAmount: 0, color: '#D3D3D3' },
         ];
     }
-    
-    finances.expenseCategories = categories;
+
+     const homeFinances = { ...finances };
+        homeFinances.expenseCategories = defaultExpenseCategories;
 
     return homeObject;
 };

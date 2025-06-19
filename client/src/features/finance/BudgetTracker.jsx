@@ -1,119 +1,160 @@
-// client/src/features/finance/BudgetTracker.jsx
-
 import React, { useMemo } from 'react';
 import { useHome } from '../../context/HomeContext';
 import { useModal } from '../../context/ModalContext';
 import BudgetForm from './forms/BudgetForm';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
-// פונקציית עזר קטנה לעיצוב מטבע, מחוץ לקומפוננטה
-const formatCurrency = (amount, currency) => {
-  return new Intl.NumberFormat('he-IL', { style: 'currency', currency: currency }).format(amount);
+const formatCurrency = (value, currency) => {
+    try {
+        return new Intl.NumberFormat('he-IL', {
+            style: 'currency',
+            currency: currency,
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+        }).format(value);
+    } catch (error) {
+        console.error("Currency formatting error:", error);
+        return `${currency} ${value}`;
+    }
+};
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A28BFE', '#FF8B8B'];
+const RADIAN = Math.PI / 180;
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    return (
+        <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central">
+            {`${(percent * 100).toFixed(0)}%`}
+        </text>
+    );
 };
 
 const BudgetTracker = () => {
-  const { activeHome } = useHome();
-  const { showModal } = useModal();
+    const { activeHome, loading } = useHome();
+    const { showModal, hideModal } = useModal();
 
-  // 1. שימוש ב-useMemo כדי לחלץ ולנרמל את הנתונים רק פעם אחת (או כשהם משתנים)
-  const finances = useMemo(() => activeHome?.finances || {}, [activeHome?.finances]);
-  
-  const categories = useMemo(() => {
-    const expenseCats = finances.expenseCategories || [];
-    return Array.isArray(expenseCats) ? expenseCats : Object.values(expenseCats);
-  }, [finances.expenseCategories]);
+    const currency = activeHome?.finances?.currency || 'ILS';
 
-  const budgetedCategories = useMemo(() => {
-    return categories.filter(category => category.budgetAmount > 0);
-  }, [categories]);
+    const handleEditBudgets = () => {
+        if (!activeHome) return;
+        
+        showModal(
+            <BudgetForm onClose={hideModal} />,
+            { title: 'עדכון תקציב' }
+        );
+    };
 
-  // 2. חישוב ההוצאות החודשיות - החישוב היקר ביותר, עטוף ב-useMemo
-  const monthlySpentByCategory = useMemo(() => {
-    const spentMap = new Map(categories.map(cat => [cat.name, 0]));
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
+    const totalBudget = useMemo(() =>
+        activeHome?.finances?.expenseCategories.reduce((sum, cat) => sum + cat.budgetAmount, 0) || 0
+    , [activeHome?.finances?.expenseCategories]);
 
-    (finances.paidBills || []).forEach(bill => {
-      const billDate = new Date(bill.datePaid);
-      if (billDate.getMonth() === currentMonth && billDate.getFullYear() === currentYear) {
-        if (spentMap.has(bill.category)) {
-          spentMap.set(bill.category, spentMap.get(bill.category) + bill.amount);
-        }
-      }
-    });
-    return spentMap;
-  }, [categories, finances.paidBills]);
+    const totalSpent = useMemo(() => {
+        if (!activeHome?.finances) return 0;
+        return activeHome.finances.paidBills.reduce((sum, bill) => sum + bill.amount, 0);
+    }, [activeHome?.finances?.paidBills]);
 
-  // 3. חישוב הסכומים הכוללים - גם כן ממור"ז (memoized)
-  const { totalBudget, totalSpent } = useMemo(() => {
-    const budget = budgetedCategories.reduce((sum, cat) => sum + cat.budgetAmount, 0);
-    const spent = Array.from(monthlySpentByCategory.values()).reduce((sum, amount) => sum + amount, 0);
-    return { totalBudget: budget, totalSpent: spent };
-  }, [budgetedCategories, monthlySpentByCategory]);
+    const remainingBudget = totalBudget - totalSpent;
 
-  const currency = finances.financeSettings?.currency || 'ILS';
+    const expenseDataForChart = useMemo(() => {
+        if (!activeHome?.finances?.expenseCategories) return [];
 
-  // תנאי יציאה מוקדמת אם אין מידע פיננסי
-  if (!activeHome || !finances) {
-    return null;
-  }
+        const categoryMap = new Map();
+        activeHome.finances.paidBills.forEach(bill => {
+            const currentSpent = categoryMap.get(bill.category) || 0;
+            categoryMap.set(bill.category, currentSpent + bill.amount);
+        });
 
-  return (
-    <div className="card bg-base-100 shadow-xl">
-      <div className="card-body">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="card-title">מעקב תקציב חודשי</h2>
-          <button className="btn btn-primary btn-sm" onClick={() => showModal(<BudgetForm />)}>
-            עדכון תקציב
-          </button>
-        </div>
+        return Array.from(categoryMap, ([name, spent]) => ({ name, spent }))
+                    .filter(data => data.spent > 0);
 
-        {budgetedCategories.length === 0 ? (
-          <p>לא הוגדר תקציב לקטגוריות. לחץ על "עדכון תקציב" כדי להתחיל.</p>
-        ) : (
-          <>
-            <div className="mb-4">
-              <div className="flex justify-between text-sm mb-1">
-                <span>סה"כ הוצאות: {formatCurrency(totalSpent, currency)}</span>
-                <span>סה"כ תקציב: {formatCurrency(totalBudget, currency)}</span>
-              </div>
-              <progress 
-                className="progress progress-accent w-full" 
-                value={totalSpent} 
-                max={totalBudget > 0 ? totalBudget : 1}
-              ></progress>
+    }, [activeHome?.finances]);
+
+    if (loading && !activeHome) {
+        return <LoadingSpinner />;
+    }
+
+    if (!activeHome || !activeHome.finances || !activeHome.finances.expenseCategories || activeHome.finances.expenseCategories.length === 0) {
+        return (
+            <div className="card bg-base-100 shadow-xl">
+                <div className="card-body items-center text-center">
+                    <h3 className="card-title">מעקב תקציב</h3>
+                    <p>עדיין לא הגדרת תקציב. בואו נתחיל!</p>
+                    <button onClick={handleEditBudgets} className="btn btn-primary">הגדרת תקציב</button>
+                </div>
             </div>
-            
-            <div className="space-y-3">
-              {budgetedCategories.map(({ name, budgetAmount }) => {
-                const spent = monthlySpentByCategory.get(name) || 0;
-                const percentage = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0;
-                
-                let progressColorClass = 'progress-success';
-                if (percentage > 100) progressColorClass = 'progress-error';
-                else if (percentage > 75) progressColorClass = 'progress-warning';
-
-                return (
-                  <div key={name}>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="font-bold">{name}</span>
-                      <span>
-                        {formatCurrency(spent, currency)} / {formatCurrency(budgetAmount, currency)}
-                      </span>
+        );
+    }
+    
+    return (
+        <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="card-title">מעקב תקציב מול הוצאות</h2>
+                    <button onClick={handleEditBudgets} className="btn btn-outline btn-primary btn-sm" aria-label="ערוך תקציב">
+                        ✏️ עריכה
+                    </button>
+                </div>
+                <div className="grid grid-cols-3 gap-4 text-center mb-6">
+                    <div>
+                        <div className="text-sm text-gray-500">הוצאות</div>
+                        <div className="text-lg font-bold">{formatCurrency(totalSpent, currency)}</div>
                     </div>
-                    <progress
-                      className={`progress ${progressColorClass} w-full`}
-                      value={spent}
-                      max={budgetAmount > 0 ? budgetAmount : 1}
-                    ></progress>
-                  </div>
-                );
-              })}
+                    <div>
+                        <div className="text-sm text-gray-500">סך התקציב</div>
+                        <div className="text-lg font-bold">{formatCurrency(totalBudget, currency)}</div>
+                    </div>
+                    <div>
+                        <div className={`text-lg font-bold ${remainingBudget < 0 ? 'text-error' : 'text-success'}`}>
+                            {formatCurrency(remainingBudget, currency)}
+                        </div>
+                    </div>
+                </div>
+                <div className="h-64 w-full">
+                    {expenseDataForChart.length > 0 ? (
+                        <ResponsiveContainer>
+                            <PieChart>
+                                <Pie
+                                    data={expenseDataForChart}
+                                    dataKey="spent"
+                                    nameKey="name"
+                                    cx="50%"
+                                    cy="50%"
+                                    outerRadius={80}
+                                    fill="#8884d8"
+                                    labelLine={false}
+                                    label={renderCustomizedLabel}
+                                >
+                                    {expenseDataForChart.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip formatter={(value) => formatCurrency(value, currency)} />
+                                <Legend />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="flex items-center justify-center h-full text-gray-500">אין הוצאות להצגה החודש</div>
+                    )}
+                </div>
+
+                <div className="mt-6">
+                    <h3 className="text-lg font-semibold border-b pb-2 mb-3">פירוט תקציב</h3>
+                    <div className="space-y-2">
+                        {activeHome.finances.expenseCategories.map((category) => (
+                            <div key={category.name} className="flex justify-between items-center p-3 rounded-lg bg-base-200">
+                                <span className="font-medium">{category.name}</span>
+                                <span>{formatCurrency(category.budgetAmount, currency)}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
+        </div>
+    );
 };
 
 export default BudgetTracker;

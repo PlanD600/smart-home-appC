@@ -144,8 +144,10 @@ export const addFundsToSavingsGoal = async (homeId, goalId, amount) => {
 
 export const updateBudgets = async (homeId, budgetsData) => {
     try {
-        // הכתובת הנכונה, ללא '/items/'
-        const response = await api.put(`/homes/${homeId}/budgets`, budgetsData);
+        // ========================================================
+        // התיקון כאן. שינינו את הנתיב לנתיב הנכון
+        const response = await api.put(`/home/${homeId}/finance/budgets`, budgetsData);
+        // ========================================================
         return response.data;
     } catch (error) {
         // שגיאה תיזרק ותטופל על ידי הקונטקסט
