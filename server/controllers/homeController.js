@@ -7,6 +7,16 @@ const handleError = (res, error, defaultMessage = 'An error occurred', statusCod
     res.status(statusCode).json({ message: error.message || defaultMessage });
 };
 
+// הגדרת קטגוריות ברירת המחדל כאן
+const defaultExpenseCategories = [
+    { name: 'כללית', budgetAmount: 0, color: '#CCCCCC' }, // צבע ברירת מחדל
+    { name: 'מצרכים', budgetAmount: 0, color: '#AED581' },
+    { name: 'חשבונות', budgetAmount: 0, color: '#FFB74D' },
+    { name: 'בידור', budgetAmount: 0, color: '#4FC3F7' },
+    { name: 'שונות', budgetAmount: 0, color: '#BA68C8' },
+];
+
+
 // "מנרמלת" את אובייקט הבית כדי להבטיח מבנה נתונים אחיד ונכון לקליינט
 const normalizeHomeObject = (home) => {
     if (!home) return null;
@@ -29,28 +39,28 @@ const normalizeHomeObject = (home) => {
     // **תיקון לוגיקה קריטי**: מוודאים ש-expenseCategories הוא תמיד מערך של אובייקטים
     let categories = finances.expenseCategories || [];
     
-    // אם הנתונים ב-DB הם בטעות אובייקט, נמיר אותם למערך
+    // אם הנתונים ב-DB הם בטעות אובייקט (כמו ב-createHome הישן), נמיר אותם למערך
     if (!Array.isArray(categories)) {
-        categories = Object.entries(categories).map(([name, data]) => ({
-            name: name,
-            budgetAmount: (typeof data === 'number' ? data : data.budgetAmount) || 0,
-            color: data.color || '#cccccc'
-        }));
+        // אם זה אובייקט כמו {'Groceries': 0, 'Utilities': 0}, נמיר אותו למערך אובייקטים מלא
+        categories = Object.entries(categories).map(([name, budgetAmount]) => {
+            // ננסה לשמור על צבע אם קיים, אחרת צבע ברירת מחדל
+            const existingCategory = defaultExpenseCategories.find(cat => cat.name === name);
+            return {
+                name: name,
+                budgetAmount: typeof budgetAmount === 'number' ? budgetAmount : 0, // לוודא שזה מספר
+                color: existingCategory ? existingCategory.color : '#CCCCCC' // צבע כללי אם אין התאמה
+            };
+        });
     }
     
-    // אם המערך ריק, ניצור קטגוריות ברירת מחדל
+    // אם המערך ריק לאחר הנורמולציה, ניצור קטגוריות ברירת מחדל
     if (categories.length === 0) {
-        categories = [
-            { name: 'Groceries', budgetAmount: 0, color: '#FFD700' },
-            { name: 'Utilities', budgetAmount: 0, color: '#87CEEB' },
-            { name: 'Rent', budgetAmount: 0, color: '#FFA07A' },
-            { name: 'Entertainment', budgetAmount: 0, color: '#98FB98' },
-            { name: 'Other', budgetAmount: 0, color: '#D3D3D3' },
-        ];
+        categories = [...defaultExpenseCategories]; // שימוש במשתנה defaultExpenseCategories
     }
 
-     const homeFinances = { ...finances };
-        homeFinances.expenseCategories = defaultExpenseCategories;
+    const homeFinances = { ...finances };
+    homeFinances.expenseCategories = categories; // לוודא שמשתמשים במערך הנורמל
+    homeObject.finances = homeFinances; // חשוב לעדכן את finances בתוך homeObject
 
     return homeObject;
 };
@@ -106,8 +116,8 @@ const loginToHome = async (req, res) => {
 
 // פונקציה ליצירת בית חדש - עם אתחול מלא
 const createHome = async (req, res) => {
-    const { name, accessCode } = req.body;
-  
+    const { name, accessCode, iconClass, colorScheme } = req.body; // הוסף את iconClass ו-colorScheme
+
     if (!name || !accessCode) {
       return res.status(400).json({ message: 'Name and access code are required' });
     }
@@ -116,7 +126,9 @@ const createHome = async (req, res) => {
       const newHome = new Home({
         name,
         accessCode,
-        users: [],
+        iconClass: iconClass || 'fas fa-home', // השתמש בערך שהתקבל או בברירת המחדל
+        colorClass: colorScheme || 'card-color-1', // השתמש בערך שהתקבל או בברירת המחדל
+        users: ['אני'], // אתחול עם משתמש "אני"
         shoppingList: [],
         tasks: [],
         templates: [], 
@@ -125,9 +137,8 @@ const createHome = async (req, res) => {
           paidBills: [],
           income: [],
           savingsGoals: [],
-          expenseCategories: { // אתחול כאובייקט
-            'Groceries': 0, 'Utilities': 0, 'Rent': 0, 'Entertainment': 0, 'Other': 0
-          }
+          expenseCategories: defaultExpenseCategories, // השתמש במערך שהוגדר מראש
+          financeSettings: { currency: 'ש"ח' } // הגדרת ברירת מחדל למטבע
         }
       });
   
@@ -271,6 +282,7 @@ const removeUser = async (req, res) => {
 
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
+        // הבדיקה הזו נהפכת למיותרת אם $pull הצליח, אבל ניתן להשאיר לאבטחה נוספת
         if (home.users.includes(userName)) { 
              return res.status(404).json({ message: 'User not found in this home.' });
         }
@@ -412,7 +424,8 @@ const getUserMonthlyFinanceSummary = async (req, res) => {
 
         // אתחול אובייקט סיכום לכל המשתמשים ול"משותף"
         const userSummary = {};
-        const allUsers = [...(home.users || []), 'משותף']; // וודא ש"משותף" נכלל
+        // וודא ש"אני" ו"משותף" נכללים ביוזרים הזמינים
+        const allUsers = [...new Set([...(home.users || []), 'אני', 'משותף'])]; 
         allUsers.forEach(user => {
             userSummary[user] = { income: 0, expenses: 0, net: 0 };
         });
@@ -464,7 +477,7 @@ const transformRecipeToShoppingList = async (req, res) => {
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-        home.shoppingList.push(mockShoppingList); // שימוש בשם השדה המעודכן: shoppingList
+        home.shoppingList.push(...mockShoppingList); // שימוש בשם השדה המעודכן: shoppingList
         await home.save();
 
         res.status(200).json({ message: "Recipe transformed and items added to shopping list!", newItems: mockShoppingList });
@@ -486,7 +499,7 @@ const breakdownComplexTask = async (req, res) => {
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-        home.tasks.push(mockSubTasks); // שימוש בשם השדה המעודכן: tasks
+        home.tasks.push(...mockSubTasks); // שימוש בשם השדה המעודכן: tasks
         await home.save();
 
         res.status(200).json({ message: "Task broken down and sub-tasks added!", newItems: mockSubTasks });
@@ -530,7 +543,7 @@ module.exports = {
     addIncome,
     addSavingsGoal,
     addFundsToSavingsGoal,
-    updateBudgets, // הפונקציה שלנו עכשיו מיוצאת!
+    updateBudgets,
     getUserMonthlyFinanceSummary,
     transformRecipeToShoppingList,
     breakdownComplexTask
