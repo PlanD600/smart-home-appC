@@ -1,22 +1,18 @@
 import React from 'react';
-import { useAppContext } from '@/context/AppContext'; // ✅ תיקון: שימוש בקונטקסט הראשי
-import LoadingSpinner from '@/components/LoadingSpinner'; // ✅ תיקון: שימוש בנתיב מקוצר
+import { useAppContext } from '@/context/AppContext'; // ✅ Fixed import
+import LoadingSpinner from '@/components/LoadingSpinner';
 
-// ✅ שינינו את הקומפוננטה כך שהיא לא מקבלת props, אלא לוקחת מידע ישירות מהקונטקסט
 const FinancialSummary = () => {
-    // ✅ שלב 1: קבלת המידע מהקונטקסט
-    const { activeHome } = useHome();
+    // ✅ Fixed: Use useAppContext instead of useHome
+    const { activeHome } = useAppContext();
 
-    // ✅ שלב 2: בדיקת הגנה. אם אין מידע, לא נמשיך.
     if (!activeHome?.finances) {
         return <LoadingSpinner />;
     }
 
-    // ✅ שלב 3: פירוק המשתנים עם ערכי ברירת מחדל בטוחים
     const { income = [], paidBills = [], financeSettings } = activeHome.finances;
     const currency = financeSettings?.currency || 'ש"ח';
 
-    // הלוגיקה המקורית שלך לחישוב חודשי
     const getMonthlyTotals = () => {
         const now = new Date();
         const currentMonth = now.getMonth();
@@ -30,7 +26,6 @@ const FinancialSummary = () => {
             .reduce((sum, i) => sum + i.amount, 0);
 
         const totalExpenses = paidBills
-            // ✅ תיקון תחביר קטן כאן
             .filter(p => {
                 const d = new Date(p.datePaid);
                 return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
@@ -45,7 +40,6 @@ const FinancialSummary = () => {
 
     const { totalIncome, totalExpenses, balance, savingsRate } = getMonthlyTotals();
 
-    // ה-JSX המקורי שלך
     return (
         <div className="financial-summary-grid">
             <div className="summary-card">
