@@ -1,10 +1,12 @@
+// client/src/features/users/UserManager.jsx
+
 import React, { useState } from 'react';
-import { useHome } from '../../../../HomeContexttest';
-import { useModal } from '../../context/ModalContext';
-import LoadingSpinner from '../../components/LoadingSpinner'; // וודא שהנתיב נכון
+import { useAppContext } from '@/context/AppContext';
+import { useModal } from '@/context/ModalContext';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 const UserManager = () => {
-    const { activeHome, addHomeUser, removeHomeUser, loading, error } = useHome();
+    const { activeHome, addHomeUser, removeHomeUser, loading, error } = useAppContext();
     const { showModal, hideModal } = useModal();
     const [newUserName, setNewUserName] = useState('');
 
@@ -17,10 +19,9 @@ const UserManager = () => {
         }
     };
 
-    const confirmRemoveUser = (user) => { // הפרמטר הוא האובייקט user כולו
-        // מונע מחיקת המשתמש היחיד
-        if (activeHome.users.length === 1 && user.name === activeHome.users[0].name) {
-            alert("לא ניתן להסיר את בן הבית היחיד."); // או להשתמש ב-showModal
+    const confirmRemoveUser = (user) => {
+        if (activeHome.users.length <= 1) {
+            alert("לא ניתן להסיר את בן הבית היחיד.");
             return;
         }
 
@@ -29,7 +30,6 @@ const UserManager = () => {
                 <p>האם אתה בטוח שברצונך להסיר את {user.name} מהבית?</p>
                 <div className="flex justify-end gap-4 mt-4">
                     <button onClick={hideModal} className="btn btn-secondary">ביטול</button>
-                    {/* העבר את user.name ל-handleRemoveUser */}
                     <button onClick={() => handleRemoveUser(user.name)} className="btn btn-danger">הסר</button>
                 </div>
             </div>,
@@ -39,10 +39,10 @@ const UserManager = () => {
 
     const handleRemoveUser = async (userName) => {
         await removeHomeUser(userName);
-        hideModal(); // Close the confirmation modal after action
+        hideModal();
     };
 
-    if (loading && !activeHome?.users) { // רק מציג ספינר אם טוען ואין עדיין נתונים (מניעת מהבהוב)
+    if (loading && !activeHome?.users) {
         return <LoadingSpinner />;
     }
 
@@ -52,13 +52,12 @@ const UserManager = () => {
             {activeHome?.users && activeHome.users.length > 0 ? (
                 <ul className="space-y-3 mb-6">
                     {activeHome.users.map((user) => (
-                        // === התיקון כאן: שימוש ב-user._id כ-key וב-user.name כטקסט מוצג ===
                         <li key={user._id} className="flex items-center justify-between p-3 bg-white rounded-md shadow-sm transition-shadow hover:shadow-md">
-                            <span className="text-gray-700 font-medium">{user.name}</span> {/* הצג user.name */}
-                            {user.isAdmin && <span className="admin-tag text-blue-600 text-xs font-semibold mr-2">(מנהל)</span>} {/* הצג אם הוא אדמין */}
-                            {activeHome.users.length > 1 && ( // כפתור הסרה רק אם יש יותר ממשתמש אחד
+                            <span className="text-gray-700 font-medium">{user.name}</span>
+                            {user.isAdmin && <span className="admin-tag text-blue-600 text-xs font-semibold mr-2">(מנהל)</span>}
+                            {activeHome.users.length > 1 && (
                                 <button
-                                    onClick={() => confirmRemoveUser(user)} // העבר את האובייקט user המלא
+                                    onClick={() => confirmRemoveUser(user)}
                                     className="text-red-500 hover:text-red-700 transition-colors"
                                     aria-label={`הסר את ${user.name}`}
                                 >
@@ -81,7 +80,7 @@ const UserManager = () => {
                     value={newUserName}
                     onChange={(e) => setNewUserName(e.target.value)}
                     placeholder="שם בן הבית"
-                    className="input input-bordered flex-grow p-2 border rounded-md" // סגנונות בסיסיים
+                    className="input input-bordered flex-grow p-2 border rounded-md"
                     required
                 />
                 <button type="submit" className="btn btn-primary bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600 transition-colors" disabled={loading}>

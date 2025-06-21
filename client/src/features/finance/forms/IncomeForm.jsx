@@ -1,86 +1,69 @@
-// client/src/features/finance/forms/IncomeForm.jsx
+// client/src/features/finance/forms/IncomeForm.jsx (מתוקן)
 
 import React, { useState } from 'react';
-import { useHome } from '../../../../../HomeContexttest';
-import { useModal } from '../../../context/ModalContext';
-import LoadingSpinner from '../../../components/LoadingSpinner';
+// ✅ תיקון: פיצול הייבוא לשתי שורות נפרדות
+import { useAppContext } from '@/context/AppContext';
+import { useFinanceActions } from '@/context/FinanceActionsContext';
+import { useModal } from '@/context/ModalContext';
 
-const IncomeForm = ({ initialData }) => {
-    const { activeHome, saveIncome } = useHome();
+const IncomeForm = ({ onSuccess }) => {
+    // ✅ שימוש בשני ה-hooks, כל אחד מהמקור הנכון שלו
+    const { activeHome } = useAppContext();
+    const { saveIncome } = useFinanceActions();
     const { hideModal } = useModal();
-    
-    // State לניהול הטופס, הטעינה והשגיאות
-    const [formData, setFormData] = useState({
-        description: initialData?.description || '',
-        amount: initialData?.amount || '',
-        user: initialData?.user || 'משותף',
-        date: initialData?.date ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    const [isLoading, setIsLoading] = useState(false);
+
+    const [income, setIncome] = useState({
+        description: '',
+        amount: '',
+        date: new Date().toISOString().split('T')[0], // ברירת מחדל להיום
+        source: '',
+        isRecurring: false,
     });
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState('');
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type, checked } = e.target;
+        setIncome(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     };
-    
-    const handleSubmit = async (e) => {
+
+    const handleSaveIncome = async (e) => {
         e.preventDefault();
-        if (!formData.description || !formData.amount) {
-            setError('יש למלא תיאור וסכום.');
-            return;
-        }
-        setIsSubmitting(true);
-        setError('');
-        try {
-            await saveIncome(formData);
-            hideModal(); // סגירת הפופ-אפ בהצלחה
-        } catch (err) {
-            console.error("Failed to save income:", err);
-            setError(err.message || 'שגיאה בשמירת ההכנסה.');
-        } finally {
-            // נוודא שהכפתור חוזר למצבו הרגיל גם אם יש שגיאה
-            setIsSubmitting(false);
-        }
+        setIsLoading(true);
+        const incomeData = {
+            ...income,
+            amount: parseFloat(income.amount)
+        };
+        await saveIncome(incomeData);
+        setIsLoading(false);
+        if (onSuccess) onSuccess();
+        hideModal();
     };
 
     return (
-        // אנחנו משאירים את הלוגיקה בתוך קובץ זה
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
-            <h3 className="text-lg font-bold">{initialData ? 'עריכת הכנסה' : 'הוספת הכנסה חדשה'}</h3>
+        <form onSubmit={handleSaveIncome} className="p-4 space-y-3">
+            <h3 className="text-lg font-semibold text-center">הוספת הכנסה</h3>
+
+            <input name="description" value={income.description} onChange={handleChange} placeholder="תיאור (לדוגמה: משכורת)" className="input input-bordered w-full" required />
             
-            {/* כל שדות הטופס נשארים זהים */}
-            <div className="form-control">
-                <label className="label"><span className="label-text">תיאור</span></label>
-                <input type="text" name="description" value={formData.description} onChange={handleChange} className="input input-bordered" required />
-            </div>
-            <div className="form-control">
-                <label className="label"><span className="label-text">סכום</span></label>
-                <input type="number" name="amount" value={formData.amount} onChange={handleChange} className="input input-bordered" required />
-            </div>
-            <div className="form-control">
-                <label className="label"><span className="label-text">משתמש</span></label>
-                <select name="user" value={formData.user} onChange={handleChange} className="select select-bordered">
-                    <option value="משותף">משותף</option>
-                    {activeHome?.users?.map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
-            </div>
-            <div className="form-control">
-                <label className="label"><span className="label-text">תאריך</span></label>
-                <input type="date" name="date" value={formData.date} onChange={handleChange} className="input input-bordered" />
+            <div className="grid grid-cols-2 gap-3">
+                <input name="amount" type="number" value={income.amount} onChange={handleChange} placeholder="סכום" className="input input-bordered w-full" required />
+                <input name="date" type="date" value={income.date} onChange={handleChange} className="input input-bordered w-full" required />
             </div>
 
-            {error && <p className="text-error text-sm text-center">{error}</p>}
+            <input name="source" value={income.source} onChange={handleChange} placeholder="מקור ההכנסה (לדוגמה: מקום עבודה)" className="input input-bordered w-full" />
 
-            {/* ================================================================= */}
-            {/* מבנה הכפתורים הסטנדרטי של DaisyUI - בלי קומפוננטה חיצונית */}
-            <div className="modal-action mt-6">
-                <button type="button" onClick={hideModal} className="btn btn-ghost">ביטול</button>
-                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                    {isSubmitting ? <LoadingSpinner size="sm" /> : (initialData ? 'עדכן' : 'הוסף')}
+            <div className="form-control">
+                <label className="label cursor-pointer justify-start gap-4">
+                    <input type="checkbox" name="isRecurring" checked={income.isRecurring} onChange={handleChange} className="checkbox" />
+                    <span className="label-text">הכנסה קבועה?</span> 
+                </label>
+            </div>
+
+            <div className="flex justify-end pt-4">
+                <button type="submit" className="btn btn-primary" disabled={isLoading}>
+                    {isLoading ? 'שומר...' : 'הוסף הכנסה'}
                 </button>
             </div>
-            {/* ================================================================= */}
         </form>
     );
 };

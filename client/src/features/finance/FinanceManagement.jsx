@@ -1,10 +1,11 @@
-// client/src/features/finance/FinanceManagement.jsx
+// client/src/features/finance/FinanceManagement.jsx (מתוקן)
 
 import React, { Suspense, lazy } from 'react';
-import { useHome } from '../../../../HomeContexttest';
-import LoadingSpinner from '../../components/LoadingSpinner'; // נשתמש ברכיב טעינה עקבי
+// ✅ תיקון: שימוש ב-useAppContext מהמקור הנכון, ובנתיבים מקוצרים
+import { useAppContext } from '@/context/AppContext';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
-// ייבוא קומפוננטות-הבן
+// ייבוא קומפוננטות-הבן (הנתיבים היחסיים כאן תקינים כי הם באותה תיקייה)
 import FinancialSummary from './FinancialSummary';
 import ExpenseChart from './ExpenseChart';
 import ExpectedBills from './ExpectedBills';
@@ -12,22 +13,20 @@ import PaidBillsList from './PaidBillsList';
 import BudgetTracker from './BudgetTracker';
 import SavingsGoals from './SavingsGoals';
 import IncomeList from './IncomeList';
-
-// ייבוא הרכיבים החדשים שיצרנו
 import FinanceSection from './FinanceSection';
 import FinanceActions from './FinanceActions';
 
+// שימוש ב-lazy loading נשאר תקין
 const UserFinanceSummary = lazy(() => import('./UserFinanceSummary'));
 
 const FinanceManagement = () => {
-  const { activeHome, loading } = useHome();
+  // ✅ תיקון: שימוש ב-useAppContext במקום ב-useHome
+  const { activeHome, loading } = useAppContext();
 
-  // שימוש ברכיב טעינה עקבי יותר
   if (loading && !activeHome) {
     return <LoadingSpinner />;
   }
 
-  // תנאי למקרה שאין בית פעיל או נתונים פיננסיים
   if (!activeHome || !activeHome.finances) {
     return <div className="p-4 text-center text-gray-500">לא נבחרו נתונים להצגה.</div>;
   }
@@ -38,7 +37,6 @@ const FinanceManagement = () => {
         <h3 className="text-xl font-bold text-gray-800" data-lang-key="finance_management">ניהול כספים</h3>
       </div>
 
-      {/* כפתורי הפעולה מופרדים וברורים */}
       <FinanceActions />
       
       <div className="finance-section-content">

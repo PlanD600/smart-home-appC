@@ -1,6 +1,6 @@
 import React from 'react';
-import { useHome } from '../../../../HomeContexttest';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import { useAppContext } from '@/context/AppContext'; // ✅ תיקון: שימוש בקונטקסט הראשי
+import LoadingSpinner from '@/components/LoadingSpinner'; // ✅ תיקון: שימוש בנתיב מקוצר
 
 // ✅ שינינו את הקומפוננטה כך שהיא לא מקבלת props, אלא לוקחת מידע ישירות מהקונטקסט
 const FinancialSummary = () => {

@@ -1,13 +1,21 @@
+// client/src/context/FinanceActionsContext.jsx
+
 import React, { createContext, useContext, useCallback, useMemo } from 'react';
-import { useAppContext } from '@/context/AppContext'; // ✅ שימוש ב-@
-import * as api from '@/services/api'; // ✅ שימוש ב-@
+import { useAppContext } from '@/context/AppContext';
+import * as api from '@/services/api';
 
 const FinanceActionsContext = createContext();
 export const useFinanceActions = () => useContext(FinanceActionsContext);
 
 export const FinanceActionsProvider = ({ children }) => {
-    // ✅ קבלת המצב וה-setters מהקונטקסט הראשי
     const { activeHome, setActiveHome, setError } = useAppContext();
+    const HOME_DATA_STORAGE_KEY = 'smart-home-data';
+
+    // פונקציית עזר לעדכון המצב ושמירה ב-localStorage
+    const updateAndPersistHome = (updatedHome) => {
+        setActiveHome(updatedHome);
+        localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(updatedHome));
+    };
 
     // --- ניהול חשבונות (Bills) ---
 
@@ -24,8 +32,7 @@ export const FinanceActionsProvider = ({ children }) => {
                 expectedBills: [...(activeHome.finances?.expectedBills || []), newBillWithTempId]
             }
         };
-        setActiveHome(updatedHomeOptimistic);
-        localStorage.setItem('smart-home-data', JSON.stringify(updatedHomeOptimistic));
+        updateAndPersistHome(updatedHomeOptimistic);
 
         try {
             const finalBillFromServer = await api.addExpectedBill(activeHome._id, billData);
@@ -38,12 +45,10 @@ export const FinanceActionsProvider = ({ children }) => {
                     )
                 }
             };
-            setActiveHome(finalHomeState);
-            localStorage.setItem('smart-home-data', JSON.stringify(finalHomeState));
+            updateAndPersistHome(finalHomeState);
         } catch (err) {
             setError('Failed to save bill');
-            setActiveHome(previousHome);
-            localStorage.setItem('smart-home-data', JSON.stringify(previousHome));
+            updateAndPersistHome(previousHome);
         }
     }, [activeHome, setActiveHome, setError]);
 
@@ -60,13 +65,13 @@ export const FinanceActionsProvider = ({ children }) => {
                 )
             }
         };
-        setActiveHome(updatedHomeOptimistic);
+        updateAndPersistHome(updatedHomeOptimistic);
 
         try {
             await api.updateExpectedBill(activeHome._id, billId, updates);
         } catch (err) {
             setError('Failed to update bill');
-            setActiveHome(previousHome);
+            updateAndPersistHome(previousHome);
         }
     }, [activeHome, setActiveHome, setError]);
 
@@ -81,29 +86,25 @@ export const FinanceActionsProvider = ({ children }) => {
                 expectedBills: activeHome.finances.expectedBills.filter(bill => bill._id !== billId)
             }
         };
-        setActiveHome(updatedHomeOptimistic);
+        updateAndPersistHome(updatedHomeOptimistic);
 
         try {
             await api.deleteExpectedBill(activeHome._id, billId);
         } catch (err) {
             setError('Failed to delete bill');
-            setActiveHome(previousHome);
+            updateAndPersistHome(previousHome);
         }
     }, [activeHome, setActiveHome, setError]);
-    
-    const payExistingBill = useCallback(async (billId) => {
+
+    const payExistingBill = useCallback(async (billId, paymentDetails) => {
         if (!activeHome?._id) return;
-        // לפעולה זו, שמשנה שני מערכים, בטוח יותר לחכות לתשובת השרת
         try {
-            const updatedFinances = await api.payBill(activeHome._id, billId);
-            const updatedHome = { ...activeHome, finances: updatedFinances };
-            setActiveHome(updatedHome);
-            localStorage.setItem('smart-home-data', JSON.stringify(updatedHome));
+            const updatedHomeFromServer = await api.payBill(activeHome._id, billId, paymentDetails);
+            updateAndPersistHome(updatedHomeFromServer);
         } catch (err) {
             setError('Failed to pay bill');
         }
     }, [activeHome, setActiveHome, setError]);
-
 
     // --- ניהול הכנסות (Income) ---
     const saveIncome = useCallback(async (incomeData) => {
@@ -119,7 +120,7 @@ export const FinanceActionsProvider = ({ children }) => {
                 income: [...(activeHome.finances?.income || []), newIncomeWithTempId]
             }
         };
-        setActiveHome(updatedHomeOptimistic);
+        updateAndPersistHome(updatedHomeOptimistic);
 
         try {
             const finalIncomeFromServer = await api.addIncome(activeHome._id, incomeData);
@@ -127,21 +128,21 @@ export const FinanceActionsProvider = ({ children }) => {
                 ...updatedHomeOptimistic,
                 finances: {
                     ...updatedHomeOptimistic.finances,
-                    income: updatedHomeOptimistic.finances.income.map(i => 
+                    income: updatedHomeOptimistic.finances.income.map(i =>
                         i._id === tempId ? finalIncomeFromServer : i
                     )
                 }
             };
-            setActiveHome(finalHomeState);
+            updateAndPersistHome(finalHomeState);
         } catch (err) {
             setError('Failed to save income');
-            setActiveHome(previousHome);
+            updateAndPersistHome(previousHome);
         }
     }, [activeHome, setActiveHome, setError]);
 
     // --- ניהול יעדי חיסכון (Savings Goals) ---
     const saveSavingsGoal = useCallback(async (goalData) => {
-         if (!activeHome?._id) return;
+        if (!activeHome?._id) return;
         const tempId = `temp_${Date.now()}`;
         const newGoalWithTempId = { ...goalData, _id: tempId };
 
@@ -153,31 +154,30 @@ export const FinanceActionsProvider = ({ children }) => {
                 savingsGoals: [...(activeHome.finances?.savingsGoals || []), newGoalWithTempId]
             }
         };
-        setActiveHome(updatedHomeOptimistic);
+        updateAndPersistHome(updatedHomeOptimistic);
 
         try {
             const finalGoalFromServer = await api.addSavingsGoal(activeHome._id, goalData);
-             const finalHomeState = {
+            const finalHomeState = {
                 ...updatedHomeOptimistic,
                 finances: {
                     ...updatedHomeOptimistic.finances,
-                    savingsGoals: updatedHomeOptimistic.finances.savingsGoals.map(g => 
+                    savingsGoals: updatedHomeOptimistic.finances.savingsGoals.map(g =>
                         g._id === tempId ? finalGoalFromServer : g
                     )
                 }
             };
-            setActiveHome(finalHomeState);
+            updateAndPersistHome(finalHomeState);
         } catch (err) {
             setError('Failed to save savings goal');
-            setActiveHome(previousHome);
+            updateAndPersistHome(previousHome);
         }
     }, [activeHome, setActiveHome, setError]);
 
     const addFundsToSavingsGoal = useCallback(async (goalId, amount) => {
         if (!activeHome?._id) return;
-        // כאן נמתין לתשובת השרת כי הלוגיקה יכולה להיות מורכבת
         try {
-            const updatedGoal = await api.addFundsToSavingsGoal(activeHome._id, goalId, amount);
+            const updatedGoal = await api.addFundsToSavingsGoal(activeHome._id, goalId, { amount });
             const updatedHome = {
                 ...activeHome,
                 finances: {
@@ -187,7 +187,7 @@ export const FinanceActionsProvider = ({ children }) => {
                     )
                 }
             };
-            setActiveHome(updatedHome);
+            updateAndPersistHome(updatedHome);
         } catch (err) {
             setError('Failed to add funds');
         }
@@ -196,15 +196,20 @@ export const FinanceActionsProvider = ({ children }) => {
     // --- ניהול תקציב (Budgets) ---
     const saveBudgets = useCallback(async (budgetsData) => {
         if (!activeHome?._id) return;
+        const previousHome = activeHome;
+        const updatedHomeOptimistic = {
+             ...activeHome,
+             finances: { ...activeHome.finances, expenseCategories: budgetsData }
+        };
+        updateAndPersistHome(updatedHomeOptimistic);
+        
         try {
-            const updatedCategories = await api.updateBudgets(activeHome._id, budgetsData);
-            const updatedHome = {
-                ...activeHome,
-                finances: { ...activeHome.finances, expenseCategories: updatedCategories }
-            };
-            setActiveHome(updatedHome);
+            const updatedFinancesFromServer = await api.updateBudgets(activeHome._id, budgetsData);
+            const updatedHome = { ...activeHome, finances: updatedFinancesFromServer };
+            updateAndPersistHome(updatedHome);
         } catch (err) {
             setError('Failed to save budgets');
+            updateAndPersistHome(previousHome);
         }
     }, [activeHome, setActiveHome, setError]);
 
@@ -215,12 +220,10 @@ export const FinanceActionsProvider = ({ children }) => {
             return await api.getUserMonthlyFinanceSummary(activeHome._id, year, month);
         } catch (err) {
             console.error("Failed to fetch user monthly summary:", err);
-            throw err; // זרוק את השגיאה לקומפוננטה שתטפל בה
+            throw err; 
         }
     }, [activeHome?._id]);
 
-
-    // ✅ הרכבת כל הפונקציות לאובייקט הקונטקסט
     const contextValue = useMemo(() => ({
         saveBill,
         modifyBill,

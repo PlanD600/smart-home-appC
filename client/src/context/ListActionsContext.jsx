@@ -1,5 +1,7 @@
+// client/src/context/ListActionsContext.jsx
+
 import React, { createContext, useContext, useCallback, useMemo } from 'react';
-import { useAppContext } from './AppContext'; // ✅ שימוש בקונטקסט הראשי
+import { useAppContext } from './AppContext';
 import * as api from '../services/api';
 
 const ListActionsContext = createContext();
@@ -11,38 +13,28 @@ const listTypeToStateKey = {
 };
 
 export const ListActionsProvider = ({ children }) => {
-    const { activeHome, setActiveHome, setError } = useAppContext();
-    const HOME_DATA_STORAGE_KEY = 'smart-home-data'; // ודא שהמפתח זהה לזה שב-AppContext
+    const { activeHome, setActiveHome, setLoading, setError } = useAppContext();
+    const HOME_DATA_STORAGE_KEY = 'smart-home-data';
 
-    // פונקציות לניהול פריטים ברשימות
     const addItem = useCallback(async (listType, itemData) => {
         if (!activeHome?._id) return;
         const stateKey = listTypeToStateKey[listType];
-        const tempId = `temp_${Date.now()}`;
-        const newItemWithTempId = { ...itemData, _id: tempId };
-
-        const previousHome = activeHome;
-        const updatedHomeOptimistic = {
-            ...activeHome,
-            [stateKey]: [...(activeHome[stateKey] || []), newItemWithTempId]
-        };
-        setActiveHome(updatedHomeOptimistic);
+        setLoading(true);
 
         try {
             const finalItemFromServer = await api.addItemToList(activeHome._id, listType, itemData);
-            const finalHomeState = {
-                ...updatedHomeOptimistic,
-                [stateKey]: updatedHomeOptimistic[stateKey].map(item =>
-                    item._id === tempId ? finalItemFromServer : item
-                )
+            const updatedHome = {
+                ...activeHome,
+                [stateKey]: [...(activeHome[stateKey] || []), finalItemFromServer]
             };
-            setActiveHome(finalHomeState);
-            localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(finalHomeState));
+            setActiveHome(updatedHome);
+            localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(updatedHome));
         } catch (err) {
             setError('Failed to add item');
-            setActiveHome(previousHome);
+        } finally {
+            setLoading(false);
         }
-    }, [activeHome, setActiveHome, setError]);
+    }, [activeHome, setActiveHome, setLoading, setError]);
 
     const modifyItem = useCallback(async (listType, itemId, updates) => {
         if (!activeHome?._id) return;
@@ -61,6 +53,7 @@ export const ListActionsProvider = ({ children }) => {
 
         try {
             await api.updateItemInList(activeHome._id, listType, itemId, updates);
+            localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(updatedHomeOptimistic));
         } catch (err) {
             setError('Failed to update item');
             setActiveHome(previousHome);
@@ -69,36 +62,62 @@ export const ListActionsProvider = ({ children }) => {
 
     const removeItem = useCallback(async (listType, itemId) => {
         if (!activeHome?._id) return;
-        // מחיקה דורשת תשובה מהשרת כדי לוודא שכל תתי-הפריטים נמחקו
+        setLoading(true);
         try {
             const updatedHomeFromServer = await api.deleteItemFromList(activeHome._id, listType, itemId);
             setActiveHome(updatedHomeFromServer);
             localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(updatedHomeFromServer));
         } catch (err) {
             setError('Failed to delete item');
+        } finally {
+            setLoading(false);
         }
-    }, [activeHome, setActiveHome, setError]);
+    }, [activeHome, setActiveHome, setLoading, setError]);
 
     const clearCompletedItems = useCallback(async (listType) => {
         if (!activeHome?._id) return;
+        setLoading(true);
         try {
             const updatedHomeFromServer = await api.clearCompletedItems(activeHome._id, listType);
             setActiveHome(updatedHomeFromServer);
             localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(updatedHomeFromServer));
         } catch (err) {
             setError('Failed to clear completed items');
+        } finally {
+            setLoading(false);
         }
-    }, [activeHome, setActiveHome, setError]);
-    
+    }, [activeHome, setActiveHome, setLoading, setError]);
+
     // פונקציות AI
     const runAiRecipe = useCallback(async (recipeText) => {
-        // ... (לוגיקה דומה, בדרך כלל ממתינים לתשובת השרת)
-    }, [activeHome, setActiveHome, setError]);
+        if (!activeHome?._id) return;
+        setLoading(true);
+        try {
+            const response = await api.transformRecipeToShoppingList(activeHome._id, recipeText);
+            const updatedHome = { ...activeHome, shoppingList: [...activeHome.shoppingList, ...response.newItems] };
+            setActiveHome(updatedHome);
+            localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(updatedHome));
+        } catch (err) {
+            setError(err.message || 'AI recipe transformation failed');
+        } finally {
+            setLoading(false);
+        }
+    }, [activeHome, setActiveHome, setLoading, setError]);
     
     const runAiTask = useCallback(async (taskText) => {
-        // ...
-    }, [activeHome, setActiveHome, setError]);
-
+        if (!activeHome?._id) return;
+        setLoading(true);
+        try {
+            const response = await api.breakdownComplexTask(activeHome._id, taskText);
+            const updatedHome = { ...activeHome, tasksList: [...activeHome.tasksList, ...response.newItems] };
+            setActiveHome(updatedHome);
+            localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(updatedHome));
+        } catch(err) {
+            setError(err.message || 'AI task breakdown failed');
+        } finally {
+            setLoading(false);
+        }
+    }, [activeHome, setActiveHome, setLoading, setError]);
 
     const contextValue = useMemo(() => ({
         addItem,

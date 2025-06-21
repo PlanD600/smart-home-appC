@@ -1,57 +1,53 @@
+// client/src/App.jsx
+
 import React, { useEffect } from 'react';
-import { HomeProvider, useHome } from '../../HomeContexttest';
-import { ModalProvider } from './context/ModalContext';
-import { LanguageProvider, useLanguage } from './context/LanguageContext'; // ייבוא LanguageProvider ו-useLanguage
-import LoginScreen from './pages/LoginScreen';
-import MainAppScreen from './pages/MainAppScreen';
-import LoadingSpinner from './components/LoadingSpinner';
+import { useAppContext } from '@/context/AppContext';
+import { useLanguage } from '@/context/LanguageContext';
+import LoginScreen from '@/pages/LoginScreen';
+import MainAppScreen from '@/pages/MainAppScreen';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import Modal from '@/components/Modal';
+import { useModal } from './context/ModalContext';
 
-/**
- * קומפוננטת AppContent מכילה את הלוגיקה העיקרית של רינדור היישום
- * בהתאם למצב ההתחברות (מחובר / לא מחובר).
- */
+
 const AppContent = () => {
-  // מושכים את activeHome, loading מ-HomeContext
-  const { activeHome, loading } = useHome();
+  const { activeHome, loading, error, setError } = useAppContext();
   const { setDirection } = useLanguage();
+  const { showModal, hideModal } = useModal();
 
-  // הגדרת כיוון השפה (מימין לשמאל עבור עברית)
   useEffect(() => {
     setDirection('rtl');
   }, [setDirection]);
 
-  // הצגת ספינר טעינה כללי כאשר הנתונים הראשוניים נטענים
-  // נציג טעינה רק אם אנחנו באמת בתהליך טעינה ראשוני ו-activeHome עדיין לא הוגדר
-  if (loading && !activeHome) { 
+  // הצג שגיאות גלובליות במודל
+  useEffect(() => {
+    if (error) {
+        showModal(
+            <div>
+                <p>{typeof error === 'string' ? error : JSON.stringify(error)}</p>
+                <button onClick={() => { setError(null); hideModal(); }} className="btn btn-primary mt-4">
+                    הבנתי
+                </button>
+            </div>,
+            { title: 'התרחשה שגיאה' }
+        );
+    }
+  }, [error, showModal, hideModal, setError]);
+
+
+  if (loading && !activeHome) {
     return <LoadingSpinner fullPage={true} />;
   }
 
-  // החלטה האם להציג את מסך הכניסה או את היישום הראשי
-  // אם activeHome הוא null, המשתמש אינו מחובר ויש להציג את מסך הכניסה
-  return (
-    <>
-      { !activeHome ? ( // אם אין בית פעיל, הצג את מסך ההתחברות
-        <LoginScreen />
-      ) : ( // אחרת, הצג את המסך הראשי של היישום
-        <MainAppScreen />
-      )}
-    </>
-  );
+  return !activeHome ? <LoginScreen /> : <MainAppScreen />;
 };
 
-/**
- * קומפוננטת App העוטפת את כל היישום בקונטקסטים הגלובליים.
- * זה מבטיח שכל הקונטקסטים יהיו זמינים לכל הקומפוננטות בתוך AppContent.
- * סדר העטיפה חשוב: LanguageProvider -> ModalProvider -> HomeProvider.
- */
+
 const App = () => (
-  <LanguageProvider> {/* עטיפה של כל היישום ב-LanguageProvider */}
-    <ModalProvider>
-      <HomeProvider>
-        <AppContent />
-      </HomeProvider>
-    </ModalProvider>
-  </LanguageProvider>
+  // העטיפה בקונטקסטים השונים מתבצעת כבר בקובץ main.jsx
+  // לכן אין צורך לעטוף כאן שוב.
+  // רק נציג את התוכן הראשי.
+  <AppContent />
 );
 
 export default App;

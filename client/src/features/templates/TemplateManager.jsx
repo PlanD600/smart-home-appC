@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 // נתיבי יבוא תקינים
-import { useHome } from '../../../../HomeContexttest'; //
+import { useAppContext } from '@/context/AppContext';
 import { useModal } from '../../context/ModalContext'; //
 
 /**

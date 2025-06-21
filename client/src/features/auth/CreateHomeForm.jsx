@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useHome } from '../../../../HomeContexttest'; // תיקון נתיב הייבוא
-import { useModal } from '../../context/ModalContext'; // תיקון נתיב הייבוא
+import { useAppContext } from '@/context/AppContext'; // ✅ תיקון: שימוש בקונטקסט הראשי
+import { useModal } from '@/context/ModalContext'; // תיקון נתיב הייבוא
 
 const AVAILABLE_ICONS = [
   'fas fa-home',

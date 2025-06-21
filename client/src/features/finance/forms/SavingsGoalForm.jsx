@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useHome } from '../../../../../HomeContexttest'; //
-import { useModal } from '../../../context/ModalContext'; //
+import { useAppContext } from '@/context/AppContext';
+import { useFinanceActions } from '@/context/FinanceActionsContext';
+import { useModal } from '@/context/ModalContext';
 
 const SavingsGoalForm = () => {
   const { saveSavingsGoal } = useHome(); // שינוי: מ-addGoal ל-saveSavingsGoal

@@ -1,129 +1,102 @@
+// client/src/features/finance/forms/BillForm.jsx (מתוקן)
+
 import React, { useState, useEffect } from 'react';
-import { useHome } from '../../../../../HomeContexttest';
-import { useModal } from '../../../context/ModalContext';
+// ✅ תיקון: פיצול הייבוא לשתי שורות נפרדות, כל אחת מהמקור הנכון שלה
+import { useAppContext } from '@/context/AppContext';
+import { useFinanceActions } from '@/context/FinanceActionsContext';
+import { useModal } from '@/context/ModalContext';
 
-const BillForm = ({ existingBill }) => {
-  const { activeHome, saveBill, modifyBill } = useHome();
-  const { hideModal } = useModal();
+const BillForm = ({ initialData, onSuccess }) => {
+    const { activeHome } = useAppContext();
+    const { saveBill, modifyBill } = useFinanceActions();
+    const { hideModal } = useModal();
+    const [isLoading, setIsLoading] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    
+    const [bill, setBill] = useState({
+        description: '',
+        amount: '',
+        dueDate: '',
+        category: '',
+        recurring: 'no',
+        paymentMethod: 'Credit Card',
+        notes: '',
+    });
 
-  const [text, setText] = useState(existingBill?.text || '');
-  const [amount, setAmount] = useState(existingBill?.amount || '');
-  const [dueDate, setDueDate] = useState(existingBill ? new Date(existingBill.dueDate).toISOString().split('T')[0] : '');
-  const [category, setCategory] = useState(existingBill?.category || '');
-  const [isRecurring, setIsRecurring] = useState(existingBill?.recurring != null);
-  const [assignedTo, setAssignedTo] = useState(existingBill?.assignedTo || 'משותף');
+    useEffect(() => {
+        if (initialData) {
+            setIsEditMode(true);
+            setBill({
+                description: initialData.description || '',
+                amount: initialData.amount || '',
+                dueDate: initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '',
+                category: initialData.category || '',
+                recurring: initialData.recurring || 'no',
+                paymentMethod: initialData.paymentMethod || 'Credit Card',
+                notes: initialData.notes || '',
+            });
+        }
+    }, [initialData]);
 
-  const categories = Array.isArray(activeHome?.finances?.expenseCategories)
-    ? activeHome.finances.expenseCategories
-    : [];
-
-  const availableUsers = ['משותף', ...(activeHome?.users || [])];
-  
-  // =================================================================
-  // 1. משתנה חדש שבודק אם הטופס צריך להיות מנוטרל
-  const isFormDisabled = categories.length === 0;
-  // =================================================================
-
-  useEffect(() => {
-    if (!existingBill && !category && categories.length > 0) {
-      setCategory(categories[0].name);
-    }
-  }, [categories, existingBill, category]);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (isFormDisabled) return; // מניעת שליחה אם הטופס מנוטרל
-
-    if (!text.trim() || !amount || !dueDate || !category) {
-      alert('נא למלא את כל השדות הנדרשים.');
-      return;
-    }
-
-    const billData = {
-      text,
-      amount: parseFloat(amount),
-      dueDate,
-      category,
-      recurring: isRecurring ? { frequency: 'monthly' } : null,
-      assignedTo,
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setBill(prev => ({ ...prev, [name]: value }));
     };
 
-    if (existingBill) {
-      modifyBill(existingBill._id, billData);
-    } else {
-      saveBill(billData);
-    }
+    const handleSaveBill = async (e) => {
+        e.preventDefault();
+        setIsLoading(true);
 
-    hideModal();
-  };
-  
-  // הגדרות עיצוב נשארות כפי שהן
-  const formStyle = { display: 'flex', flexDirection: 'column', gap: '15px' };
-  const inputStyle = { width: 'calc(100% - 22px)', padding: '10px', marginBottom: '15px', border: '1px solid var(--border-grey)', borderRadius: '4px' };
-  const labelStyle = { display: 'block', marginBottom: '5px', fontWeight: 'bold' };
-  const selectStyle = { width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid var(--border-grey)', borderRadius: '4px', backgroundColor: 'var(--white)' };
-  const checkboxContainerStyle = { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' };
-  const checkboxInputStyle = { width: 'auto', margin: 0, accentColor: 'var(--mint-green)' };
-  
-  // סגנון מיוחד עבור ההודעה למשתמש
-  const noticeStyle = {
-    padding: '10px',
-    border: '1px dashed var(--border-grey)',
-    borderRadius: '4px',
-    textAlign: 'center',
-    color: '#777',
-    backgroundColor: 'var(--background-grey)',
-    marginBottom: '15px',
-  };
+        const billData = {
+            ...bill,
+            amount: parseFloat(bill.amount),
+        };
+        
+        if (isEditMode) {
+            await modifyBill(initialData._id, billData);
+        } else {
+            await saveBill(billData);
+        }
 
-  return (
-    <form onSubmit={handleSubmit} style={formStyle}>
-      <label htmlFor="bill-name" style={labelStyle}>שם החשבון:</label>
-      <input type="text" id="bill-name" value={text} onChange={(e) => setText(e.target.value)} placeholder="למשל: חשבון חשמל" required style={inputStyle} />
-      
-      <label htmlFor="bill-amount" style={labelStyle}>סכום:</label>
-      <input type="number" id="bill-amount" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="350" required style={inputStyle} />
+        setIsLoading(false);
+        if (onSuccess) onSuccess();
+        hideModal();
+    };
 
-      <label htmlFor="bill-due-date" style={labelStyle}>תאריך לתשלום:</label>
-      <input type="date" id="bill-due-date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} required style={inputStyle} />
+    return (
+        <form onSubmit={handleSaveBill} className="p-4 space-y-3">
+            <h3 className="text-lg font-semibold text-center">{isEditMode ? 'עריכת חשבון' : 'הוספת חשבון צפוי'}</h3>
+            
+            <input name="description" value={bill.description} onChange={handleChange} placeholder="תיאור (לדוגמה: חשבון חשמל)" className="input input-bordered w-full" required />
+            <div className="grid grid-cols-2 gap-3">
+                <input name="amount" type="number" value={bill.amount} onChange={handleChange} placeholder="סכום" className="input input-bordered w-full" required />
+                <input name="dueDate" type="date" value={bill.dueDate} onChange={handleChange} className="input input-bordered w-full" required />
+            </div>
+            
+            <select name="category" value={bill.category} onChange={handleChange} className="select select-bordered w-full" required>
+                <option value="" disabled>בחר קטגוריה</option>
+                {activeHome?.finances?.expenseCategories.map(cat => (
+                    <option key={cat.name} value={cat.name}>{cat.name}</option>
+                ))}
+            </select>
+            
+            <select name="recurring" value={bill.recurring} onChange={handleChange} className="select select-bordered w-full">
+                <option value="no">לא קבוע</option>
+                <option value="monthly">חודשי</option>
+                <option value="bimonthly">דו-חודשי</option>
+                <option value="quarterly">רבעוני</option>
+                <option value="annually">שנתי</option>
+            </select>
 
-      <label htmlFor="bill-category" style={labelStyle}>קטגוריה:</label>
-      {/* ================================================================= */}
-      {/* 2. תצוגה מותנית: הצג את הרשימה או את ההודעה */}
-      {isFormDisabled ? (
-        <div style={noticeStyle}>
-          יש להגדיר קטגוריות הוצאה תחילה (במסך ניהול תקציב).
-        </div>
-      ) : (
-        <select id="bill-category" value={category} onChange={(e) => setCategory(e.target.value)} style={selectStyle} required>
-          {categories.map(cat => (
-            <option key={cat.name} value={cat.name}>{cat.name}</option>
-          ))}
-        </select>
-      )}
-      {/* ================================================================= */}
-      
-      <label htmlFor="bill-assigned-to" style={labelStyle}>משויך ל:</label>
-      <select id="bill-assigned-to" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} style={selectStyle} required>
-        {availableUsers.map(user => (
-          <option key={user} value={user}>{user}</option>
-        ))}
-      </select>
+            <textarea name="notes" value={bill.notes} onChange={handleChange} placeholder="הערות נוספות" className="textarea textarea-bordered w-full"></textarea>
 
-      <div style={checkboxContainerStyle}>
-        <input type="checkbox" id="bill-recurring-checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} style={checkboxInputStyle} />
-        <label htmlFor="bill-recurring-checkbox">חיוב קבוע (חודשי)</label>
-      </div>
-
-      <div className="modal-footer">
-        {/* 3. נטרול כפתור השמירה אם הטופס מנוטרל */}
-        <button type="submit" className="primary-action" disabled={isFormDisabled}>
-          {existingBill ? 'שמור שינויים' : 'הוסף חשבון'}
-        </button>
-        <button type="button" className="secondary-action" onClick={hideModal}>ביטול</button>
-      </div>
-    </form>
-  );
+            <div className="flex justify-end pt-4">
+                <button type="submit" className="btn btn-primary" disabled={isLoading}>
+                    {isLoading ? 'שומר...' : (isEditMode ? 'שמור שינויים' : 'הוסף חשבון')}
+                </button>
+            </div>
+        </form>
+    );
 };
 
 export default BillForm;

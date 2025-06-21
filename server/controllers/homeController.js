@@ -516,10 +516,12 @@ const updateExpectedBill = async (req, res) => {
 
 const deleteExpectedBill = async (req, res) => {
     try {
-        const { homeId } = req.params;
+        // הוספנו את billId מפרמטרי הבקשה
+        const { homeId, billId } = req.params; 
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
+        // השתמשנו במשתנה הנכון
         home.finances.expectedBills.pull({ _id: billId });
         await home.save();
         res.status(200).json({ message: 'Bill deleted successfully.' });
@@ -527,6 +529,7 @@ const deleteExpectedBill = async (req, res) => {
         handleError(res, error, 'Error deleting expected bill');
     }
 };
+
 
 const payBill = async (req, res) => {
     try {

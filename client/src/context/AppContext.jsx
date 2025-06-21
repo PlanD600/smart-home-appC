@@ -1,5 +1,7 @@
+// client/src/context/AppContext.jsx
+
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import * as api from '../services/api';
+import * as api from '@/services/api';
 
 const AppContext = createContext();
 export const useAppContext = () => useContext(AppContext);
@@ -10,6 +12,7 @@ export const AppProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [homes, setHomes] = useState([]);
+    const [activeTab, setActiveTab] = useState('shopping-list'); // הוספת ניהול הטאב הפעיל
 
     const HOME_DATA_STORAGE_KEY = 'smart-home-data';
     const USER_DATA_STORAGE_KEY = 'smart-home-user';
@@ -43,15 +46,17 @@ export const AppProvider = ({ children }) => {
                     localStorage.clear();
                     setActiveHome(null);
                     setCurrentUser(null);
+                    fetchHomes(); // אם הכניסה האוטומטית נכשלת, טען את רשימת הבתים
                 } finally {
                     setLoading(false);
                 }
             } else {
+                fetchHomes();
                 setLoading(false);
             }
         };
         attemptReLogin();
-    }, []);
+    }, [fetchHomes]);
 
     const initializeHome = useCallback(async (homeId, accessCode, userName) => {
         setLoading(true);
@@ -63,7 +68,8 @@ export const AppProvider = ({ children }) => {
             if (userName) localStorage.setItem(USER_DATA_STORAGE_KEY, JSON.stringify(userName));
             return true;
         } catch (err) {
-            setError(err.response?.data?.message || 'Login failed');
+            const errorMessage = err.response?.data?.message || 'Login failed';
+            setError(errorMessage);
             return false;
         } finally {
             setLoading(false);
@@ -82,12 +88,33 @@ export const AppProvider = ({ children }) => {
             await fetchHomes();
             return true;
         } catch (err) {
-            setError(err.response?.data?.message || 'Creation failed');
+            const errorMessage = err.response?.data?.message || 'Creation failed';
+            setError(errorMessage);
             return false;
         } finally {
             setLoading(false);
         }
     }, [fetchHomes]);
+    
+    const updateHome = useCallback(async (updates) => {
+        if (!activeHome?._id) return;
+        const previousHome = activeHome;
+        const updatedHomeOptimistic = { ...activeHome, ...updates };
+        setActiveHome(updatedHomeOptimistic);
+        
+        try {
+            // כאן צריך להיות API call מתאים לעדכון כללי של הבית אם יש,
+            // כרגע נניח שזה בעיקר לתבניות
+            if (updates.templates) {
+                const updatedHomeFromServer = await api.saveTemplates(activeHome._id, updates.templates);
+                setActiveHome(updatedHomeFromServer);
+                localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(updatedHomeFromServer));
+            }
+        } catch(err) {
+            setError(err.message || 'Failed to update home');
+            setActiveHome(previousHome);
+        }
+    }, [activeHome, setActiveHome, setError]);
 
     const logoutHome = useCallback(() => {
         setActiveHome(null);
@@ -97,20 +124,63 @@ export const AppProvider = ({ children }) => {
         fetchHomes();
     }, [fetchHomes]);
 
+    const addHomeUser = useCallback(async (userName) => {
+        if (!activeHome?._id) return false;
+        setLoading(true);
+        try {
+            const updatedUsers = await api.addUser(activeHome._id, userName);
+            const updatedHome = { ...activeHome, users: updatedUsers };
+            setActiveHome(updatedHome);
+            localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(updatedHome));
+            return true;
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to add user');
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    }, [activeHome, setActiveHome, setError]);
+
+    const removeHomeUser = useCallback(async (userName) => {
+        if (!activeHome?._id) return false;
+        setLoading(true);
+        try {
+            const response = await api.removeUser(activeHome._id, userName);
+            const updatedHome = { ...activeHome, users: response.users };
+            setActiveHome(updatedHome);
+            localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(updatedHome));
+            return true;
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to remove user');
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    }, [activeHome, setActiveHome, setError]);
+
+    const changeActiveTab = useCallback((tabName) => {
+        setActiveTab(tabName);
+    }, []);
+
     const contextValue = useMemo(() => ({
         activeHome,
         currentUser,
         loading,
         error,
         homes,
-        setActiveHome, // חשוב לחשוף את ה-setter
-        setError,      // חשוב לחשוף את ה-setter
-        setLoading,    // חשוב לחשוף את ה-setter
+        activeTab, // הוספה
+        setActiveHome,
+        setError,
+        setLoading,
         initializeHome,
         createHome,
         logoutHome,
-        fetchHomes
-    }), [activeHome, currentUser, loading, error, homes, initializeHome, createHome, logoutHome, fetchHomes]);
+        updateHome, // הוספה
+        addHomeUser, // הוספה
+        removeHomeUser, // הוספה
+        fetchHomes,
+        changeActiveTab, // הוספה
+    }), [activeHome, currentUser, loading, error, homes, activeTab, initializeHome, createHome, logoutHome, updateHome, fetchHomes, changeActiveTab, addHomeUser, removeHomeUser]);
 
     return (
         <AppContext.Provider value={contextValue}>
