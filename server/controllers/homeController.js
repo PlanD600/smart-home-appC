@@ -1,4 +1,5 @@
 const Home = require('../models/Home');
+const mongoose = require('mongoose'); // ייבוא mongoose כדי להשתמש ב-ObjectId
 
 // --- פונקציות עזר ---
 
@@ -11,7 +12,6 @@ const Home = require('../models/Home');
  */
 const handleError = (res, error, defaultMessage = 'An error occurred', statusCode = 500) => {
     console.error(error);
-    // משתמשים בהודעת השגיאה הספציפית אם קיימת, אחרת בהודעת ברירת המחדל.
     const errorMessage = error.message || defaultMessage;
     res.status(statusCode).json({ message: defaultMessage, error: errorMessage });
 };
@@ -32,54 +32,43 @@ const defaultExpenseCategories = [
 /**
  * "מנרמלת" את אובייקט הבית כדי להבטיח מבנה נתונים אחיד ונכון לקליינט,
  * כולל אתחול של רשימות פיננסיות וטיפול בקטגוריות הוצאות.
- * @param {object} home - אובייקט הבית ממסד הנתונים (או אובייקט רגיל).
- * @returns {object|null} - אובייקט הבית מנוטרל, או null אם הקלט null.
+ * @param {object} home - אובייקט הבית ממסד הנתונים.
+ * @returns {object|null} - אובייקט הבית מנוטרל.
  */
 const normalizeHomeObject = (home) => {
     if (!home) return null;
 
-    // המרת אובייקט Mongoose לאובייקט JavaScript רגיל אם הוא כזה
     const homeObject = home.toObject ? home.toObject() : { ...home };
 
-    // וודא קיום של מערכים ושדות מרכזיים
     homeObject.users = homeObject.users || [];
     homeObject.shoppingList = homeObject.shoppingList || [];
     homeObject.tasks = homeObject.tasks || [];
     homeObject.templates = homeObject.templates || [];
-    // === תיקון: וודא ש-iconClass ו-colorClass תמיד קיימים עם ברירות מחדל ===
-    // אלו אותם ערכי ברירת מחדל כמו ב-CreateHomeForm (fas fa-home ו-card-color-1)
     homeObject.iconClass = homeObject.iconClass || 'fas fa-home'; 
     homeObject.colorClass = homeObject.colorClass || 'card-color-1'; 
-    // =======================================================================
 
-    // טיפול באובייקט הפיננסים
     homeObject.finances = homeObject.finances || {};
     const finances = homeObject.finances;
 
-    // וודא קיום של רשימות פיננסיות
     finances.expectedBills = finances.expectedBills || [];
     finances.paidBills = finances.paidBills || [];
-    finances.income = finances.income || []; // שימוש ב'income' כפי שמוגדר ב-FinanceSchema
+    finances.income = finances.income || []; 
     finances.savingsGoals = finances.savingsGoals || [];
-    finances.financeSettings = finances.financeSettings || { currency: 'ש"ח' }; // וודא קיום financeSettings
+    finances.financeSettings = finances.financeSettings || { currency: 'ש"ח' }; 
 
-    // **לוגיקה קריטית: מוודאים ש-expenseCategories הוא תמיד מערך של אובייקטים**
     let categories = finances.expenseCategories || [];
 
-    // אם הנתונים ב-DB הם בטעות אובייקט (כמו ב-createHome הישן), נמיר אותם למערך אובייקטים מלא
-    // ונוודא שכל שדה (name, budgetAmount, color, icon) קיים.
     if (!Array.isArray(categories)) {
         categories = Object.entries(categories).map(([name, budgetAmount]) => {
             const existingCategory = defaultExpenseCategories.find(cat => cat.name === name);
             return {
                 name: name,
                 budgetAmount: typeof budgetAmount === 'number' ? budgetAmount : 0,
-                color: existingCategory ? existingCategory.color : '#CCCCCC', // צבע כללי אם אין התאמה
-                icon: existingCategory ? existingCategory.icon : 'fa-tag' // אייקון כללי אם אין התאמה
+                color: existingCategory ? existingCategory.color : '#CCCCCC',
+                icon: existingCategory ? existingCategory.icon : 'fa-tag'
             };
         });
     } else {
-        // וודא שכל אובייקט קטגוריה מכיל את כל השדות הנדרשים (icon, color, budgetAmount)
         categories = categories.map(cat => {
             const defaultCat = defaultExpenseCategories.find(dCat => dCat.name === cat.name);
             return {
@@ -91,38 +80,27 @@ const normalizeHomeObject = (home) => {
         });
     }
 
-    // אם המערך ריק לאחר הנורמולציה, ניצור קטגוריות ברירת מחדל
     if (categories.length === 0) {
         categories = [...defaultExpenseCategories];
     }
 
-    homeObject.finances.expenseCategories = categories; // עדכון ה-finances בתוך homeObject
+    homeObject.finances.expenseCategories = categories;
 
     return homeObject;
 };
 
 // --- פונקציות ה-Controller ---
 
-/**
- * קבלת רשימת בתים למסך הלוגין (רק _id, name, iconClass, colorClass).
- * GET /api/homes
- */
 const getHomes = async (req, res) => {
     try {
         const homes = await Home.find({}, '_id name iconClass colorClass');
-        // === תיקון: נרמל כל בית כאן לפני שליחתו ללקוח ===
         const normalizedHomes = homes.map(home => normalizeHomeObject(home));
-        // ===============================================
-        res.status(200).json(normalizedHomes); // שלח בתים מנורמלים
+        res.status(200).json(normalizedHomes);
     } catch (error) {
         handleError(res, error, 'Error fetching homes');
     }
 };
 
-/**
- * קבלת פרטים מלאים של בית יחיד לפי ID.
- * GET /api/home/:homeId
- */
 const getHomeDetails = async (req, res) => {
     try {
         const { homeId } = req.params;
@@ -137,10 +115,6 @@ const getHomeDetails = async (req, res) => {
     }
 };
 
-/**
- * התחברות לבית ספציפי באמצעות קוד גישה.
- * POST /api/home/login
- */
 const loginToHome = async (req, res) => {
     try {
         const { homeId, accessCode } = req.body;
@@ -162,12 +136,8 @@ const loginToHome = async (req, res) => {
     }
 };
 
-/**
- * יצירת בית חדש עם אתחול מלא של כל הנתונים, כולל משתמש ראשוני כ-admin.
- * POST /api/home
- */
 const createHome = async (req, res) => {
-    const { name, accessCode, iconClass, colorClass, users, currency } = req.body; // שימוש ב-colorClass
+    const { name, accessCode, iconClass, colorClass, users, currency } = req.body;
 
     if (!name || !accessCode) {
         return res.status(400).json({ message: 'Name and access code are required' });
@@ -179,13 +149,10 @@ const createHome = async (req, res) => {
     try {
         const homeExists = await Home.findOne({ name });
         if (homeExists) {
-            // === הוספת console.log כדי לוודא מה נשלח כאן ===
             console.log(`Home with name "${name}" already exists.`);
-            // ============================================
-            return res.status(409).json({ message: 'A home with this name already exists.' }); // 409 Conflict הוא קוד מתאים יותר
+            return res.status(409).json({ message: 'A home with this name already exists.' });
         }
 
-        // וודא שפורמט המשתמשים הוא אובייקט עם name ו-isAdmin
         const formattedUsers = users.map(user => {
             if (typeof user === 'string') {
                 return { name: user, isAdmin: false };
@@ -193,7 +160,6 @@ const createHome = async (req, res) => {
             return { name: user.name, isAdmin: user.isAdmin || false };
         });
 
-        // הגדר את המשתמש הראשון כ-admin
         if (formattedUsers.length > 0) {
             formattedUsers[0].isAdmin = true;
         }
@@ -203,7 +169,7 @@ const createHome = async (req, res) => {
             accessCode,
             iconClass: iconClass || 'fas fa-home',
             colorClass: colorClass || 'card-color-1',
-            currency: currency || 'ILS', // שימוש ב-currency הראשי מה-HomeSchema
+            currency: currency || 'ILS',
             users: formattedUsers,
             shoppingList: [],
             tasks: [],
@@ -213,31 +179,22 @@ const createHome = async (req, res) => {
                 paidBills: [],
                 income: [],
                 savingsGoals: [],
-                expenseCategories: defaultExpenseCategories, // שימוש במערך ברירת המחדל המלא
-                financeSettings: { currency: currency || 'ש"ח' } // המטבע בתוך financeSettings
+                expenseCategories: defaultExpenseCategories,
+                financeSettings: { currency: currency || 'ש"ח' }
             }
         });
 
         await newHome.save();
         res.status(201).json(normalizeHomeObject(newHome));
     } catch (error) {
-        // === לוג מדויק לשגיאת השרת ===
         console.error("Server error creating home:", error);
-        // ============================
-        if (error.code === 11000) { // Mongoose duplicate key error
+        if (error.code === 11000) {
             return res.status(409).json({ message: 'A home with this name already exists.' });
         }
         handleError(res, error, 'Server error creating home');
     }
 };
 
-/**
- * הוספת פריט לרשימה (קניות או משימות)
- * POST /api/home/:homeId/:listType
- * @param {string} homeId - ה-ID של הבית.
- * @param {'shoppingList'|'tasks'} listType - סוג הרשימה.
- * @param {object} req.body - נתוני הפריט. השדה 'text' נדרש.
- */
 const addItemToList = async (req, res) => {
     const { homeId, listType } = req.params;
     const { text, ...otherItemData } = req.body;
@@ -245,62 +202,56 @@ const addItemToList = async (req, res) => {
     if (!text) {
         return res.status(400).json({ message: 'Item text is required.' });
     }
-    // וודא ש-listType חוקי וקיים במודל הבית
     if (!['shoppingList', 'tasks'].includes(listType)) {
         return res.status(400).json({ message: 'Invalid list type. Must be "shoppingList" or "tasks".' });
     }
 
+    // === תיקון: יצירת _id מפורש עבור הפריט החדש ===
+    // זה מבטיח שלכל תת-מסמך יהיה ObjectId תקני, מה שיקל על מחיקתו.
     const newItem = {
-        text, // ItemSchema משתמש ב'text'
+        _id: new mongoose.Types.ObjectId(), 
+        text,
         ...otherItemData
     };
+    // ===============================================
 
     try {
-        // שימוש בפעולה אטומית $push להוספה יעילה.
         const updatedHome = await Home.findByIdAndUpdate(
             homeId,
             { $push: { [listType]: newItem } },
-            { new: true, runValidators: true } // runValidators מבטיח ש-newItem תקין לפי ItemSchema
+            { new: true, runValidators: true }
         );
 
         if (!updatedHome) {
             return res.status(404).json({ message: 'Home not found' });
         }
 
-        // החזרת הפריט שנוסף (הפריט האחרון ברשימה שנוצרה)
         const list = updatedHome[listType];
         res.status(201).json(list[list.length - 1]);
 
     } catch (error) {
+        console.error(`Server error adding item to ${listType}:`, error);
         handleError(res, error, `Failed to add item to ${listType}`);
     }
 };
 
-/**
- * עדכון פריט ברשימה (קניות או משימות)
- * PUT /api/home/:homeId/:listType/:itemId
- * @param {string} homeId - ה-ID של הבית.
- * @param {'shoppingList'|'tasks'} listType - סוג הרשימה.
- * @param {string} itemId - ה-ID של הפריט לעדכון.
- * @param {object} req.body - הנתונים לעדכון הפריט.
- */
 const updateItemInList = async (req, res) => {
     const { homeId, listType, itemId } = req.params;
     const updates = req.body;
 
-    // וודא ש-listType חוקי
     if (!['shoppingList', 'tasks'].includes(listType)) {
         return res.status(400).json({ message: 'Invalid list type. Must be "shoppingList" or "tasks".' });
     }
 
-    // יצירת אובייקט העדכון עבור MongoDB באמצעות האופרטור הפוזיציונלי '$'
     const updateSet = {};
     for (const key in updates) {
+        // עבור עדכונים פשוטים של שדות ברמה העליונה של הפריט.
+        // אם מנסים לעדכן תת-משימות מקוננות, זה ידרוש לוגיקה מורכבת יותר
+        // עם אופרטורים כמו $set עם arrayFilters, או מציאה ועדכון ידני של הפריט
         updateSet[`${listType}.$.${key}`] = updates[key];
     }
 
     try {
-        // שימוש בפעולה אטומית $set לעדכון יעיל.
         const updatedHome = await Home.findOneAndUpdate(
             { _id: homeId, [`${listType}._id`]: itemId },
             { $set: updateSet },
@@ -311,55 +262,83 @@ const updateItemInList = async (req, res) => {
             return res.status(404).json({ message: 'Home or item not found' });
         }
 
-        // החזרת הפריט המעודכן
         const updatedItem = updatedHome[listType].find(item => item._id.toString() === itemId);
         res.status(200).json(updatedItem);
 
     } catch (error) {
+        console.error(`Server error updating item in ${listType}:`, error);
         handleError(res, error, `Failed to update item in ${listType}`);
     }
 };
 
-/**
- * מחיקת פריט מרשימה (קניות או משימות)
- * DELETE /api/home/:homeId/:listType/:itemId
- * @param {string} homeId - ה-ID של הבית.
- * @param {'shoppingList'|'tasks'} listType - סוג הרשימה.
- * @param {string} itemId - ה-ID של הפריט למחיקה.
- */
 const deleteItemFromList = async (req, res) => {
-    const { homeId, listType } = req.params;
+    const { homeId, listType, itemId } = req.params;
 
-    // וודא ש-listType חוקי
     if (!['shoppingList', 'tasks'].includes(listType)) {
         return res.status(400).json({ message: 'Invalid list type. Must be "shoppingList" or "tasks".' });
     }
 
     try {
-        // שימוש בפעולה אטומית $pull להסרה יעילה.
-        const updatedHome = await Home.findByIdAndUpdate(
-            homeId,
-            { $pull: { [listType]: { _id: itemId } } },
-            { new: true }
-        );
-
-        if (!updatedHome) {
+        console.log(`[Backend Debug] Attempting to delete item: ${itemId} from ${listType} in home: ${homeId}`);
+        const home = await Home.findById(homeId);
+        if (!home) {
             return res.status(404).json({ message: 'Home not found' });
         }
 
+        // === תיקון: שימוש ב-findIndex ו-splice למחיקה מדויקת ואמינה יותר ===
+        // במקום $pull, שנכשל במקרים מסוימים עם תתי-מסמכים
+        const itemIndex = home[listType].findIndex(item => item._id && item._id.toString() === itemId);
+        
+        if (itemIndex === -1) {
+            console.warn(`[Backend Debug] Item ${itemId} not found in ${listType} for home ${homeId} via findIndex. This might be a nested item or already deleted.`);
+            // אם הפריט לא נמצא ברמה העליונה, זה יכול להיות תת-פריט.
+            // לוגיקה למחיקת תת-פריט תהיה מורכבת יותר (מצא את האב, ואז מחק את התת-פריט).
+            // כרגע, נניח שמחיקה היא רק ברמה העליונה או שהמטפל ב-Frontend יודע לטפל בקינון.
+            return res.status(404).json({ message: 'Item not found in list or is a sub-item not handled directly.' });
+        }
+
+        home[listType].splice(itemIndex, 1); // הסר את הפריט לפי אינדקס
+        // =========================================================
+
+        await home.save();
         res.status(200).json({ message: 'Item deleted successfully.' });
 
     } catch (error) {
-        handleError(res, error, 'Error deleting item');
+        console.error(`Server error deleting item from ${listType}:`, error);
+        handleError(res, error, `Failed to delete item from ${listType}`);
     }
 };
 
 /**
- * הוספת משתמש לבית.
- * POST /api/home/:homeId/users
- * @param {string} homeId - ה-ID של הבית.
- * @param {string} userName - שם המשתמש להוספה.
+ * מחיקת כל הפריטים מסוג מסוים מרשימה (לדוגמה, כל רשימת הקניות).
+ * PATCH /api/home/:homeId/:listType/clear
+ * זה שינוי שימחק את כל הפריטים ברשימה מסוימת.
  */
+const clearAllItemsFromList = async (req, res) => {
+    const { homeId, listType } = req.params;
+
+    if (!['shoppingList', 'tasks'].includes(listType)) {
+        return res.status(400).json({ message: 'Invalid list type. Must be "shoppingList" or "tasks".' });
+    }
+
+    try {
+        const home = await Home.findById(homeId);
+        if (!home) {
+            return res.status(404).json({ message: 'Home not found' });
+        }
+
+        home[listType] = []; // איפוס הרשימה
+
+        await home.save();
+        res.status(200).json({ message: `All items cleared from ${listType} successfully.` });
+
+    } catch (error) {
+        console.error(`Server error clearing all items from ${listType}:`, error);
+        handleError(res, error, `Failed to clear all items from ${listType}`);
+    }
+};
+
+
 const addUser = async (req, res) => {
     try {
         const { homeId } = req.params;
@@ -374,12 +353,11 @@ const addUser = async (req, res) => {
             return res.status(404).json({ message: 'Home not found.' });
         }
 
-        // וודא שהמשתמש אינו קיים כבר (לפי שמו)
         if (home.users.some(u => u.name === userName)) {
             return res.status(409).json({ message: 'User with this name already exists in this home.' });
         }
 
-        home.users.push({ name: userName, isAdmin: false }); // הוספה כאובייקט עם isAdmin: false
+        home.users.push({ name: userName, isAdmin: false });
         await home.save();
         res.status(201).json(home.users);
     } catch (error) {
@@ -387,12 +365,6 @@ const addUser = async (req, res) => {
     }
 };
 
-/**
- * הסרת משתמש מבית.
- * DELETE /api/home/:homeId/users
- * @param {string} homeId - ה-ID של הבית.
- * @param {string} userName - שם המשתמש להסרה.
- */
 const removeUser = async (req, res) => {
     try {
         const { homeId } = req.params;
@@ -401,18 +373,15 @@ const removeUser = async (req, res) => {
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-        // מצא את האינדקס של המשתמש
         const userIndex = home.users.findIndex(u => u.name === userName);
         if (userIndex === -1) {
             return res.status(404).json({ message: 'User not found in this home.' });
         }
         
-        // וודא שאי אפשר למחוק את המשתמש היחיד שנשאר
         if (home.users.length === 1 && home.users[0].name === userName) {
             return res.status(400).json({ message: 'Cannot remove the last user from the home.' });
         }
 
-        // הסר את המשתמש
         home.users.splice(userIndex, 1);
         await home.save();
 
@@ -432,7 +401,6 @@ const addExpectedBill = async (req, res) => {
 
         home.finances.expectedBills.push(billData);
         await home.save();
-        // החזר את הפריט החדש שנוסף (Mongoose מוסיף _id אוטומטית)
         res.status(201).json(home.finances.expectedBills[home.finances.expectedBills.length - 1]);
     } catch (error) {
         handleError(res, error, 'Error adding expected bill');
@@ -446,7 +414,6 @@ const updateExpectedBill = async (req, res) => {
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-        // שימוש ב-id() של Mongoose לרשימות משנה
         const bill = home.finances.expectedBills.id(billId);
         if (!bill) return res.status(404).json({ message: 'Bill not found.' });
 
@@ -464,10 +431,9 @@ const deleteExpectedBill = async (req, res) => {
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-        // שימוש ב-pull() של Mongoose להסרה
         home.finances.expectedBills.pull({ _id: billId });
         await home.save();
-        res.status(200).json({ message: 'Bill deleted successfully.' }); // 200 OK עם הודעה, במקום 204 No Content
+        res.status(200).json({ message: 'Bill deleted successfully.' });
     } catch (error) {
         handleError(res, error, 'Error deleting expected bill');
     }
@@ -479,19 +445,16 @@ const payBill = async (req, res) => {
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-        // מציאת החשבון המצופה
         const billToPay = home.finances.expectedBills.id(billId);
         if (!billToPay) return res.status(404).json({ message: 'Bill not found in expected bills.' });
 
-        // יצירת אובייקט חשבון ששולם עם תאריך תשלום
-        const paidBill = { ...billToPay.toObject(), datePaid: new Date() }; // .toObject() חשוב להעתקה נכונה
+        const paidBill = { ...billToPay.toObject(), datePaid: new Date() };
         home.finances.paidBills.push(paidBill);
 
-        // הסרת החשבון מרשימת החשבונות הצפויים
         home.finances.expectedBills.pull({ _id: billId });
 
         await home.save();
-        res.status(200).json(home.finances); // החזרת אובייקט הפיננסים המעודכן
+        res.status(200).json(home.finances);
     }
     catch (error) {
         handleError(res, error, 'Error paying bill');
@@ -505,7 +468,7 @@ const addIncome = async (req, res) => {
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-        home.finances.income.push(incomeData); // השדה הוא 'income'
+        home.finances.income.push(incomeData);
         await home.save();
         res.status(201).json(home.finances.income[home.finances.income.length - 1]);
     } catch (error) {
@@ -550,7 +513,6 @@ const addFundsToSavingsGoal = async (req, res) => {
     }
 };
 
-// **תיקון קריטי: סכום פיננסי לפי משתמש**
 const getUserMonthlyFinanceSummary = async (req, res) => {
     try {
         const { homeId, year, month } = req.params;
@@ -563,12 +525,10 @@ const getUserMonthlyFinanceSummary = async (req, res) => {
         const startOfMonth = new Date(numericYear, numericMonth - 1, 1);
         const endOfMonth = new Date(numericYear, numericMonth, 0, 23, 59, 59, 999); // Last day of the month
 
-        // אתחול אובייקט סיכום לכל המשתמשים ול"משותף"
-        // וודא ש"אני" ו"משותף" נכללים ביוזרים הזמינים
         const allUsers = [...new Set([
-            ...(home.users || []).map(u => u.name), // מפתחים את אובייקטי המשתמשים לשמות
-            'אני', // עדיין נכלל לברירת מחדל
-            'משותף' // עדיין נכלל לברירת מחדל
+            ...(home.users || []).map(u => u.name),
+            'אני',
+            'משותף'
         ])];
 
         const userSummary = {};
@@ -576,34 +536,31 @@ const getUserMonthlyFinanceSummary = async (req, res) => {
             userSummary[user] = { income: 0, expenses: 0, net: 0 };
         });
 
-        // צבירת הכנסות לפי משתמש
         home.finances.income.forEach(inc => {
             const incomeDate = new Date(inc.date);
             if (incomeDate >= startOfMonth && incomeDate <= endOfMonth) {
                 const user = inc.assignedTo || 'משותף';
-                if (userSummary[user]) { // וודא שהמשתמש קיים בסיכום (אמור להיות אם הוא ב-allUsers)
+                if (userSummary[user]) {
                     userSummary[user].income += inc.amount;
                 }
             }
         });
 
-        // צבירת הוצאות (חשבונות ששולמו) לפי משתמש
         home.finances.paidBills.forEach(bill => {
             const paidDate = new Date(bill.datePaid);
             if (paidDate >= startOfMonth && paidDate <= endOfMonth) {
                 const user = bill.assignedTo || 'משותף';
-                if (userSummary[user]) { // וודא שהמשתמש קיים בסיכום
+                if (userSummary[user]) {
                     userSummary[user].expenses += bill.amount;
                 }
             }
         });
 
-        // חישוב נטו לכל משתמש
         Object.keys(userSummary).forEach(user => {
             userSummary[user].net = userSummary[user].income - userSummary[user].expenses;
         });
 
-        res.status(200).json(userSummary); // החזרת הסיכום לפי משתמש
+        res.status(200).json(userSummary);
 
     } catch (error) {
         handleError(res, error, 'Error fetching user monthly finance summary');
@@ -616,16 +573,22 @@ const transformRecipeToShoppingList = async (req, res) => {
         const { homeId } = req.params;
         const { recipeText } = req.body;
         
+        // כאן תהיה קריאה ל-Gemini API (כשתטמיע אותה)
+        // לדוגמה: const geminiResponse = await callGeminiAPI(recipeText);
+        // const newItemsFromGemini = parseGeminiResponse(geminiResponse);
+
+        // Mock response for now
         const mockShoppingList = [
-            { text: "חלב", category: "מוצרי חלב" },
-            { text: "ביצים", category: "מוצרי יסוד" },
-            { text: "קמח", category: "אפייה" },
+            { text: "חלב", category: "מוצרי חלב", _id: new mongoose.Types.ObjectId() },
+            { text: "ביצים", category: "מוצרי יסוד", _id: new mongoose.Types.ObjectId() },
+            { text: "קמח", category: "אפייה", _id: new mongoose.Types.ObjectId() },
+            { text: "סוכר", category: "אפייה", _id: new mongoose.Types.ObjectId() },
         ];
 
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-        home.shoppingList.push(...mockShoppingList); // שימוש בשם השדה המעודכן: shoppingList
+        home.shoppingList.push(...mockShoppingList);
         await home.save();
 
         res.status(200).json({ message: "Recipe transformed and items added to shopping list!", newItems: mockShoppingList });
@@ -639,18 +602,53 @@ const breakdownComplexTask = async (req, res) => {
         const { homeId } = req.params;
         const { taskText } = req.body;
         
-        const mockSubTasks = [
-            { text: `תת-משימה 1 מתוך "${taskText}"`, category: "תת-משימה" },
-            { text: `תת-משימה 2 מתוך "${taskText}"`, category: "תת-משימה" },
-        ];
+        // Mock response for a nested task structure
+        const mockMainTask = {
+            _id: new mongoose.Types.ObjectId(), // ID למשימה הראשית
+            text: `ארגון: ${taskText}`,
+            category: "אירועים",
+            isUrgent: true,
+            subItems: [ // תתי-משימות
+                {
+                    _id: new mongoose.Types.ObjectId(),
+                    text: `1. הכנת רשימת מוזמנים`,
+                    category: "תכנון",
+                    completed: false,
+                    _id: new mongoose.Types.ObjectId(), // Add _id for subItem
+                },
+                {
+                    _id: new mongoose.Types.ObjectId(),
+                    text: `2. בחירת מקום`,
+                    category: "תכנון",
+                    completed: false,
+                    _id: new mongoose.Types.ObjectId(), // Add _id for subItem
+                },
+                {
+                    _id: new mongoose.Types.ObjectId(),
+                    text: `3. קניית כיבוד ושתיה`,
+                    category: "קניות",
+                    subItems: [ // קינון נוסף לדוגמה
+                        { _id: new mongoose.Types.ObjectId(), text: 'קניית חטיפים', completed: false },
+                        { _id: new mongoose.Types.ObjectId(), text: 'קניית שתיה קלה', completed: false },
+                    ]
+                },
+                {
+                    _id: new mongoose.Types.ObjectId(),
+                    text: `4. שליחת הזמנות`,
+                    category: "ביצוע",
+                    completed: false,
+                    _id: new mongoose.Types.ObjectId(), // Add _id for subItem
+                },
+            ]
+        };
 
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-        home.tasks.push(...mockSubTasks); // שימוש בשם השדה המעודכן: tasks
+        home.tasks.push(mockMainTask);
         await home.save();
 
-        res.status(200).json({ message: "Task broken down and sub-tasks added!", newItems: mockSubTasks });
+        res.status(200).json({ message: "Task broken down and sub-tasks added!", newItems: [mockMainTask] });
     } catch (error) {
         handleError(res, error, 'Error breaking down task with Gemini');
     }
@@ -682,6 +680,7 @@ module.exports = {
     addItemToList,
     updateItemInList,
     deleteItemFromList,
+    clearAllItemsFromList,
     addUser,
     removeUser,
     addExpectedBill,
@@ -695,4 +694,4 @@ module.exports = {
     getUserMonthlyFinanceSummary,
     transformRecipeToShoppingList,
     breakdownComplexTask
-    };
+};

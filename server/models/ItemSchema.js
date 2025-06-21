@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+// הגדרת ItemSchema מחוץ לפונקציה כדי לאפשר רקורסיה
 const ItemSchema = new mongoose.Schema({
   text: {
     type: String,
@@ -29,6 +30,13 @@ const ItemSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  // === הוספה: תמיכה בתתי-פריטים / תתי-מטלות ===
+  // זה מאפשר למטלות להיות מקוננות, כלומר, פריט יכול להכיל רשימה של פריטים אחרים.
+  subItems: {
+    type: [this], // יצירת מערך של ItemSchema (רקורסיבי)
+    default: [],
+  },
+  // ==========================================
 });
 
 module.exports = ItemSchema;
