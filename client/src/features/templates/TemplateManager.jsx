@@ -1,31 +1,20 @@
 import React, { useState, useEffect } from 'react';
-// נתיבי יבוא תקינים
-import { useAppContext } from '@/context/AppContext';
-import { useModal } from '../../context/ModalContext'; //
+import { useAppContext } from '@/context/AppContext'; // ✅ Fixed import
+import { useModal } from '../../context/ModalContext';
 
-/**
- * @file TemplateForm component
- * @description Allows creation and editing of shopping, task, and finance templates.
- * @param {object} props - Component props
- * @param {function} props.onClose - Function to close the modal
- * @param {object} [props.templateToEdit] - Optional: The template object to edit
- * @param {number} [props.templateIndex] - Optional: The index of the template in the array if editing
- */
 const TemplateForm = ({ onClose, templateToEdit, templateIndex }) => {
-  const { activeHome, updateHome, loading } = useHome(); // שינוי: מ-currentHome ל-activeHome ומ-updateCurrentHome ל-updateHome
-  const { showModal, hideModal } = useModal(); // שינוי: מ-showAlert ל-showModal, hideModal
+  // ✅ Fixed: Use useAppContext instead of useHome
+  const { activeHome, updateHome, loading } = useAppContext();
+  const { showModal, hideModal } = useModal();
 
-  // State for form fields
   const [name, setName] = useState('');
-  const [type, setType] = useState('shopping'); // Default type
-  const [items, setItems] = useState([{ text: '', amount: '', date: '' }]); // Array of template items
+  const [type, setType] = useState('shopping');
+  const [items, setItems] = useState([{ text: '', amount: '', date: '' }]);
 
-  // Effect to populate form fields if editing an existing template
   useEffect(() => {
     if (templateToEdit) {
       setName(templateToEdit.name || '');
       setType(templateToEdit.type || 'shopping');
-      // Ensure items have correct structure for editing
       setItems(templateToEdit.items.map(item => ({
         text: item.text || '',
         amount: item.amount || '',
@@ -34,72 +23,47 @@ const TemplateForm = ({ onClose, templateToEdit, templateIndex }) => {
     }
   }, [templateToEdit]);
 
-  /**
-   * Handles changes to the name input field.
-   * @param {object} e - The event object
-   */
   const handleNameChange = (e) => {
     setName(e.target.value);
   };
 
-  /**
-   * Handles changing the template type.
-   * Resets items to a single empty item when type changes.
-   * @param {string} newType - The selected template type ('shopping', 'task', 'finance')
-   */
   const handleTypeChange = (newType) => {
     setType(newType);
-    setItems([{ text: '', amount: '', date: '' }]); // Reset items when type changes
+    setItems([{ text: '', amount: '', date: '' }]);
   };
 
-  /**
-   * Handles changes to an individual item's text, amount or date.
-   * @param {number} index - The index of the item in the items array
-   * @param {string} field - The field to update ('text', 'amount', 'date')
-   * @param {string} value - The new value for the field
-   */
   const handleItemChange = (index, field, value) => {
     const newItems = [...items];
     newItems[index][field] = value;
     setItems(newItems);
   };
 
-  /**
-   * Adds a new empty item field to the template.
-   */
   const handleAddItem = () => {
     setItems(prevItems => [...prevItems, { text: '', amount: '', date: '' }]);
   };
 
-  /**
-   * Removes an item from the template at a given index.
-   * @param {number} index - The index of the item to remove
-   */
   const handleRemoveItem = (index) => {
     setItems(prevItems => prevItems.filter((_, i) => i !== index));
   };
 
-  /**
-   * Handles form submission for creating or updating a template.
-   */
   const handleSubmit = async () => {
     if (!name.trim()) {
-      showModal(<div>נא להזין שם לתבנית.</div>, { title: "שגיאה" }); // שינוי: מ-showAlert ל-showModal
+      showModal(<div>נא להזין שם לתבנית.</div>, { title: "שגיאה" });
       return;
     }
 
     const filteredItems = items.filter(item => item.text.trim() !== '');
     if (filteredItems.length === 0) {
-      showModal(<div>נא להוסיף לפחות פריט אחד לתבנית.</div>, { title: "שגיאה" }); // שינוי: מ-showAlert ל-showModal
+      showModal(<div>נא להוסיף לפחות פריט אחד לתבנית.</div>, { title: "שגיאה" });
       return;
     }
 
-    if (!activeHome) { // שינוי: מ-currentHome ל-activeHome
-      showModal(<div>נתוני הבית אינם זמינים.</div>, { title: "שגיאה" }); // שינוי: מ-showAlert ל-showModal
+    if (!activeHome) {
+      showModal(<div>נתוני הבית אינם זמינים.</div>, { title: "שגיאה" });
       return;
     }
 
-    const updatedTemplates = [...activeHome.templates || []]; // שינוי: מ-currentHome ל-activeHome
+    const updatedTemplates = [...activeHome.templates || []];
     const newTemplate = {
       name: name.trim(),
       type: type,
@@ -117,20 +81,18 @@ const TemplateForm = ({ onClose, templateToEdit, templateIndex }) => {
     };
 
     if (templateToEdit && templateIndex !== undefined) {
-      // Editing existing template
       updatedTemplates[templateIndex] = newTemplate;
     } else {
-      // Adding new template
       updatedTemplates.push(newTemplate);
     }
 
     try {
-      await updateHome({ templates: updatedTemplates }); // שינוי: מ-updateCurrentHome ל-updateHome
-      showModal(<div>התבנית "{name.trim()}" נשמרה בהצלחה!</div>, { title: "הצלחה" }); // שינוי: מ-showAlert ל-showModal
-      onClose(); // Close the modal
+      await updateHome({ templates: updatedTemplates });
+      showModal(<div>התבנית "{name.trim()}" נשמרה בהצלחה!</div>, { title: "הצלחה" });
+      onClose();
     } catch (error) {
       console.error("Failed to save template:", error);
-      showModal(<div>שגיאה בשמירת התבנית. נסה שוב.</div>, { title: "שגיאה" }); // שינוי: מ-showAlert ל-showModal
+      showModal(<div>שגיאה בשמירת התבנית. נסה שוב.</div>, { title: "שגיאה" });
     }
   };
 
