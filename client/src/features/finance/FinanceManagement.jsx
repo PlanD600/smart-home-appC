@@ -1,5 +1,10 @@
+// client/src/features/finance/FinanceManagement.jsx
+
 import React, { Suspense, lazy } from 'react';
-import { useHome } from '../../context/HomeContext';
+import { useHome } from '../../../../HomeContexttest';
+import LoadingSpinner from '../../components/LoadingSpinner'; // נשתמש ברכיב טעינה עקבי
+
+// ייבוא קומפוננטות-הבן
 import FinancialSummary from './FinancialSummary';
 import ExpenseChart from './ExpenseChart';
 import ExpectedBills from './ExpectedBills';
@@ -8,47 +13,71 @@ import BudgetTracker from './BudgetTracker';
 import SavingsGoals from './SavingsGoals';
 import IncomeList from './IncomeList';
 
-// הסרנו את הייבוא הכפול. נשארה רק הגרסה הדינאמית
+// ייבוא הרכיבים החדשים שיצרנו
+import FinanceSection from './FinanceSection';
+import FinanceActions from './FinanceActions';
+
 const UserFinanceSummary = lazy(() => import('./UserFinanceSummary'));
 
 const FinanceManagement = () => {
-  const { activeHome } = useHome();
+  const { activeHome, loading } = useHome();
 
-  if (!activeHome || !activeHome.finances) {
-    return <div>טוען נתונים פיננסיים...</div>;
-  }
-  
-  const { finances } = activeHome;
-  const currency = finances.financeSettings?.currency || 'ש"ח';
+  // שימוש ברכיב טעינה עקבי יותר
+  if (loading && !activeHome) {
+    return <LoadingSpinner />;
+  }
 
-  return (
-    <section id="finance-management" className="list-section active">
-      <div className="list-title-container">
-        <h3><span data-lang-key="finance_management">ניהול כספים</span></h3>
-      </div>
-      <div className="finance-section-content">
-        <FinancialSummary finances={finances} />
-        <hr />
-        
-        <Suspense fallback={<div>טוען רכיב סיכום...</div>}>
-          <UserFinanceSummary />
-        </Suspense>
+  // תנאי למקרה שאין בית פעיל או נתונים פיננסיים
+  if (!activeHome || !activeHome.finances) {
+    return <div className="p-4 text-center text-gray-500">לא נבחרו נתונים להצגה.</div>;
+  }
+  
+  return (
+    <section id="finance-management" className="p-4 md:p-6 bg-white rounded-lg shadow-md">
+      <div className="list-title-container mb-4">
+        <h3 className="text-xl font-bold text-gray-800" data-lang-key="finance_management">ניהול כספים</h3>
+      </div>
 
-        <hr />
-        <ExpenseChart paidBills={finances.paidBills} expenseCategories={finances.expenseCategories} currency={currency} />
-        <hr />
-        <ExpectedBills />
-        <hr />
-        <PaidBillsList paidBills={finances.paidBills} currency={currency} />
-        <hr />
-        <BudgetTracker paidBills={finances.paidBills} expenseCategories={finances.expenseCategories} currency={currency} />
-        <hr />
-        <SavingsGoals savingsGoals={finances.savingsGoals} currency={currency} />
-        <hr />
-        <IncomeList income={finances.income} currency={currency} />
-      </div>
-    </section>
-  );
+      {/* כפתורי הפעולה מופרדים וברורים */}
+      <FinanceActions />
+      
+      <div className="finance-section-content">
+        <FinanceSection title="סיכום כללי">
+          <FinancialSummary />
+        </FinanceSection>
+
+        <FinanceSection title="סיכום אישי">
+          <Suspense fallback={<LoadingSpinner />}>
+            <UserFinanceSummary />
+          </Suspense>
+        </FinanceSection>
+
+        <FinanceSection title="הוצאות צפויות">
+          <ExpectedBills />
+        </FinanceSection>
+        
+        <FinanceSection title="מעקב תקציב">
+          <BudgetTracker />
+        </FinanceSection>
+        
+        <FinanceSection title="פירוט הוצאות לפי קטגוריה">
+          <ExpenseChart />
+        </FinanceSection>
+
+        <FinanceSection title="היסטוריית חשבונות ששולמו">
+          <PaidBillsList />
+        </FinanceSection>
+
+        <FinanceSection title="יעדי חיסכון">
+          <SavingsGoals />
+        </FinanceSection>
+        
+        <FinanceSection title="הכנסות">
+          <IncomeList />
+        </FinanceSection>
+      </div>
+    </section>
+  );
 };
 
 export default FinanceManagement;

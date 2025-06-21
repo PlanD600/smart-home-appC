@@ -1,10 +1,11 @@
 import React from 'react';
 import ShoppingItem from './ShoppingItem';
 import AddItemForm from '../common/AddItemForm';
-import { useHome } from '../../context/HomeContext';
-import { useModal } from '../../context/ModalContext';
+import { useAppContext } from '../../context/AppContext'; // ✅ Updated path
+import { useListActions } from '../../context/ListActionsContext'; // ✅ Updated path
+import { useModal } from '../../context/ModalContext'; // Assuming this is your Modal context
 
-// --- קומפוננטה פנימית קטנה עבור תוכן המודל של ה-AI ---
+// --- Small internal component for the AI modal content ---
 const AiRecipePopup = ({ onRun, hideModal, loading }) => {
     const [text, setText] = React.useState('');
     
@@ -37,17 +38,20 @@ const AiRecipePopup = ({ onRun, hideModal, loading }) => {
     );
 };
 
-// פונקציית עזר לבדיקה האם יש פריטים שהושלמו ברשימה (כולל תתי-פריטים)
+// Helper function to check if there are completed items in the list (including sub-items)
 const hasCompleted = (items) => items.some(i => i.completed || (i.subItems && hasCompleted(i.subItems)));
 
 const ShoppingList = () => {
-    // קבלת activeHome, addItem, clearCompleted, runAiRecipe, ו-loading מה-HomeContext
-    const { activeHome, addItem, clearCompletedItems, runAiRecipe, loading } = useHome();
+    // ✅ Getting activeHome from AppContext
+    const { activeHome } = useAppContext();
+    // ✅ Getting addItem, clearCompletedItems, runAiRecipe, and loading from ListActionsContext
+    const { addItem, clearCompletedItems, runAiRecipe, loading } = useListActions();
+    
     const { showModal, hideModal } = useModal();
-    // וודא ש-shoppingList תמיד תהיה מערך
+    // Ensure shoppingList is always an array
     const shoppingList = activeHome?.shoppingList || [];
 
-    // פונקציה לטיפול בניקוי פריטים שהושלמו
+    // Function to handle clearing completed items
     const handleClearCompleted = () => {
         showModal(
             <div className="p-4 bg-white rounded-lg shadow-lg text-center">
@@ -60,7 +64,7 @@ const ShoppingList = () => {
         );
     };
     
-    // פונקציה לפתיחת המודל של ה-AI
+    // Function to open the AI modal
     const openAiPopup = () => {
         showModal(
             <AiRecipePopup 
@@ -72,7 +76,7 @@ const ShoppingList = () => {
         );
     };
 
-    // בדיקה אם יש פריטים שהושלמו כדי להפעיל את כפתור הניקוי
+    // Check if there are completed items to enable the clear button
     const canClear = hasCompleted(shoppingList);
 
     return (
@@ -81,7 +85,7 @@ const ShoppingList = () => {
                 <i className="fas fa-shopping-cart text-blue-400 mr-2"></i> רשימת קניות
             </h2>
             
-            {/* קריאה לטופס הוספת פריט עם הפרמטרים הנכונים */}
+            {/* Call to AddItemForm with the correct parameters */}
             <AddItemForm listType="shopping" onAddItem={addItem} />
 
             <ul className="item-list mt-4 space-y-2">
@@ -103,7 +107,7 @@ const ShoppingList = () => {
                 >
                     <i className="fas fa-broom mr-2"></i> נקה פריטים שנקנו
                 </button>
-                {/* כפתור ה-AI החדש */}
+                {/* New AI button */}
                 <button 
                     onClick={openAiPopup} 
                     className={`flex-1 px-4 py-2 rounded-md font-semibold transition-colors

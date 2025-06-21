@@ -3,10 +3,11 @@
 import React from 'react';
 import TaskItem from './TaskItem';
 import AddItemForm from '../common/AddItemForm';
-import { useHome } from '../../context/HomeContext';
+import { useAppContext } from '../../context/AppContext'; // ✅ Updated path
+import { useListActions } from '../../context/ListActionsContext'; // ✅ Updated path
 import { useModal } from '../../context/ModalContext';
 
-// --- קומפוננטה פנימית קטנה עבור תוכן המודל של ה-AI ---
+// --- Small internal component for the AI modal content ---
 const AiTaskPopup = ({ onRun, hideModal, loading }) => {
     const [text, setText] = React.useState('');
     
@@ -42,23 +43,28 @@ const AiTaskPopup = ({ onRun, hideModal, loading }) => {
 const hasCompleted = (items) => items.some(i => i.completed || (i.subItems && hasCompleted(i.subItems)));
 
 const TaskList = () => {
-    const { home, addItem, clearCompleted, runAiTask, loading } = useHome();
+    // ✅ Get activeHome from AppContext
+    const { activeHome } = useAppContext();
+    // ✅ Get addItem, clearCompletedItems, runAiTask, and loading from ListActionsContext
+    // Note: ensure runAiTask is added to ListActionsContext if it's not already there.
+    const { addItem, clearCompletedItems, runAiTask, loading } = useListActions();
+    
     const { showModal, hideModal } = useModal();
-    const tasksList = home?.tasksList || [];
+    const tasksList = activeHome?.tasksList || [];
 
     const handleClearCompleted = () => {
         showModal(
             <div className="p-4 bg-white rounded-lg shadow-lg text-center">
                 <h3 className="text-lg font-semibold mb-4">האם למחוק את כל המשימות שהושלמו?</h3>
                 <div className="flex justify-center gap-4">
-                    <button onClick={() => { clearCompleted('tasks'); hideModal(); }} className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">אישור</button>
+                    <button onClick={() => { clearCompletedItems('tasks'); hideModal(); }} className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">אישור</button>
                     <button onClick={hideModal} className="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400">ביטול</button>
                 </div>
             </div>, { title: 'אישור ניקוי רשימה' }
         );
     };
     
-    // פונקציה לפתיחת המודל של ה-AI
+    // Function to open the AI modal
     const openAiPopup = () => {
         showModal(
             <AiTaskPopup 
@@ -83,7 +89,7 @@ const TaskList = () => {
                 <button onClick={handleClearCompleted} className="clear-btn" disabled={!canClear || loading}>
                     <i className="fas fa-broom"></i> נקה משימות שהושלמו
                 </button>
-                {/* כפתור ה-AI החדש */}
+                {/* New AI button */}
                 <button onClick={openAiPopup} className="ai-btn" disabled={loading}>
                     <i className="fas fa-robot"></i> עזרה מ-AI
                 </button>

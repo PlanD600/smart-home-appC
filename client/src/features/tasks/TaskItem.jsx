@@ -1,7 +1,7 @@
 // client/src/features/tasks/TaskItem.jsx
 
 import React from 'react';
-import { useHome } from '../../context/HomeContext'; 
+import { useListActions } from '../../context/ListActionsContext'; // ✅ נתיב מעודכן
 import { useModal } from '../../context/ModalContext';
 import AssignUserForm from '../common/AssignUserForm';
 import CommentForm from '../common/CommentForm';
@@ -43,12 +43,13 @@ const SubTasksList = ({ subItems, listType, onUpdate, onDelete }) => {
 // הוא גם מרינדר באופן רקורסיבי את תתי-המטלות שלו.
 const TaskItem = ({ item, isSubItem = false }) => {
     // שימוש ב-hooks מהקונטקסטים הרלוונטיים
-    const { modifyItem, removeItem } = useHome(); // פונקציות לעדכון ומחיקת פריטים מהקונטקסט של הבית
+    // ✅ קבלת modifyItem ו-removeItem מ-useListActions
+    const { modifyItem, removeItem } = useListActions(); 
     const { showModal, hideModal } = useModal(); // פונקציות להצגה והסתרת מודל אישור
 
     // פונקציה לשינוי סטטוס "הושלם" של המטלה
     const handleToggleComplete = () => {
-        // קריאה לפונקציית modifyItem מהקונטקסט של הבית, עם סוג הרשימה 'tasks'
+        // קריאה לפונקציית modifyItem מהקונטקסט של הרשימות, עם סוג הרשימה 'tasks'
         modifyItem('tasks', item._id, { completed: !item.completed });
     };
 
@@ -94,6 +95,7 @@ const TaskItem = ({ item, isSubItem = false }) => {
     // פונקציה לטיפול בלחיצה על כפתור שיוך משתמש
     const handleAssignClick = () => {
         // הצגת מודל עם טופס שיוך משתמש
+        // לוודא ש-AssignUserForm מקבל את `onSave` כפונקציה שתדע לקרוא ל-modifyItem
         showModal(
             <AssignUserForm 
                 item={item} 
@@ -106,6 +108,7 @@ const TaskItem = ({ item, isSubItem = false }) => {
     // פונקציה לטיפול בלחיצה על כפתור הוספת הערה
     const handleCommentClick = () => {
         // הצגת מודל עם טופס הוספת הערה
+        // לוודא ש-CommentForm מקבל את `onSave` כפונקציה שתדע לקרוא ל-modifyItem
         showModal(
             <CommentForm 
                 item={item} 

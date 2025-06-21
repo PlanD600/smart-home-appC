@@ -1,16 +1,22 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path' // ודא שהשורה הזו קיימת
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      // Proxy API requests to the backend server during development
+      // הגדרות ה-Proxy שלך נשארות כאן
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
       },
+    },
+  },
+  // ✅ הוספת החלק הזה היא כל מה שצריך לעשות
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
     },
   },
 })

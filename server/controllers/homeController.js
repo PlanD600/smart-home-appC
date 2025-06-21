@@ -485,13 +485,12 @@ const removeUser = async (req, res) => {
 const addExpectedBill = async (req, res) => {
     try {
         const { homeId } = req.params;
-        const billData = req.body;
         const home = await Home.findById(homeId);
-        if (!home) return res.status(404).json({ message: 'Home not found.' });
+        if (!home) return res.status(404).json({ message: 'Home not found' });
 
-        home.finances.expectedBills.push(billData);
+        home.finances.expectedBills.push(req.body);
         await home.save();
-        res.status(201).json(home.finances.expectedBills[home.finances.expectedBills.length - 1]);
+        res.status(201).json(normalizeHomeObject(home));
     } catch (error) {
         handleError(res, error, 'Error adding expected bill');
     }
@@ -689,6 +688,23 @@ const transformRecipeToShoppingList = async (req, res) => {
     }
 };
 
+const saveTemplates = async (req, res) => {
+    try {
+        const { homeId } = req.params;
+        const { templates } = req.body;
+        const home = await Home.findById(homeId);
+        if (!home) {
+            return res.status(404).json({ message: 'Home not found' });
+        }
+        home.templates = templates;
+        await home.save();
+        res.status(200).json(normalizeHomeObject(home));
+    } catch (error) {
+        handleError(res, error, 'Error saving templates');
+    }
+};
+
+
 const breakdownComplexTask = async (req, res) => {
     try {
         const { homeId } = req.params;
@@ -782,5 +798,6 @@ module.exports = {
     updateBudgets,
     getUserMonthlyFinanceSummary,
     transformRecipeToShoppingList,
-    breakdownComplexTask
+    breakdownComplexTask,
+    saveTemplates,
 };

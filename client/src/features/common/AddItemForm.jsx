@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useHome } from '../../context/HomeContext'; 
+import React, { useState, useEffect } from 'react'; // הוספתי useEffect
+import { useAppContext } from '../../context/AppContext'; // ✅ נתיב מעודכן
 
 // הגדרת קטגוריות ברירת מחדל
 // ניתן לשנות או להרחיב רשימה זו בהתאם לצרכים
@@ -25,8 +25,8 @@ const DEFAULT_CATEGORIES = [
  * @param {function} [onCancel] - פונקציית קריאה חוזרת לביטול פעולת ההוספה.
  */
 const AddItemForm = ({ listType, onAddItem, onCancel }) => {
-    // קבלת activeHome ו-currentUser מהקונטקסט של הבית
-    const { activeHome, currentUser } = useHome(); 
+    // קבלת activeHome ו-currentUser מהקונטקסט של האפליקציה
+    const { activeHome, currentUser } = useAppContext(); 
     
     // מצבי הקומפוננטה עבור שדות הטופס
     const [text, setText] = useState(''); 
@@ -36,8 +36,18 @@ const AddItemForm = ({ listType, onAddItem, onCancel }) => {
     // וודא ש-activeHome קיים וש-users הוא מערך
     const users = activeHome?.users && Array.isArray(activeHome.users) ? activeHome.users : [];
     
-    // הגדרת המשתמש המשויך כברירת מחדל, אם יש משתמשים בבית, אחרת ריק.
-    const [assignedTo, setAssignedTo] = useState(users.length > 0 ? users[0].name : '');
+    // הגדרת המשתמש המשויך כברירת מחדל.
+    // שימוש ב-useEffect כדי לעדכן את assignedTo כש-users נטען או משתנה.
+    const [assignedTo, setAssignedTo] = useState('');
+
+    useEffect(() => {
+        if (users.length > 0 && assignedTo === '') {
+            setAssignedTo(users[0].name); // הגדר את המשתמש הראשון כברירת מחדל רק פעם אחת או אם הוא ריק
+        } else if (users.length === 0 && assignedTo !== '') {
+            setAssignedTo(''); // נקה אם אין משתמשים
+        }
+    }, [users, assignedTo]); // תלויות ב-users וב-assignedTo
+
 
     /**
      * פונקציה לטיפול בשליחת הטופס.
@@ -63,7 +73,7 @@ const AddItemForm = ({ listType, onAddItem, onCancel }) => {
             setText(''); 
             setCategory(DEFAULT_CATEGORIES[0]);
             // איפוס assignedTo (אם נרצה שישתנה לאחר שליחה)
-            setAssignedTo(users.length > 0 ? users[0].name : ''); 
+            // setAssignedTo(users.length > 0 ? users[0].name : ''); // זה יטופל על ידי useEffect עכשיו
             
             // אם קיימת פונקציית ביטול, קרא לה כדי לסגור את המודל/טופס
             if (onCancel) onCancel();

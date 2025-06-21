@@ -1,14 +1,15 @@
 // client/src/features/shopping/ShoppingItem.jsx
 
 import React from 'react';
-import { useHome } from '../../context/HomeContext';
-import { useModal } from '../../context/ModalContext'; // 1. ייבוא ה-hook
+import { useListActions } from '../../context/ListActionsContext'; // ✅ נתיב מעודכן
+import { useModal } from '../../context/ModalContext';
 import AssignUserForm from '../common/AssignUserForm';
 import CommentForm from '../common/CommentForm';
 
 const ShoppingItem = ({ item }) => {
-    const { modifyItem, removeItem } = useHome();
-    const { showModal, hideModal } = useModal(); // 2. שימוש ב-hook
+    // ✅ קבלת modifyItem ו-removeItem מ-useListActions
+    const { modifyItem, removeItem } = useListActions();
+    const { showModal, hideModal } = useModal();
 
     const handleToggleComplete = () => {
         modifyItem('shopping', item._id, { completed: !item.completed });
@@ -46,10 +47,12 @@ const ShoppingItem = ({ item }) => {
     };
 
     const handleAssignClick = () => {
+        // לוודא ש-AssignUserForm מקבל את `onSave` כפונקציה שתדע לקרוא ל-modifyItem
         showModal(<AssignUserForm item={item} onSave={(itemId, data) => modifyItem('shopping', itemId, data)} />, { title: 'שיוך משתמש לפריט' });
     };
 
     const handleCommentClick = () => {
+        // לוודא ש-CommentForm מקבל את `onSave` כפונקציה שתדע לקרוא ל-modifyItem
         showModal(<CommentForm item={item} onSave={(itemId, data) => modifyItem('shopping', itemId, data)} />, { title: 'הוספת הערה לפריט' });
     };
 

@@ -25,6 +25,8 @@ router.post('/:homeId/finances/income', homeController.addIncome);
 router.post('/:homeId/finances/savings-goals', homeController.addSavingsGoal);
 router.patch('/:homeId/finances/savings-goals/:goalId/add-funds', homeController.addFundsToSavingsGoal);
 router.put('/:homeId/finances/budgets', homeController.updateBudgets);
+router.post('/:homeId/bills/expected', homeController.addExpectedBill);
+
 
 // --- Gemini AI Integrations ---
 router.post('/:homeId/ai/transform-recipe', homeController.transformRecipeToShoppingList); // שם הפונקציה בבקר הוא transformRecipeToShoppingList
@@ -37,5 +39,8 @@ router.delete('/:homeId/:listType/:itemId', homeController.deleteItemFromList);
 
 // --- נתיב חדש: מחיקת פריטים שהושלמו ---
 router.post('/:homeId/:listType/clear-completed', homeController.clearCompletedItems); // נתיב חדש לפונקציה החדשה
+
+
+router.put('/:homeId/templates', homeController.saveTemplates);
 
 module.exports = router;

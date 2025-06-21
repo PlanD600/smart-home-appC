@@ -184,10 +184,10 @@ export const clearAllItemsFromList = async (homeId, listType) => {
  */
 export const addExpectedBill = async (homeId, billData) => {
     try {
-        const response = await api.post(`/home/${homeId}/finances/expected-bills`, billData);
+        const response = await api.post(`/home/${homeId}/bills/expected`, billData);
         return response.data;
     } catch (error) {
-        handleApiError(error, 'Failed to add expected bill.');
+        handleApiError(error, 'Failed to add bill.');
     }
 };
 
@@ -377,6 +377,16 @@ export const breakdownComplexTask = async (homeId, taskText) => {
     }
 };
 
+export const saveTemplates = async (homeId, templates) => {
+    try {
+        const response = await api.put(`/home/${homeId}/templates`, { templates });
+        return response.data;
+    } catch (error) {
+        handleApiError(error, 'Failed to save templates.');
+    }
+};
+
+
 export default {
     getHomes,
     createHome,
@@ -400,4 +410,5 @@ export default {
     removeUser,
     transformRecipeToShoppingList,
     breakdownComplexTask,
+    saveTemplates,
 };

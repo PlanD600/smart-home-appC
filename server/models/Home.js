@@ -25,7 +25,7 @@ const HomeSchema = new mongoose.Schema({
     isAdmin: { type: Boolean, default: false },
   }],
   shoppingList: [ItemSchema],
-  tasks: [ItemSchema],
+  tasksList: [ItemSchema], 
   templates: [{
     name: String,
     items: [ItemSchema]

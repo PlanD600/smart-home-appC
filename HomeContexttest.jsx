@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import * as api from '../services/api'; // ייבוא כל הפונקציות מ-api.js
+import * as api from './client/src/services/api'; // ייבוא כל הפונקציות מ-api.js
 
 const HomeContext = createContext();
 
@@ -42,17 +42,21 @@ export const HomeProvider = ({ children }) => {
 
     // ניסיון התחברות אוטומטית בהתבסס על HomeId ו-CurrentUser ב-LocalStorage
     useEffect(() => {
-        const storedHomeData = localStorage.getItem(HOME_DATA_STORAGE_KEY);
-        const storedUserData = localStorage.getItem(USER_DATA_STORAGE_KEY);
-        
         const attemptReLogin = async () => {
-            if (storedHomeData && storedUserData) {
+            const storedHomeData = localStorage.getItem(HOME_DATA_STORAGE_KEY);
+            const storedUserData = localStorage.getItem(USER_DATA_STORAGE_KEY);
+            
+            // ✅ בדיקה שערכים אינם 'undefined' מחרוזת, שיכולה להתרחש אם JSON.stringify(undefined) נשמר
+            if (storedHomeData && storedUserData && storedHomeData !== 'undefined' && storedUserData !== 'undefined') {
                 try {
                     const parsedHome = JSON.parse(storedHomeData);
                     const parsedUser = JSON.parse(storedUserData);
 
-                    // ניתן לנסות לאמת את הבית מול השרת (אופציונלי אך מומלץ)
-                    // לצורך הפשטות, נניח שהנתונים ב-localStorage תקפים ונרענן אותם
+                    // ✅ בדיקה נוספת שהאובייקטים המנותחים אינם null או undefined
+                    if (!parsedHome || !parsedUser) {
+                        throw new Error("Invalid stored data.");
+                    }
+                    
                     const homeDetails = await api.getHomeDetails(parsedHome._id);
                     setActiveHome(homeDetails);
                     setCurrentUser(parsedUser);
@@ -63,19 +67,24 @@ export const HomeProvider = ({ children }) => {
                     localStorage.removeItem(USER_DATA_STORAGE_KEY);
                     setActiveHome(null);
                     setCurrentUser(null);
-                    setError(err.message || 'Failed to reconnect. Please log in again.');
-                    await fetchHomes(); // טען מחדש את רשימת הבתים לאחר כישלון התחברות
+                    // נטען את רשימת הבתים רק אם היא ריקה (כדי למנוע קריאה מיותרת)
+                    if (homes.length === 0) { 
+                        await fetchHomes(); 
+                    }
                 } finally {
                     setLoading(false);
                 }
             } else {
-                fetchHomes(); // אם אין נתונים שמורים, טען את רשימת הבתים
+                // אם אין נתונים שמורים, טען את רשימת הבתים רק אם היא ריקה
+                if (homes.length === 0) {
+                    fetchHomes(); 
+                }
                 setLoading(false); // וסיים טעינה
             }
         };
 
         attemptReLogin();
-    }, [fetchHomes]);
+    }, [fetchHomes, homes.length]); // הוספנו את homes.length כתלות כדי שה-useEffect ירוץ מחדש אם רשימת הבתים השתנתה
 
     // פונקציה לכניסה לבית (ממסך הלוגין) - מקבלת כעת גם את שם המשתמש
     const initializeHome = useCallback(async (homeId, accessCode, userName) => {
@@ -85,8 +94,9 @@ export const HomeProvider = ({ children }) => {
             const home = await api.loginToHome(homeId, accessCode);
             setActiveHome(home);
             setCurrentUser(userName);
-            localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(home));
-            localStorage.setItem(USER_DATA_STORAGE_KEY, JSON.stringify(userName));
+            // ✅ וודא שאתה שומר ערכים חוקיים בלבד ב-localStorage
+            if (home) localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(home));
+            if (userName) localStorage.setItem(USER_DATA_STORAGE_KEY, JSON.stringify(userName));
             setActiveTab('shopping-list'); // הגדר טאב ברירת מחדל
             return true;
         } catch (err) {
@@ -114,8 +124,9 @@ export const HomeProvider = ({ children }) => {
             // כאשר יוצרים בית, המשתמש הראשון ברשימת ה-users הוא האדמין והוא המשתמש הנוכחי
             const adminUser = homeData.users && homeData.users.length > 0 ? homeData.users[0].name : 'Admin';
             setCurrentUser(adminUser);
-            localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(newHome));
-            localStorage.setItem(USER_DATA_STORAGE_KEY, JSON.stringify(adminUser));
+            // ✅ וודא שאתה שומר ערכים חוקיים בלבד ב-localStorage
+            if (newHome) localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(newHome));
+            if (adminUser) localStorage.setItem(USER_DATA_STORAGE_KEY, JSON.stringify(adminUser));
             await fetchHomes(); // וודא שרשימת הבתים מעודכנת
             setError(null);
             return true;
@@ -165,7 +176,7 @@ export const HomeProvider = ({ children }) => {
     }, [activeHome?._id]);
 
     // פונקציה מתוקנת להוספת פריט (קניות ומשימות)
-    const saveItem = useCallback(async (listType, itemData) => { // השם שונה מ-saveItem ל-addItem
+    const addItem = useCallback(async (listType, itemData) => { 
         if (!activeHome?._id) return;
 
         const stateKey = listTypeToStateKey[listType]; // "shoppingList" or "tasksList"
@@ -193,7 +204,7 @@ export const HomeProvider = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    }, [activeHome]); // activeHome כתלות כדי לגשת ל-activeHome[stateKey] ו-activeHome._id
+    }, [activeHome]); 
 
     const modifyItem = useCallback(async (listType, itemId, updates) => {
         if (!activeHome?._id) return;
@@ -238,7 +249,7 @@ export const HomeProvider = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    }, [activeHome]); // activeHome כתלות כדי ש-updateRecursively תראה את המצב העדכני
+    }, [activeHome]); 
 
     const removeItem = useCallback(async (listType, itemId) => {
         if (!activeHome?._id) return;
@@ -313,22 +324,20 @@ export const HomeProvider = ({ children }) => {
         }
     }, [activeHome?._id]);
 
-
     // --- פונקציות לניהול כספים ---
     const saveBill = useCallback(async (billData) => {
         if (!activeHome?._id) return;
         setLoading(true);
         try {
-            const newBill = await api.addExpectedBill(activeHome._id, billData);
-            const updatedHome = {
-                ...activeHome,
-                finances: {
-                    ...activeHome.finances,
-                    expectedBills: [...(activeHome.finances?.expectedBills || []), newBill]
-                }
-            };
-            setActiveHome(updatedHome);
-            localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(updatedHome));
+            // 1. ה-API שלנו עכשיו מחזיר את כל הבית המעודכן מהשרת
+            const updatedHomeFromServer = await api.addExpectedBill(activeHome._id, billData);
+            
+            // 2. אנחנו פשוט מעדכנים את הסטייט עם מה שקיבלנו מהשרת
+            setActiveHome(updatedHomeFromServer);
+            
+            // 3. ושומרים את הגרסה המעודכנת והאמיתית ב-Local Storage
+            localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(updatedHomeFromServer));
+            
             setError(null);
         } catch (err) {
             console.error("Failed to add bill:", err);
@@ -336,7 +345,7 @@ export const HomeProvider = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    }, [activeHome]);
+    }, [activeHome]); 
 
     const modifyBill = useCallback(async (billId, billData) => {
         if (!activeHome?._id) return;
@@ -500,20 +509,24 @@ export const HomeProvider = ({ children }) => {
         }
     }, [activeHome]);
 
+    // ✅ פונקציה מעודכנת ללא ניהול טעינה/שגיאה גלובלי
     const fetchUserMonthlyFinanceSummary = useCallback(async (year, month) => {
-        if (!activeHome?._id) return null;
-        setLoading(true);
+        if (!activeHome?._id) {
+            // החזרת null או אובייקט ריק כדי שהקומפוננטה תדע שאין מידע
+            return null;
+        }
+        // אין setLoading(true) ו-setError(null) כאן
         try {
+            // הקומפוננטה שקוראת לפונקציה הזו תהיה אחראית לנהל את מצב הטעינה שלה
             const summary = await api.getUserMonthlyFinanceSummary(activeHome._id, year, month);
-            setError(null);
+            // אין setError(null) כאן
             return summary;
         } catch (err) {
             console.error("Failed to fetch user monthly finance summary:", err);
-            setError(err.response?.data?.message || err.message || 'Failed to fetch user monthly finance summary');
-            return null;
-        } finally {
-            setLoading(false);
+            // זרוק את השגיאה הלאה כדי שהקומפוננטה הקוראת תוכל לתפוס אותה
+            throw err;
         }
+        // אין setLoading(false) כאן
     }, [activeHome?._id]);
 
     const addHomeUser = useCallback(async (userName) => {
@@ -570,7 +583,7 @@ export const HomeProvider = ({ children }) => {
         setLoading(true);
         setError(null);
         try {
-            // ה-API אמור להחזיר את הבית המעודכן כולו (למרות שהיה Mock)
+            // ה-API אמור להחזיר את הבית המעודכן כולו
             const updatedHomeFromServer = await api.transformRecipeToShoppingList(activeHome._id, recipeText);
             setActiveHome(updatedHomeFromServer); // עדכון הבית כולו מהשרת
             localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(updatedHomeFromServer));
@@ -587,7 +600,7 @@ export const HomeProvider = ({ children }) => {
         setLoading(true);
         setError(null);
         try {
-            // ה-API אמור להחזיר את הבית המעודכן כולו עם תתי-המשימות (למרות שהיה Mock)
+            // ה-API אמור להחזיר את הבית המעודכן כולו עם תתי-המשימות
             const updatedHomeFromServer = await api.breakdownComplexTask(activeHome._id, taskText);
             setActiveHome(updatedHomeFromServer); // עדכון הבית כולו מהשרת
             localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(updatedHomeFromServer));
@@ -613,7 +626,7 @@ export const HomeProvider = ({ children }) => {
         const homeData = {
             name: testHomeName,
             accessCode: testAccessCode,
-            iconClass: testIcon,
+            iconClass: "fas fa-tree", 
             colorClass: "card-color-1", // צבע ברירת מחדל
             users: [{ name: testInitialUser, isAdmin: true }],
             currency: "ILS",
@@ -653,7 +666,7 @@ export const HomeProvider = ({ children }) => {
         initializeHome,
         logoutHome,
         updateHome,
-        addItem, // שם הפונקציה הוא addItem כעת
+        addItem, 
         modifyItem,
         removeItem,
         clearCompletedItems, 
@@ -666,7 +679,7 @@ export const HomeProvider = ({ children }) => {
         saveSavingsGoal,
         addFundsToSavingsGoal,
         saveBudgets,
-        fetchUserMonthlyFinanceSummary,
+        fetchUserMonthlyFinanceSummary, // כלול את הפונקציה המעודכנת
         addHomeUser,
         removeHomeUser,
         createHome,
