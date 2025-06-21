@@ -1,55 +1,95 @@
+// client/src/features/tasks/TaskList.jsx
+
 import React from 'react';
-import { useHome } from '../../context/HomeContext'; 
+import TaskItem from './TaskItem';
 import AddItemForm from '../common/AddItemForm';
-import TaskItem from './TaskItem'; // **תיקון: שונה מ-TaskItem22 ל-TaskItem**
-import LoadingSpinner from '../../components/LoadingSpinner';
+import { useHome } from '../../context/HomeContext';
+import { useModal } from '../../context/ModalContext';
+
+// --- קומפוננטה פנימית קטנה עבור תוכן המודל של ה-AI ---
+const AiTaskPopup = ({ onRun, hideModal, loading }) => {
+    const [text, setText] = React.useState('');
+    
+    const handleRun = () => {
+        onRun(text);
+        hideModal();
+    };
+
+    return (
+        <div className="p-4 bg-white rounded-lg shadow-lg">
+            <h3 className="text-lg font-semibold mb-4 text-center">פרק משימה מורכבת</h3>
+            <textarea 
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="כתוב כאן משימה מורכבת (לדוגמה: 'לארגן מסיבת יום הולדת')"
+                rows="5"
+                className="w-full p-2 border rounded"
+                disabled={loading}
+            ></textarea>
+            <div className="flex justify-center mt-4">
+                <button 
+                    onClick={handleRun} 
+                    disabled={!text.trim() || loading}
+                    className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400"
+                >
+                    {loading ? 'מפרק...' : 'פרק לתתי-משימות'}
+                </button>
+            </div>
+        </div>
+    );
+};
+
+const hasCompleted = (items) => items.some(i => i.completed || (i.subItems && hasCompleted(i.subItems)));
 
 const TaskList = () => {
-  const { activeHome, saveItem, loading, modifyItem, removeItem } = useHome(); 
+    const { home, addItem, clearCompleted, runAiTask, loading } = useHome();
+    const { showModal, hideModal } = useModal();
+    const tasksList = home?.tasksList || [];
 
-  if (!activeHome) return <p>טוען נתונים...</p>;
-
-  const tasks = activeHome.tasks || []; 
-  
-  const handleAddItem = (itemData) => saveItem('tasks', itemData);
-
-  const sortedItems = [...tasks].sort((a, b) => Number(b.isUrgent) - Number(a.isUrgent));
-
-  return (
-    <section id="task-list" className="list-section active">
-       <div className="list-title-container">
-        <h3><span>רשימת מטלות</span></h3>
-        <div className="list-title-actions">
-           <button id="breakdown-task-btn" className="header-style-button gemini-btn" title="✨ פרק משימה מורכבת לתתי-משימות">✨ <span>פרק משימה</span></button>
+    const handleClearCompleted = () => {
+        showModal(
+            <div className="p-4 bg-white rounded-lg shadow-lg text-center">
+                <h3 className="text-lg font-semibold mb-4">האם למחוק את כל המשימות שהושלמו?</h3>
+                <div className="flex justify-center gap-4">
+                    <button onClick={() => { clearCompleted('tasks'); hideModal(); }} className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">אישור</button>
+                    <button onClick={hideModal} className="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400">ביטול</button>
+                </div>
+            </div>, { title: 'אישור ניקוי רשימה' }
+        );
+    };
+    
+    // פונקציה לפתיחת המודל של ה-AI
+    const openAiPopup = () => {
+        showModal(
+            <AiTaskPopup 
+                onRun={runAiTask}
+                hideModal={hideModal}
+                loading={loading}
+            />,
+            { title: 'עזרת AI' }
+        );
+    };
+    
+    const canClear = hasCompleted(tasksList);
+    
+    return (
+        <div className="list-container">
+            <h2 className="list-title"><i className="fas fa-tasks"></i> רשימת משימות</h2>
+            <AddItemForm listType="tasks" onAddItem={addItem} />
+            <ul className="item-list">
+                {tasksList.map(item => <TaskItem key={item._id} item={item} />)}
+            </ul>
+            <div className="list-actions">
+                <button onClick={handleClearCompleted} className="clear-btn" disabled={!canClear || loading}>
+                    <i className="fas fa-broom"></i> נקה משימות שהושלמו
+                </button>
+                {/* כפתור ה-AI החדש */}
+                <button onClick={openAiPopup} className="ai-btn" disabled={loading}>
+                    <i className="fas fa-robot"></i> עזרה מ-AI
+                </button>
+            </div>
         </div>
-      </div>
-      
-      <div className="add-area">
-        <AddItemForm 
-          onAddItem={handleAddItem}
-          placeholder="הוסף מטלה חדשה..."
-        />
-      </div>
-      {loading && <LoadingSpinner />} 
-      <div className="item-list">
-        <ul className="item-list-ul">
-          {sortedItems && sortedItems.length > 0 ? (
-            sortedItems.map(item => (
-              <TaskItem 
-                key={item._id} 
-                item={item} 
-                listType="tasks" 
-                onUpdate={modifyItem} 
-                onDelete={removeItem} 
-              />
-            ))
-          ) : (
-            <li style={{ textAlign: 'center', padding: '15px', color: '#777' }}>אין משימות להצגה.</li>
-          )}
-        </ul>
-      </div>
-    </section>
-  );
+    );
 };
 
 export default TaskList;

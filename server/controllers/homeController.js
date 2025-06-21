@@ -1,7 +1,7 @@
 const Home = require('../models/Home');
 const mongoose = require('mongoose'); // ייבוא mongoose כדי להשתמש ב-ObjectId
 
-// --- פונקציות עזר ---
+// --- פונקציות עזר כלליות ---
 
 /**
  * מטפלת בשליחת תגובות שגיאה אחידות ללקוח.
@@ -34,7 +34,7 @@ const defaultExpenseCategories = [
  * כולל אתחול של רשימות פיננסיות וטיפול בקטגוריות הוצאות.
  * @param {object} home - אובייקט הבית ממסד הנתונים.
  * @returns {object|null} - אובייקט הבית מנוטרל.
- */
+*/
 const normalizeHomeObject = (home) => {
     if (!home) return null;
 
@@ -42,7 +42,7 @@ const normalizeHomeObject = (home) => {
 
     homeObject.users = homeObject.users || [];
     homeObject.shoppingList = homeObject.shoppingList || [];
-    homeObject.tasks = homeObject.tasks || [];
+    homeObject.tasksList = homeObject.tasksList || []; // שינוי ל-tasksList
     homeObject.templates = homeObject.templates || [];
     homeObject.iconClass = homeObject.iconClass || 'fas fa-home'; 
     homeObject.colorClass = homeObject.colorClass || 'card-color-1'; 
@@ -87,6 +87,63 @@ const normalizeHomeObject = (home) => {
     homeObject.finances.expenseCategories = categories;
 
     return homeObject;
+};
+
+// --- פונקציות עזר רקורסיביות לטיפול בפריטים מקוננים ---
+
+/**
+ * פונקציית עזר רקורסיבית למציאה ומחיקה של פריט מרשימה מקוננת
+ * @param {Array} items - רשימת הפריטים לסרוק
+ * @param {String} itemId - ה-ID של הפריט למחיקה
+ * @returns {Boolean} - מחזיר true אם הפריט נמצא ונמחק, אחרת false
+*/
+const findAndRemoveItem = (items, itemId) => {
+    const itemIndex = items.findIndex(item => item._id && item._id.toString() === itemId);
+
+    if (itemIndex > -1) {
+        items.splice(itemIndex, 1);
+        return true;
+    }
+
+    for (const item of items) {
+        if (item.subItems && item.subItems.length > 0) {
+            if (findAndRemoveItem(item.subItems, itemId)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+};
+
+/**
+ * פונקציית עזר רקורסיבית לסינון פריטים שהושלמו מרשימה מקוננת
+ * @param {Array} items - רשימת הפריטים לסינון
+ * @returns {Array} - רשימה חדשה ללא הפריטים שהושלמו
+*/
+const filterCompleted = (items) => {
+    return items
+        .filter(item => !item.completed)
+        .map(item => {
+            if (item.subItems && item.subItems.length > 0) {
+                // סינון רקורסיבי של תתי-הרשימות
+                item.subItems = filterCompleted(item.subItems);
+            }
+            return item;
+        });
+};
+
+/**
+ * פונקציית עזר חדשה שממירה שם רשימה מקוצר לשם המלא שלה במסד הנתונים
+ * @param {string} shortName - "shopping" or "tasks".
+ * @returns {string|null} - "shoppingList", "tasksList", or null.
+*/
+const getListKey = (shortName) => {
+    const map = {
+        shopping: 'shoppingList',
+        tasks: 'tasksList' // שינוי ל-tasksList
+    };
+    return map[shortName] || null; // החזר null אם אין התאמה
 };
 
 // --- פונקציות ה-Controller ---
@@ -169,10 +226,10 @@ const createHome = async (req, res) => {
             accessCode,
             iconClass: iconClass || 'fas fa-home',
             colorClass: colorClass || 'card-color-1',
-            currency: currency || 'ILS',
+            currency: currency || 'ש"ח', // אחידות עם financeSettings
             users: formattedUsers,
             shoppingList: [],
-            tasks: [],
+            tasksList: [], // שינוי ל-tasksList
             templates: [],
             finances: {
                 expectedBills: [],
@@ -196,38 +253,47 @@ const createHome = async (req, res) => {
 };
 
 const addItemToList = async (req, res) => {
-    const { homeId, listType } = req.params;
-    const { text, ...otherItemData } = req.body;
+    const { homeId, listType } = req.params; // listType יהיה "shopping" or "tasks"
+    const { text, createdBy, ...otherItemData } = req.body; // הוספת createdBy
+
+    const listKey = getListKey(listType);
+    if (!listKey || !['shoppingList', 'tasksList'].includes(listKey)) {
+        return res.status(400).json({ message: 'Invalid list type provided.' });
+    }
 
     if (!text) {
         return res.status(400).json({ message: 'Item text is required.' });
     }
-    if (!['shoppingList', 'tasks'].includes(listType)) {
-        return res.status(400).json({ message: 'Invalid list type. Must be "shoppingList" or "tasks".' });
-    }
-
-    // === תיקון: יצירת _id מפורש עבור הפריט החדש ===
-    // זה מבטיח שלכל תת-מסמך יהיה ObjectId תקני, מה שיקל על מחיקתו.
-    const newItem = {
-        _id: new mongoose.Types.ObjectId(), 
-        text,
-        ...otherItemData
+    
+    /**
+     * יצירת _id מפורש עבור הפריט החדש, כולל תתי-פריטים אם קיימים
+     * @param {object} item - אובייקט הפריט
+     * @returns {object} - אובייקט הפריט עם _id חדש
+     */
+    const createItemWithIds = (item) => {
+        const newItem = {
+            _id: new mongoose.Types.ObjectId(), 
+            text: item.text,
+            ...item
+        };
+        if (item.subItems && Array.isArray(item.subItems)) {
+            newItem.subItems = item.subItems.map(createItemWithIds);
+        }
+        return newItem;
     };
-    // ===============================================
+
+    const newItemData = { text, createdBy: createdBy || 'System', ...otherItemData }; // הגדרת ברירת מחדל ל-createdBy
+    const newItem = createItemWithIds(newItemData);
 
     try {
-        const updatedHome = await Home.findByIdAndUpdate(
-            homeId,
-            { $push: { [listType]: newItem } },
-            { new: true, runValidators: true }
-        );
-
-        if (!updatedHome) {
-            return res.status(404).json({ message: 'Home not found' });
-        }
-
-        const list = updatedHome[listType];
-        res.status(201).json(list[list.length - 1]);
+        const home = await Home.findById(homeId);
+        if (!home) return res.status(404).json({ message: 'Home not found' });
+        
+        home[listKey].push(newItem);
+        await home.save();
+        
+        const addedItem = home[listKey].id(newItem._id); // שלוף את הפריט המלא עם כל ברירות המחדל שמונגוז הוסיף
+        res.status(201).json(addedItem); // החזר את הפריט המלא והמעודכן
 
     } catch (error) {
         console.error(`Server error adding item to ${listType}:`, error);
@@ -239,8 +305,9 @@ const updateItemInList = async (req, res) => {
     const { homeId, listType, itemId } = req.params;
     const updates = req.body;
 
-    if (!['shoppingList', 'tasks'].includes(listType)) {
-        return res.status(400).json({ message: 'Invalid list type. Must be "shoppingList" or "tasks".' });
+    const listKey = getListKey(listType);
+    if (!listKey) {
+        return res.status(400).json({ message: 'Invalid list type provided. Must be "shopping" or "tasks".' });
     }
 
     const updateSet = {};
@@ -248,21 +315,24 @@ const updateItemInList = async (req, res) => {
         // עבור עדכונים פשוטים של שדות ברמה העליונה של הפריט.
         // אם מנסים לעדכן תת-משימות מקוננות, זה ידרוש לוגיקה מורכבת יותר
         // עם אופרטורים כמו $set עם arrayFilters, או מציאה ועדכון ידני של הפריט
-        updateSet[`${listType}.$.${key}`] = updates[key];
+        // כרגע, זה תומך רק בעדכון פריטי רמה עליונה.
+        updateSet[`${listKey}.$.${key}`] = updates[key]; // שימוש ב-listKey
     }
 
     try {
         const updatedHome = await Home.findOneAndUpdate(
-            { _id: homeId, [`${listType}._id`]: itemId },
+            { _id: homeId, [`${listKey}._id`]: itemId }, // שימוש ב-listKey
             { $set: updateSet },
             { new: true, runValidators: true }
         );
 
         if (!updatedHome) {
-            return res.status(404).json({ message: 'Home or item not found' });
+            // אם הפריט לא נמצא ברמה העליונה, ייתכן שהוא תת-פריט.
+            // לוגיקה לעדכון תת-פריט דורשת סריקה רקורסיבית ומורכבת יותר.
+            return res.status(404).json({ message: 'Home or item not found. Nested item updates are not directly supported yet via this endpoint.' });
         }
 
-        const updatedItem = updatedHome[listType].find(item => item._id.toString() === itemId);
+        const updatedItem = updatedHome[listKey].find(item => item._id.toString() === itemId); // שימוש ב-listKey
         res.status(200).json(updatedItem);
 
     } catch (error) {
@@ -274,34 +344,27 @@ const updateItemInList = async (req, res) => {
 const deleteItemFromList = async (req, res) => {
     const { homeId, listType, itemId } = req.params;
 
-    if (!['shoppingList', 'tasks'].includes(listType)) {
-        return res.status(400).json({ message: 'Invalid list type. Must be "shoppingList" or "tasks".' });
+    const listKey = getListKey(listType);
+    if (!listKey) {
+        return res.status(400).json({ message: 'Invalid list type provided. Must be "shopping" or "tasks".' });
     }
 
     try {
-        console.log(`[Backend Debug] Attempting to delete item: ${itemId} from ${listType} in home: ${homeId}`);
         const home = await Home.findById(homeId);
         if (!home) {
             return res.status(404).json({ message: 'Home not found' });
         }
 
-        // === תיקון: שימוש ב-findIndex ו-splice למחיקה מדויקת ואמינה יותר ===
-        // במקום $pull, שנכשל במקרים מסוימים עם תתי-מסמכים
-        const itemIndex = home[listType].findIndex(item => item._id && item._id.toString() === itemId);
+        // שימוש בפונקציית העזר הרקורסיבית למחיקה
+        const itemRemoved = findAndRemoveItem(home[listKey], itemId); // שימוש ב-listKey
         
-        if (itemIndex === -1) {
-            console.warn(`[Backend Debug] Item ${itemId} not found in ${listType} for home ${homeId} via findIndex. This might be a nested item or already deleted.`);
-            // אם הפריט לא נמצא ברמה העליונה, זה יכול להיות תת-פריט.
-            // לוגיקה למחיקת תת-פריט תהיה מורכבת יותר (מצא את האב, ואז מחק את התת-פריט).
-            // כרגע, נניח שמחיקה היא רק ברמה העליונה או שהמטפל ב-Frontend יודע לטפל בקינון.
-            return res.status(404).json({ message: 'Item not found in list or is a sub-item not handled directly.' });
+        if (itemRemoved) {
+            await home.save();
+            // נחזיר את הבית המעודכן כדי שהקליינט יוכל לסנכרן את מצבו
+            res.status(200).json(normalizeHomeObject(home)); 
+        } else {
+            res.status(404).json({ message: 'Item not found in list or sub-items.' });
         }
-
-        home[listType].splice(itemIndex, 1); // הסר את הפריט לפי אינדקס
-        // =========================================================
-
-        await home.save();
-        res.status(200).json({ message: 'Item deleted successfully.' });
 
     } catch (error) {
         console.error(`Server error deleting item from ${listType}:`, error);
@@ -310,15 +373,15 @@ const deleteItemFromList = async (req, res) => {
 };
 
 /**
- * מחיקת כל הפריטים מסוג מסוים מרשימה (לדוגמה, כל רשימת הקניות).
+ * מחיקת כל הפריטים מרשימה מסוימת (לדוגמה, כל רשימת הקניות).
  * PATCH /api/home/:homeId/:listType/clear
- * זה שינוי שימחק את כל הפריטים ברשימה מסוימת.
- */
+*/
 const clearAllItemsFromList = async (req, res) => {
     const { homeId, listType } = req.params;
 
-    if (!['shoppingList', 'tasks'].includes(listType)) {
-        return res.status(400).json({ message: 'Invalid list type. Must be "shoppingList" or "tasks".' });
+    const listKey = getListKey(listType);
+    if (!listKey) {
+        return res.status(400).json({ message: 'Invalid list type provided. Must be "shopping" or "tasks".' });
     }
 
     try {
@@ -327,14 +390,41 @@ const clearAllItemsFromList = async (req, res) => {
             return res.status(404).json({ message: 'Home not found' });
         }
 
-        home[listType] = []; // איפוס הרשימה
+        home[listKey] = []; // איפוס הרשימה, שימוש ב-listKey
 
         await home.save();
-        res.status(200).json({ message: `All items cleared from ${listType} successfully.` });
+        res.status(200).json({ message: `All items cleared from ${listType} successfully.`, home: normalizeHomeObject(home) });
 
     } catch (error) {
         console.error(`Server error clearing all items from ${listType}:`, error);
         handleError(res, error, `Failed to clear all items from ${listType}`);
+    }
+};
+
+/**
+ * מחיקת כל הפריטים שהושלמו (completed: true) מרשימה מסוימת, כולל תתי-מטלות.
+ * PATCH /api/home/:homeId/:listType/clear-completed
+*/
+const clearCompletedItems = async (req, res) => {
+    const { homeId, listType } = req.params;
+    
+    const listKey = getListKey(listType);
+    if (!listKey) {
+        return res.status(400).json({ message: 'Invalid list type provided. Must be "shopping" or "tasks".' });
+    }
+
+    try {
+        const home = await Home.findById(homeId);
+        if (!home) return res.status(404).json({ message: 'Home not found' });
+        
+        // שימוש בפונקציית העזר הרקורסיבית לסינון
+        home[listKey] = filterCompleted(home[listKey]); // שימוש ב-listKey
+
+        await home.save();
+        res.status(200).json(normalizeHomeObject(home));
+
+    } catch (error) {
+        handleError(res, error, 'Server Error: Failed to clear completed items.');
     }
 };
 
@@ -427,7 +517,7 @@ const updateExpectedBill = async (req, res) => {
 
 const deleteExpectedBill = async (req, res) => {
     try {
-        const { homeId, billId } = req.params;
+        const { homeId } = req.params;
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
@@ -567,31 +657,33 @@ const getUserMonthlyFinanceSummary = async (req, res) => {
     }
 };
 
-// --- אינטגרציית Gemini AI ---
+// --- אינטגרציית Gemini AI (מודק) ---
 const transformRecipeToShoppingList = async (req, res) => {
     try {
         const { homeId } = req.params;
         const { recipeText } = req.body;
         
-        // כאן תהיה קריאה ל-Gemini API (כשתטמיע אותה)
+        // כאן תהיה קריאה ל-Gemini API (כשתטמיע אותה בפועל)
         // לדוגמה: const geminiResponse = await callGeminiAPI(recipeText);
         // const newItemsFromGemini = parseGeminiResponse(geminiResponse);
 
-        // Mock response for now
-        const mockShoppingList = [
-            { text: "חלב", category: "מוצרי חלב", _id: new mongoose.Types.ObjectId() },
-            { text: "ביצים", category: "מוצרי יסוד", _id: new mongoose.Types.ObjectId() },
-            { text: "קמח", category: "אפייה", _id: new mongoose.Types.ObjectId() },
-            { text: "סוכר", category: "אפייה", _id: new mongoose.Types.ObjectId() },
-        ];
+        // Mock response for now, ensures _id for each item
+        const mockIngredients = recipeText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        const newItems = mockIngredients.map(ingredient => ({
+            _id: new mongoose.Types.ObjectId(), // ID חדש
+            text: ingredient,
+            category: 'מצרכים מהמתכון',
+            completed: false,
+            createdAt: new Date()
+        }));
 
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-        home.shoppingList.push(...mockShoppingList);
+        home.shoppingList.push(...newItems);
         await home.save();
 
-        res.status(200).json({ message: "Recipe transformed and items added to shopping list!", newItems: mockShoppingList });
+        res.status(200).json({ message: "Recipe transformed and items added to shopping list!", newItems: newItems });
     } catch (error) {
         handleError(res, error, 'Error transforming recipe with Gemini');
     }
@@ -602,42 +694,38 @@ const breakdownComplexTask = async (req, res) => {
         const { homeId } = req.params;
         const { taskText } = req.body;
         
-        // Mock response for a nested task structure
+        // Mock response for a nested task structure with unique IDs
         const mockMainTask = {
-            _id: new mongoose.Types.ObjectId(), // ID למשימה הראשית
-            text: `ארגון: ${taskText}`,
-            category: "אירועים",
+            _id: new mongoose.Types.ObjectId(), 
+            text: taskText,
+            category: "משימה מורכבת",
             isUrgent: true,
-            subItems: [ // תתי-משימות
+            createdAt: new Date(),
+            subItems: [ 
                 {
                     _id: new mongoose.Types.ObjectId(),
-                    text: `1. הכנת רשימת מוזמנים`,
+                    text: `שלב א: תכנון (${taskText})`,
                     category: "תכנון",
                     completed: false,
-                    _id: new mongoose.Types.ObjectId(), // Add _id for subItem
+                    createdAt: new Date(),
                 },
                 {
                     _id: new mongoose.Types.ObjectId(),
-                    text: `2. בחירת מקום`,
-                    category: "תכנון",
+                    text: `שלב ב: ביצוע (${taskText})`,
+                    category: "ביצוע",
                     completed: false,
-                    _id: new mongoose.Types.ObjectId(), // Add _id for subItem
-                },
-                {
-                    _id: new mongoose.Types.ObjectId(),
-                    text: `3. קניית כיבוד ושתיה`,
-                    category: "קניות",
-                    subItems: [ // קינון נוסף לדוגמה
-                        { _id: new mongoose.Types.ObjectId(), text: 'קניית חטיפים', completed: false },
-                        { _id: new mongoose.Types.ObjectId(), text: 'קניית שתיה קלה', completed: false },
+                    createdAt: new Date(),
+                    subItems: [ 
+                        { _id: new mongoose.Types.ObjectId(), text: 'שלב ב.1: איסוף חומרים', completed: false, createdAt: new Date() },
+                        { _id: new mongoose.Types.ObjectId(), text: 'שלב ב.2: הרכבה', completed: false, createdAt: new Date() },
                     ]
                 },
                 {
                     _id: new mongoose.Types.ObjectId(),
-                    text: `4. שליחת הזמנות`,
-                    category: "ביצוע",
+                    text: `שלב ג: בדיקות (${taskText})`,
+                    category: "בדיקות",
                     completed: false,
-                    _id: new mongoose.Types.ObjectId(), // Add _id for subItem
+                    createdAt: new Date(),
                 },
             ]
         };
@@ -645,7 +733,7 @@ const breakdownComplexTask = async (req, res) => {
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
-        home.tasks.push(mockMainTask);
+        home.tasksList.push(mockMainTask); // שינוי ל-tasksList
         await home.save();
 
         res.status(200).json({ message: "Task broken down and sub-tasks added!", newItems: [mockMainTask] });
@@ -681,6 +769,7 @@ module.exports = {
     updateItemInList,
     deleteItemFromList,
     clearAllItemsFromList,
+    clearCompletedItems, 
     addUser,
     removeUser,
     addExpectedBill,
