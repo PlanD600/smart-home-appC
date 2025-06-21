@@ -96,25 +96,25 @@ export const AppProvider = ({ children }) => {
         }
     }, [fetchHomes]);
     
-    const updateHome = useCallback(async (updates) => {
-        if (!activeHome?._id) return;
-        const previousHome = activeHome;
-        const updatedHomeOptimistic = { ...activeHome, ...updates };
-        setActiveHome(updatedHomeOptimistic);
-        
-        try {
-            // כאן צריך להיות API call מתאים לעדכון כללי של הבית אם יש,
-            // כרגע נניח שזה בעיקר לתבניות
-            if (updates.templates) {
-                const updatedHomeFromServer = await api.saveTemplates(activeHome._id, updates.templates);
-                setActiveHome(updatedHomeFromServer);
-                localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(updatedHomeFromServer));
-            }
-        } catch(err) {
-            setError(err.message || 'Failed to update home');
-            setActiveHome(previousHome);
+   const updateHome = useCallback(async (updates) => {
+    if (!activeHome?._id) return;
+    const previousHome = activeHome;
+    const updatedHomeOptimistic = { ...activeHome, ...updates };
+    setActiveHome(updatedHomeOptimistic);
+    
+    try {
+        // כאן צריך להיות API call מתאים לעדכון כללי של הבית אם יש,
+        // כרגע נניח שזה בעיקר לתבניות
+        if (updates.templates) {
+            const updatedHomeFromServer = await api.saveTemplates(activeHome._id, updates.templates);
+            setActiveHome(updatedHomeFromServer);
+            localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(updatedHomeFromServer));
         }
-    }, [activeHome, setActiveHome, setError]);
+    } catch(err) {
+        setError(err.message || 'Failed to update home');
+        setActiveHome(previousHome);
+    }
+}, [activeHome, setActiveHome, setError]);
 
     const logoutHome = useCallback(() => {
         setActiveHome(null);
