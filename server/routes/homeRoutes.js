@@ -36,5 +36,6 @@ router.delete('/:homeId/:listType/:itemId', homeController.deleteItemFromList);
 router.post('/:homeId/:listType/clear-completed', homeController.clearCompletedItems);
 
 router.put('/:homeId/templates', homeController.saveTemplates);
+router.put('/:homeId', homeController.updateHome);
 
 module.exports = router;
