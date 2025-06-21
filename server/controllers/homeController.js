@@ -481,6 +481,38 @@ const removeUser = async (req, res) => {
     }
 };
 
+const updateHome = async (req, res) => {
+    try {
+        const { homeId } = req.params;
+        const updates = req.body;
+        
+        // Validate homeId
+        if (!homeId) {
+            return res.status(400).json({ message: 'Home ID is required' });
+        }
+        
+        const home = await Home.findById(homeId);
+        if (!home) {
+            return res.status(404).json({ message: 'Home not found' });
+        }
+        
+        // Apply updates
+        Object.keys(updates).forEach(key => {
+            if (updates[key] !== undefined) {
+                home[key] = updates[key];
+            }
+        });
+        
+        await home.save();
+        const normalizedHome = normalizeHomeObject(home);
+        res.status(200).json(normalizedHome);
+    } catch (error) {
+        handleError(res, error, 'Error updating home');
+    }
+};
+
+
+
 // --- ניהול כספים ---
 const addExpectedBill = async (req, res) => {
     try {
@@ -803,4 +835,5 @@ module.exports = {
     transformRecipeToShoppingList,
     breakdownComplexTask,
     saveTemplates,
+    updateHome,
 };
