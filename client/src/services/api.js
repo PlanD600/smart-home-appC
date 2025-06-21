@@ -387,6 +387,22 @@ export const saveTemplates = async (homeId, templates) => {
 };
 
 
+/**
+ * Updates general home data.
+ * @param {string} homeId - The home ID.
+ * @param {object} updates - The updates to apply.
+ * @returns {Promise<object>} - The updated home object.
+ */
+export const updateHome = async (homeId, updates) => {
+    try {
+        const response = await api.put(`/home/${homeId}`, updates);
+        return response.data;
+    } catch (error) {
+        handleApiError(error, 'Failed to update home.');
+    }
+};
+
+
 export default {
     getHomes,
     createHome,
@@ -411,4 +427,5 @@ export default {
     transformRecipeToShoppingList,
     breakdownComplexTask,
     saveTemplates,
+    updateHome,
 };
