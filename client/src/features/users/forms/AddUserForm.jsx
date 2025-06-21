@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useHome } from '../../../context/HomeContext'; //
+import { useAppContext } from '@/context/AppContext'; // ✅ Fixed import
 
 const AddUserForm = () => {
-  const { addHomeUser } = useHome(); // שינוי: מ-addUser ל-addHomeUser
+  const { addHomeUser } = useAppContext();
   const [name, setName] = useState('');
 
   const handleSubmit = (e) => {
