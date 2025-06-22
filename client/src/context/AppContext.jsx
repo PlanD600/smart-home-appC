@@ -35,7 +35,7 @@ export const AppProvider = ({ children }) => {
             const storedUserData = localStorage.getItem(USER_DATA_STORAGE_KEY);
             if (storedHomeData && storedUserData && storedHomeData !== 'undefined') {
                 try {
-                    const parsedHome = JSON.parse(storedHomeData);
+                  const parsedHome = JSON.parse(storedHomeData);
                     const parsedUser = JSON.parse(storedUserData);
                     if (!parsedHome || !parsedUser) throw new Error("Invalid stored data.");
                     
