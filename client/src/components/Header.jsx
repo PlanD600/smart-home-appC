@@ -1,46 +1,67 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppContext } from '@/context/AppContext';
-import { useModal } from '@/context/ModalContext';
-import UserManager from '@/features/users/UserManager';
 
-const Header = () => {
-  const { activeHome, logoutHome, currentUser } = useAppContext();
-  const { showModal } = useModal();
+const Header = ({ onManageUsers, onManageTemplates, onViewArchive }) => {
+    const { activeHome, currentUser, logoutHome } = useAppContext();
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const openUserManager = () => {
-    showModal(<UserManager />, { title: 'ניהול בני בית' });
-  };
+    // Effect to prevent body scrolling when the mobile menu is open
+    useEffect(() => {
+        if (isMenuOpen) {
+            document.body.classList.add('modal-open');
+        } else {
+            document.body.classList.remove('modal-open');
+        }
+        return () => document.body.classList.remove('modal-open');
+    }, [isMenuOpen]);
+    
+    const handleMenuAction = (action) => {
+        action();
+        setIsMenuOpen(false);
+    };
 
-  if (!activeHome) return null;
+    return (
+        <header className="app-header">
+            <h1 className="header-title">{activeHome?.name || 'Smart Home'}</h1>
 
-  return (
-    <header className="app-header">
-      <div className="header-left-part">
-        <div className="header-buttons left">
-          <button 
-            id="manage-users-btn-header" 
-            className="header-style-button" 
-            onClick={openUserManager}
-          >
-            <i className="fas fa-users-cog"></i> 
-            <span>נהל בית</span>
-          </button>
-        </div>
-        <h2 id="current-home-name-header">{activeHome.name}</h2>
-      </div>
-      
-      <div className="header-buttons right">
-        <span className="current-user">שלום, {currentUser}</span>
-        <button 
-          id="logout-btn-header" 
-          className="logout-btn" 
-          onClick={logoutHome}
-        >
-          <i className="fas fa-sign-out-alt"></i> החלף בית
-        </button>
-      </div>
-    </header>
-  );
+            {/* User info for desktop */}
+            <div className="header-user">
+                <i className="fas fa-user-circle"></i>
+                <span>שלום, {currentUser}</span>
+            </div>
+
+            {/* Desktop Navigation */}
+            <nav className="desktop-nav-actions">
+                <button onClick={onManageUsers}><i className="fas fa-users"></i> ניהול בית</button>
+                <button onClick={onManageTemplates}><i className="fas fa-file-alt"></i> תבניות</button>
+                <button onClick={onViewArchive}><i className="fas fa-archive"></i> ארכיון</button>
+                <button onClick={logoutHome} className="logout-btn"><i className="fas fa-sign-out-alt"></i> יציאה</button>
+            </nav>
+
+            {/* Hamburger button for mobile */}
+            <button className="hamburger-btn" onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Open menu">
+                <i className={isMenuOpen ? 'fas fa-times' : 'fas fa-bars'}></i>
+            </button>
+            
+            {/* Mobile slide-out menu */}
+            <div className={`mobile-nav-menu ${isMenuOpen ? 'open' : ''}`}>
+                <nav>
+                    <a onClick={() => handleMenuAction(onManageUsers)}>
+                        <i className="fas fa-users"></i> ניהול בני בית
+                    </a>
+                    <a onClick={() => handleMenuAction(onManageTemplates)}>
+                        <i className="fas fa-file-alt"></i> ניהול תבניות
+                    </a>
+                     <a onClick={() => handleMenuAction(onViewArchive)}>
+                        <i className="fas fa-archive"></i> צפייה בארכיון
+                    </a>
+                    <button className="logout-btn" onClick={logoutHome}>
+                         <i className="fas fa-sign-out-alt"></i> יציאה
+                    </button>
+                </nav>
+            </div>
+        </header>
+    );
 };
 
 export default Header;

@@ -3,25 +3,31 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './style.css';
 
-// ✅ שימוש בנתיבים החדשים עם @
+// Importing all context providers
 import { LanguageProvider } from '@/context/LanguageContext';
 import { ModalProvider } from '@/context/ModalContext';
 import { AppProvider } from '@/context/AppContext';
 import { ListActionsProvider } from '@/context/ListActionsContext';
 import { FinanceActionsProvider } from '@/context/FinanceActionsContext';
+import { ArchiveActionsProvider } from '@/context/ArchiveActionsContext';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <LanguageProvider>
-      <ModalProvider>
-        <AppProvider>
+      {/* AppProvider is the base and must wrap everything that needs its state. */}
+      <AppProvider>
+        {/* All action providers depend on AppProvider */}
+        <ArchiveActionsProvider>
           <ListActionsProvider>
             <FinanceActionsProvider>
-              <App />
+              {/* ModalProvider should be inside the data providers so its content can access them. */}
+              <ModalProvider>
+                <App />
+              </ModalProvider>
             </FinanceActionsProvider>
           </ListActionsProvider>
-        </AppProvider>
-      </ModalProvider>
+        </ArchiveActionsProvider>
+      </AppProvider>
     </LanguageProvider>
   </React.StrictMode>
 );

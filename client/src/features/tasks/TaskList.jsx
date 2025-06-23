@@ -1,25 +1,25 @@
-// client/src/features/tasks/TaskList.jsx
-
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import TaskItem from './TaskItem';
 import AddItemForm from '../common/AddItemForm';
-import { useAppContext } from '../../context/AppContext'; // ✅ Updated path
-import { useListActions } from '../../context/ListActionsContext'; // ✅ Updated path
-import { useModal } from '../../context/ModalContext';
+import { useAppContext } from '@/context/AppContext';
+// ודא ש-clearList נמשך מתוך useListActions
+import { useListActions } from '@/context/ListActionsContext'; 
+import { useModal } from '@/context/ModalContext';
+import TemplateManager from '@/features/templates/TemplateManager';
+import CategoryManager from '@/features/categories/CategoryManager';
 
-// --- Small internal component for the AI modal content ---
+// Internal component for the AI task modal (זהו הקוד המלא שסיפקת)
 const AiTaskPopup = ({ onRun, hideModal, loading }) => {
     const [text, setText] = React.useState('');
-    
     const handleRun = () => {
+        if (!text.trim() || loading) return;
         onRun(text);
         hideModal();
     };
-
     return (
-        <div className="p-4 bg-white rounded-lg shadow-lg">
+        <div className="p-4 bg-white rounded-lg">
             <h3 className="text-lg font-semibold mb-4 text-center">פרק משימה מורכבת</h3>
-            <textarea 
+            <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="כתוב כאן משימה מורכבת (לדוגמה: 'לארגן מסיבת יום הולדת')"
@@ -28,10 +28,10 @@ const AiTaskPopup = ({ onRun, hideModal, loading }) => {
                 disabled={loading}
             ></textarea>
             <div className="flex justify-center mt-4">
-                <button 
-                    onClick={handleRun} 
+                <button
+                    onClick={handleRun}
                     disabled={!text.trim() || loading}
-                    className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400"
+                    className="primary-action"
                 >
                     {loading ? 'מפרק...' : 'פרק לתתי-משימות'}
                 </button>
@@ -40,60 +40,119 @@ const AiTaskPopup = ({ onRun, hideModal, loading }) => {
     );
 };
 
-const hasCompleted = (items) => items.some(i => i.completed || (i.subItems && hasCompleted(i.subItems)));
-
 const TaskList = () => {
-    // ✅ Get activeHome from AppContext
-    const { activeHome } = useAppContext();
-    // ✅ Get addItem, clearCompletedItems, runAiTask, and loading from ListActionsContext
-    // Note: ensure runAiTask is added to ListActionsContext if it's not already there.
-    const { addItem, clearCompletedItems, runAiTask, loading } = useListActions();
-    
-    const { showModal, hideModal } = useModal();
+    // Hooks קיימים (כפי שסיפקת)
+    const { activeHome, loading: isAppLoading } = useAppContext();
+    // שינוי: ודא ש-clearList נכלל ב-destructuring של useListActions
+    const { addItem, clearCompletedItems, clearList, runAiTask, loading: isActionsLoading } = useListActions(); 
+    const { showModal, hideModal, showConfirmModal } = useModal();
+
+    // States קיימים (כפי שסיפקת)
+    const [filter, setFilter] = useState('all');
+    const [sortBy, setSortBy] = useState('createdAt_desc');
+
+    const loading = isAppLoading || isActionsLoading;
     const tasksList = activeHome?.tasksList || [];
 
-    const handleClearCompleted = () => {
-        showModal(
-            <div className="p-4 bg-white rounded-lg shadow-lg text-center">
-                <h3 className="text-lg font-semibold mb-4">האם למחוק את כל המשימות שהושלמו?</h3>
-                <div className="flex justify-center gap-4">
-                    <button onClick={() => { clearCompletedItems('tasks'); hideModal(); }} className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">אישור</button>
-                    <button onClick={hideModal} className="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400">ביטול</button>
-                </div>
-            </div>, { title: 'אישור ניקוי רשימה' }
+    // processedList (לוגיקת סינון ומיון כפי שסיפקת)
+    const processedList = useMemo(() => {
+        let filtered = [...tasksList];
+        if (filter === 'completed') {
+            filtered = filtered.filter(item => item.completed);
+        } else if (filter === 'active') {
+            filtered = filtered.filter(item => !item.completed);
+        }
+
+        filtered.sort((a, b) => {
+            if (a.isUrgent && !b.isUrgent) return -1;
+            if (!a.isUrgent && b.isUrgent) return 1;
+            if (sortBy === 'text_asc') {
+                return a.text.localeCompare(b.text, 'he');
+            }
+            return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+
+        return filtered;
+    }, [tasksList, filter, sortBy]);
+
+    // שינוי: שינוי שם המשתנה ל-canClearCompleted כפי שהיה בקוד החדש
+    const canClearCompleted = useMemo(() => tasksList.some(i => i.completed), [tasksList]);
+
+    // פונקציות פתיחת מודלים (כפי שסיפקת, עם שינוי שם המשתנה ל-canClearCompleted בכפתור "נקה")
+    const openCategoryManager = () => showModal(<CategoryManager />, { title: 'ניהול קטגוריות' });
+    const openTemplateManager = () => showModal(<TemplateManager />, { title: 'החל תבנית' });
+    // openAiPopup - כבר משתמש ב-AiTaskPopup הקיים
+    const openAiPopup = () => showModal(<AiTaskPopup onRun={runAiTask} hideModal={hideModal} loading={loading} />, { title: 'עזרת AI' });
+
+    // [NEW] פונקציה חדשה למחיקת רשימה לצמיתות
+    const handleClearList = () => {
+        showConfirmModal(
+            'האם אתה בטוח שברצונך למחוק את כל המשימות ברשימה זו לצמיתות?',
+            () => clearList('tasks')
         );
     };
-    
-    // Function to open the AI modal
-    const openAiPopup = () => {
-        showModal(
-            <AiTaskPopup 
-                onRun={runAiTask}
-                hideModal={hideModal}
-                loading={loading}
-            />,
-            { title: 'עזרת AI' }
-        );
-    };
-    
-    const canClear = hasCompleted(tasksList);
-    
+
     return (
         <div className="list-container">
-            <h2 className="list-title"><i className="fas fa-tasks"></i> רשימת משימות</h2>
+            <header className="list-header">
+                <h2 className="list-title"><i className="fas fa-tasks"></i> רשימת משימות</h2>
+                <div className="list-actions">
+                    {/* כפתורים קיימים (כפי שסיפקת) */}
+                    <button onClick={openCategoryManager} className="header-style-button" disabled={loading} title="ניהול קטגוריות">
+                        <i className="fas fa-tags"></i> <span className="btn-text">קטגוריות</span>
+                    </button>
+                    <button onClick={openTemplateManager} className="header-style-button" disabled={loading} title="החל מתבנית">
+                        <i className="fas fa-file-alt"></i> <span className="btn-text">מתבנית</span>
+                    </button>
+                    <button onClick={openAiPopup} className="ai-btn" disabled={loading} title="עזרה מ-AI">
+                        <i className="fas fa-robot"></i> <span className="btn-text">פרק משימה</span>
+                    </button>
+                    {/* שינוי טקסט הכפתור "נקה" ל"נקה שהושלמו" והמשתנה ל-canClearCompleted */}
+                    <button onClick={() => showConfirmModal('האם לארכב את כל המשימות שהושלמו?', () => clearCompletedItems('tasks'))} className="clear-btn" disabled={!canClearCompleted || loading} title="ארכב משימות שהושלמו">
+                        <i className="fas fa-archive"></i> <span className="btn-text">נקה שהושלמו</span>
+                    </button>
+                    {/* [NEW] כפתור מחיקת רשימה לצמיתות */}
+                    <button onClick={handleClearList} className="clear-btn danger-btn" disabled={tasksList.length === 0 || loading} title="מחק רשימה">
+                        <i className="fas fa-trash-alt"></i> <span className="btn-text">מחק הכל</span>
+                    </button>
+                </div>
+            </header>
+
             <AddItemForm listType="tasks" onAddItem={addItem} />
-            <ul className="item-list">
-                {tasksList.map(item => <TaskItem key={item._id} item={item} />)}
-            </ul>
-            <div className="list-actions">
-                <button onClick={handleClearCompleted} className="clear-btn" disabled={!canClear || loading}>
-                    <i className="fas fa-broom"></i> נקה משימות שהושלמו
-                </button>
-                {/* New AI button */}
-                <button onClick={openAiPopup} className="ai-btn" disabled={loading}>
-                    <i className="fas fa-robot"></i> עזרה מ-AI
-                </button>
+
+            {/* בקרות סינון ומיון (כפי שסיפקת) */}
+            <div className="list-controls">
+                <div className="control-group">
+                    <label htmlFor="task-filter-status">הצג:</label>
+                    <select id="task-filter-status" value={filter} onChange={(e) => setFilter(e.target.value)} disabled={loading}>
+                        <option value="all">הכל</option>
+                        <option value="active">משימות פעילות</option>
+                        <option value="completed">משימות שהושלמו</option>
+                    </select>
+                </div>
+                <div className="control-group">
+                    <label htmlFor="task-sort-by">מיין לפי:</label>
+                    <select id="task-sort-by" value={sortBy} onChange={(e) => setSortBy(e.target.value)} disabled={loading}>
+                        <option value="createdAt_desc">החדש ביותר</option>
+                        <option value="text_asc">א'-ב'</option>
+                    </select>
+                </div>
             </div>
+
+            {/* רשימת המשימות עצמה (כפי שסיפקת) */}
+            <ul className="item-list">
+                {loading && processedList.length === 0 ? (
+                    <p className="list-message">טוען משימות...</p>
+                ) : processedList.length === 0 ? (
+                    <p className="list-message">
+                        {filter === 'all' ? 'אין משימות להצגה. זמן להוסיף כמה!' : 'אין משימות התואמות לסינון זה.'}
+                    </p>
+                ) : (
+                    processedList.map(item => (
+                        <TaskItem key={item._id} item={item} />
+                    ))
+                )}
+            </ul>
         </div>
     );
 };

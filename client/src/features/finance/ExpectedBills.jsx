@@ -1,79 +1,99 @@
-import React from 'react';
-import { useAppContext } from '../../context/AppContext'; // ✅ נתיב מעודכן
-import { useFinanceActions } from '../../context/FinanceActionsContext'; // ✅ נתיב חדש
-import { useModal } from '../../context/ModalContext';
+import React, { useMemo } from 'react';
+import { useAppContext } from '@/context/AppContext';
+import { useFinanceActions } from '@/context/FinanceActionsContext';
+import { useModal } from '@/context/ModalContext';
 import BillForm from './forms/BillForm';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import LoadingSpinner from '@/components/LoadingSpinner';
+
+/**
+ * A utility function to determine the status of a bill based on its due date.
+ * @param {string | Date} dueDate - The due date of the bill.
+ * @returns {{status: 'overdue' | 'due-soon' | 'normal', text: string, className: string}}
+ */
+const getBillStatus = (dueDate) => {
+    const today = new Date();
+    const billDate = new Date(dueDate);
+    today.setHours(0, 0, 0, 0); // Normalize today to the start of the day
+    billDate.setHours(0, 0, 0, 0); // Normalize bill date
+
+    const diffTime = billDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+        return { status: 'overdue', text: 'עבר התאריך', className: 'status-overdue' };
+    }
+    if (diffDays <= 7) {
+        return { status: 'due-soon', text: `בעוד ${diffDays} ימים`, className: 'status-due-soon' };
+    }
+    return { status: 'normal', text: billDate.toLocaleDateString('he-IL'), className: 'status-normal' };
+};
+
 
 const ExpectedBills = () => {
-  // ✅ קבלת activeHome ו-loading מ-useAppContext
-  const { activeHome, loading: appLoading } = useAppContext(); 
-  // ✅ קבלת payExistingBill ו-deleteBill מ-useFinanceActions
-  const { payExistingBill, deleteBill, loading: financeActionsLoading } = useFinanceActions();
+  const { activeHome } = useAppContext(); 
+  const { payExistingBill, deleteBill, loading } = useFinanceActions();
+  const { showModal, showConfirmModal } = useModal();
 
-  // נשתמש ב-loading המשותף אם אחד מה-Contexts נמצא בטעינה
-  const loading = appLoading || financeActionsLoading;
+  const openEditBillModal = (bill) => {
+    showModal(<BillForm initialData={bill} />, { title: 'עריכת חשבון' });
+  };
+  
+  const handleDeleteClick = (bill) => {
+    showConfirmModal(`האם למחוק את החשבון "${bill.text}"?`, () => {
+      deleteBill(bill._id);
+    });
+  };
+  
+  const bills = useMemo(() => {
+      const unsortedBills = activeHome?.finances?.expectedBills || [];
+      // Sort bills by due date, ascending
+      return [...unsortedBills].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+  }, [activeHome?.finances?.expectedBills]);
+  
+  const currency = activeHome?.finances?.financeSettings?.currency || 'ש"ח';
 
-  const { showModal } = useModal();
-
-  const openAddBillModal = () => {
-    showModal(<BillForm />, { title: 'הוספת חשבון חדש' });
-  };
-  
-  const openEditBillModal = (bill) => {
-    showModal(<BillForm existingBill={bill} />, { title: 'עריכת חשבון' });
-  };
-
-  const handleDeleteClick = (bill) => {
-    if (window.confirm(`האם למחוק את החשבון "${bill.text}"?`)) {
-      deleteBill(bill._id);
-    }
-  };
-  
-  const bills = activeHome?.finances?.expectedBills || [];
-
-  return (
-    <div id="bills-section">
-      <div className="sub-section-header">
-        <h4 data-lang-key="expected_bills">חשבונות לתשלום</h4>
-        <button id="add-expected-bill-btn" className="header-style-button" onClick={openAddBillModal} disabled={loading}> {/* כפתור הוספה מושבת בזמן טעינה */}
-          <i className="fas fa-plus"></i> <span className="btn-text">הוסף חשבון</span>
-        </button>
-      </div>
-      {loading && <LoadingSpinner />} {/* שימוש ב-loading הכולל */}
-      <div className="item-list">
-        <ul id="expected-bills-ul">
-          {bills.length > 0 ? (
-            bills.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)).map(bill => (
-              <li key={bill._id} className={bill.isUrgent ? 'urgent-item' : ''}>
-                <div className="item-text">
-                  <span>{bill.text} - {bill.amount} {activeHome?.finances?.financeSettings?.currency}</span>
-                  <span className="item-details">
-                    לתשלום עד {new Date(bill.dueDate).toLocaleDateString('he-IL')} | קטגוריה: {bill.category}
-                    {bill.recurring && ' | 🔄'}
-                    {bill.assignedTo && ` | משויך ל: ${bill.assignedTo}`}
-                  </span>
-                </div>
-                <div className="item-actions">
-                  <button className="action-btn pay-bill-btn" title="שלם חשבון" onClick={() => payExistingBill(bill._id)} disabled={loading}>
-                    <i className="fas fa-check"></i>
-                  </button>
-                  <button className="action-btn edit-bill-btn" title="ערוך" onClick={() => openEditBillModal(bill)} disabled={loading}>
-                    <i className="fas fa-edit"></i>
-                  </button>
-                  <button className="action-btn delete-bill-btn" title="מחק" onClick={() => handleDeleteClick(bill)} disabled={loading}>
-                    <i className="far fa-trash-alt"></i>
-                  </button>
-                </div>
-              </li>
-            ))
-          ) : (
-            <li style={{ textAlign: 'center', padding: '15px', color: '#777' }}>אין חשבונות צפויים.</li>
-          )}
-        </ul>
-      </div>
-    </div>
-  );
+  return (
+    <div className="expected-bills-list">
+        {loading && !bills.length ? (
+            <LoadingSpinner text="טוען חשבונות..." />
+        ) : bills.length === 0 ? (
+            <div className="no-items-message">
+                <i className="fas fa-check-circle"></i>
+                <p>נהדר! אין חשבונות צפויים לתשלום.</p>
+            </div>
+        ) : (
+            <ul>
+                {bills.map(bill => {
+                    const status = getBillStatus(bill.dueDate);
+                    return (
+                        <li key={bill._id} className="bill-item">
+                            <div className={`status-indicator ${status.className}`}></div>
+                            <div className="bill-details">
+                                <span className="bill-text">{bill.text}</span>
+                                <span className="bill-category">{bill.category}</span>
+                            </div>
+                            <div className="bill-info">
+                                <span className="bill-amount">{bill.amount.toLocaleString()} {currency}</span>
+                                <span className={`bill-due-date ${status.className}`}>{status.text}</span>
+                            </div>
+                            <div className="bill-actions">
+                                <button className="action-btn pay-btn" title="שלם חשבון" onClick={() => payExistingBill(bill._id)} disabled={loading}>
+                                  <i className="fas fa-check"></i>
+                                </button>
+                                <button className="action-btn edit-btn" title="ערוך" onClick={() => openEditBillModal(bill)} disabled={loading}>
+                                  <i className="fas fa-edit"></i>
+                                </button>
+                                <button className="action-btn delete-btn" title="מחק" onClick={() => handleDeleteClick(bill)} disabled={loading}>
+                                  <i className="far fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </li>
+                    );
+                })}
+            </ul>
+        )}
+    </div>
+  );
 };
 
 export default ExpectedBills;

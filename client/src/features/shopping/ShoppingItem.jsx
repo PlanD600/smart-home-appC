@@ -1,16 +1,24 @@
-// client/src/features/shopping/ShoppingItem.jsx
-
-import React from 'react';
-import { useListActions } from '../../context/ListActionsContext'; // ✅ נתיב מעודכן
-import { useModal } from '../../context/ModalContext';
+import React, { useMemo } from 'react';
+import { useListActions } from '@/context/ListActionsContext';
+import { useModal } from '@/context/ModalContext';
 import AssignUserForm from '../common/AssignUserForm';
-import CommentForm from '../common/CommentForm';
+import ViewAndEditComment from '../common/ViewAndEditComment';
 
 const ShoppingItem = ({ item }) => {
-    // ✅ קבלת modifyItem ו-removeItem מ-useListActions
-    const { modifyItem, removeItem } = useListActions();
-    const { showModal, hideModal } = useModal();
+    // ודא ש-deleteItemPermanently נמשך מתוך ה-hook useListActions
+    const { modifyItem, removeItem, deleteItemPermanently } = useListActions(); 
+    const { showModal, showConfirmModal } = useModal();
 
+    // הנחה: itemClasses מוגדר כ-useMemo
+    const itemClasses = useMemo(() => {
+        let classes = "shopping-item";
+        if (item.completed) classes += " completed";
+        if (item.isUrgent) classes += " urgent";
+        // הוסף לוגיקה נוספת עבור itemClasses אם קיימת
+        return classes;
+    }, [item.completed, item.isUrgent]);
+
+    // הנחה: קיימות פונקציות לטיפול בפעולות על הפריט
     const handleToggleComplete = () => {
         modifyItem('shopping', item._id, { completed: !item.completed });
     };
@@ -19,80 +27,77 @@ const ShoppingItem = ({ item }) => {
         modifyItem('shopping', item._id, { isUrgent: !item.isUrgent });
     };
 
-    // 3. שדרוג פונקציית המחיקה
-    const handleDelete = () => {
+    const handleAssignUser = () => {
         showModal(
-            <div className="p-4 bg-white rounded-lg shadow-lg text-center">
-                <h3 className="text-lg font-semibold mb-4">האם למחוק את "{item.text}"?</h3>
-                <div className="flex justify-center gap-4">
-                    <button
-                        onClick={() => {
-                            removeItem('shopping', item._id);
-                            hideModal();
-                        }}
-                        className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-                    >
-                        אישור
-                    </button>
-                    <button
-                        onClick={hideModal}
-                        className="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400"
-                    >
-                        ביטול
-                    </button>
-                </div>
-            </div>,
-            { title: 'אישור מחיקה' }
+            <AssignUserForm currentAssignedTo={item.assignedTo} onAssign={(userId) => modifyItem('shopping', item._id, { assignedTo: userId })} />,
+            { title: 'שייך למשתמש' }
         );
     };
 
-    const handleAssignClick = () => {
-        // לוודא ש-AssignUserForm מקבל את `onSave` כפונקציה שתדע לקרוא ל-modifyItem
-        showModal(<AssignUserForm item={item} onSave={(itemId, data) => modifyItem('shopping', itemId, data)} />, { title: 'שיוך משתמש לפריט' });
+    const handleViewEditComment = () => {
+        showModal(
+            <ViewAndEditComment currentComment={item.comment} onSave={(newComment) => modifyItem('shopping', item._id, { comment: newComment })} />,
+            { title: 'הוסף/ערוך הערה' }
+        );
     };
 
-    const handleCommentClick = () => {
-        // לוודא ש-CommentForm מקבל את `onSave` כפונקציה שתדע לקרוא ל-modifyItem
-        showModal(<CommentForm item={item} onSave={(itemId, data) => modifyItem('shopping', itemId, data)} />, { title: 'הוספת הערה לפריט' });
+    // הפונקציה הקיימת להעברה לארכיון
+    const handleArchiveItem = () => removeItem('shopping', item._id);
+
+    // [NEW] פונקציה חדשה למחיקה לצמיתות
+    const handleDeletePermanently = () => {
+        showConfirmModal(
+            `האם אתה בטוח שברצונך למחוק את "${item.text}" לצמיתות?`,
+            () => deleteItemPermanently('shopping', item._id)
+        );
     };
-
-    const liClassName = `
-        ${item.completed ? 'completed' : ''}
-        ${item.isUrgent ? 'urgent-item' : ''}
-    `.trim();
-
+    
     return (
-        <li className={liClassName} data-id={item._id}>
-            <input
-                type="checkbox"
-                checked={item.completed}
-                onChange={handleToggleComplete}
-            />
-            <div className="item-text">
-                {item.text}
-                <span className="item-details">
-                    קטגוריה: {item.category || 'כללית'}
-                    {item.assignedTo && ` | שויך ל: ${item.assignedTo}`}
-                    {item.comment && ` | הערה: ${item.comment}`}
+        <li className={itemClasses} data-id={item._id}>
+            {/* תוכן הפריט הראשי */}
+            <div className="item-main-content">
+                <input 
+                    type="checkbox" 
+                    checked={item.completed} 
+                    onChange={handleToggleComplete} 
+                    className="item-checkbox" 
+                />
+                <span className="item-text" onClick={handleToggleComplete}>
+                    {item.text}
+                    {item.comment && <i className="fas fa-comment-alt item-comment-indicator"></i>}
                 </span>
+                {item.assignedTo && <span className="assigned-user">{item.assignedTo}</span>}
             </div>
+            
             <div className="item-actions">
+                {/* כפתורים קיימים (כפי שהיו בקוד שסיפקת, עם הנחות על הלוגיקה הפנימית) */}
                 <button 
-                    className="action-btn priority-btn" 
-                    title="דחיפות" 
+                    className={`action-btn ${item.isUrgent ? 'urgent-active' : ''}`} 
+                    title="סמן כדחוף" 
                     onClick={handleToggleUrgent}
-                    style={{ color: item.isUrgent ? 'var(--coral-red)' : '#aaa' }}
                 >
-                    <i className="fas fa-star"></i>
+                    <i className="fas fa-exclamation-triangle"></i>
                 </button>
-                <button className="action-btn assign-user-btn" title="שייך למשתמש" onClick={handleAssignClick}>
-                    <i className="fas fa-user-tag"></i>
+                <button 
+                    className={`action-btn ${item.assignedTo ? 'assigned-active' : ''}`} 
+                    title="שייך למשתמש" 
+                    onClick={handleAssignUser}
+                >
+                    <i className="fas fa-user-plus"></i>
                 </button>
-                <button className="action-btn comment-btn" title="הערה" onClick={handleCommentClick}>
-                    <i className="fas fa-comment"></i>
+                <button 
+                    className={`action-btn ${item.comment ? 'comment-active' : ''}`} 
+                    title="הוסף/ערוך הערה" 
+                    onClick={handleViewEditComment}
+                >
+                    <i className="fas fa-comment-dots"></i>
                 </button>
-                <button className="action-btn delete-btn" title="מחק" onClick={handleDelete}>
-                    <i className="far fa-trash-alt"></i>
+                <button className="action-btn archive-btn" title="העבר לארכיון" onClick={handleArchiveItem}>
+                    <i className="fas fa-archive"></i>
+                </button>
+                {/* [NEW] כפתור מחיקה לצמיתות */}
+                <button className="action-btn delete-btn" title="מחק לצמיתות" onClick={handleDeletePermanently}>
+                    <i className="fas fa-trash-alt"></i>
                 </button>
             </div>
         </li>

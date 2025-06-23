@@ -1,53 +1,37 @@
-// client/src/App.jsx
-
 import React, { useEffect } from 'react';
-import { useAppContext } from '@/context/AppContext';
-import { useLanguage } from '@/context/LanguageContext';
-import LoginScreen from '@/pages/LoginScreen';
-import MainAppScreen from '@/pages/MainAppScreen';
-import LoadingSpinner from '@/components/LoadingSpinner';
-import Modal from '@/components/Modal';
-import { useModal } from './context/ModalContext';
+import { useAppContext } from './context/AppContext';
+import { useLanguage } from './context/LanguageContext';
+import LoginScreen from './pages/LoginScreen';
+import MainAppScreen from './pages/MainAppScreen';
+import LoadingSpinner from './components/LoadingSpinner';
 
-
+/**
+ * A simple wrapper component to conditionally render content.
+ * This prevents re-rendering the entire App when context changes.
+ */
 const AppContent = () => {
-  const { activeHome, loading, error, setError } = useAppContext();
-  const { setDirection } = useLanguage();
-  const { showModal, hideModal } = useModal();
-
-  useEffect(() => {
-    setDirection('rtl');
-  }, [setDirection]);
-
-  // הצג שגיאות גלובליות במודל
-  useEffect(() => {
-    if (error) {
-        showModal(
-            <div>
-                <p>{typeof error === 'string' ? error : JSON.stringify(error)}</p>
-                <button onClick={() => { setError(null); hideModal(); }} className="btn btn-primary mt-4">
-                    הבנתי
-                </button>
-            </div>,
-            { title: 'התרחשה שגיאה' }
-        );
-    }
-  }, [error, showModal, hideModal, setError]);
-
-
+  const { activeHome, loading } = useAppContext();
+  
+  // The main loading state for the initial app load or login attempt
   if (loading && !activeHome) {
-    return <LoadingSpinner fullPage={true} />;
+    return <LoadingSpinner fullPage text="טוען אפליקציה..." />;
   }
 
-  return !activeHome ? <LoginScreen /> : <MainAppScreen />;
+  // If there's an active home, show the main app screen, otherwise show the login screen.
+  return activeHome ? <MainAppScreen /> : <LoginScreen />;
 };
 
+function App() {
+  const { direction } = useLanguage();
 
-const App = () => (
-  // העטיפה בקונטקסטים השונים מתבצעת כבר בקובץ main.jsx
-  // לכן אין צורך לעטוף כאן שוב.
-  // רק נציג את התוכן הראשי.
-  <AppContent />
-);
+  // [FIXED] The useEffect that was calling setDirection has been removed,
+  // as this logic is now handled automatically within LanguageContext.
+  useEffect(() => {
+    // This effect now correctly handles the document's direction based on the context.
+    document.body.dir = direction;
+  }, [direction]);
+
+  return <AppContent />;
+}
 
 export default App;

@@ -1,127 +1,119 @@
-import React from 'react';
-import { useAppContext } from '../../context/AppContext'; // ✅ נתיב מעודכן
-import { useModal } from '../../context/ModalContext';
+import React, { useMemo } from 'react';
+import { useAppContext } from '@/context/AppContext';
+import { useModal } from '@/context/ModalContext';
 import BudgetForm from './forms/BudgetForm';
-import { useLanguage } from '../../context/LanguageContext';
-import translations from './translations'; 
-import LoadingSpinner from '../../components/LoadingSpinner';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
-// פונקציית עיצוב המטבע נשארת כפי שהיא
-const formatCurrency = (amount, currencySymbol) => {
-    // ... (הקוד שלך נשאר זהה)
-    const currencyMap = { 'ש"ח': 'ILS', '$': 'USD', '€': 'EUR' };
-    const currencyCode = currencyMap[currencySymbol] || currencySymbol;
-    try {
-        const numericAmount = Number(amount);
-        if (isNaN(numericAmount)) return 'N/A';
-        return new Intl.NumberFormat('he-IL', { style: 'currency', currency: currencyCode, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numericAmount);
-    } catch (error) {
-        console.error('Currency formatting error:', error);
-        return `${amount} ${currencySymbol}`;
-    }
-};
+/**
+ * A small, reusable component for displaying a single budget category bar.
+ */
+const BudgetCategoryBar = ({ category, spent, budget, currency, onEdit }) => {
+    const percentage = budget > 0 ? (spent / budget) * 100 : 0;
+    const isOverBudget = spent > budget;
 
-const BudgetTracker = () => {
-    // ✅ קבלת activeHome ו-loading מ-useAppContext
-    const { activeHome, loading } = useAppContext();
-    
-    // ✅ ה-hook של המודאל מחזיר 'showModal', לא 'openModal'
-    const { showModal } = useModal(); 
-    const { language } = useLanguage();
-    const t = translations[language] || translations['he']; // ברירת מחדל לעברית
-
-    if (loading) {
-        return <LoadingSpinner />;
-    }
-
-    if (!activeHome?.finances) {
-        return <div className="p-4 text-center text-gray-500">{t.noFinanceData}</div>;
-    }
-
-    // ✅ שלב 1: נוודא שאנחנו שולפים גם את 'paidBills' וגם את 'financeSettings'
-    const { 
-        budgets = [], 
-        paidBills = [],
-        expenseCategories = [],
-        financeSettings
-    } = activeHome.finances;
-    
-    const homeCurrency = financeSettings?.currency || 'ש"ח';
-
-    const handleEditBudget = (budget) => {
-        showModal(<BudgetForm existingBudget={budget} onSave={() => showModal(null)} onCancel={() => showModal(null)} />);
-    };
-    
-    // ✅ שלב 2: תיקון הלוגיקה המרכזית. הפונקציה תסכום את ההוצאות מהחשבונות ששולמו.
-    const getCategoryTotal = (categoryName) => {
-        return paidBills
-            .filter(bill => bill.category === categoryName)
-            .reduce((sum, bill) => sum + bill.amount, 0);
-    };
-    
-    const getCategoryColor = (categoryName) => {
-        // המערך expenseCategories צריך להיות בשימוש כאן
-        const category = expenseCategories.find(c => c.name === categoryName);
-        return category ? category.color : '#cccccc';
+    const getBarColor = () => {
+        if (isOverBudget) return '#ef4444'; // Red
+        if (percentage > 80) return '#f59e0b'; // Amber
+        return '#22c55e'; // Green
     };
 
     return (
-        <div className="p-4 bg-white rounded-lg shadow-md">
-            <h3 className="text-xl font-bold mb-4 text-gray-800">{t.budgetTracker}</h3>
-            <div className="space-y-4">
-                {budgets.length > 0 ? (
-                    budgets.map((budget) => {
-                        const spent = getCategoryTotal(budget.category);
-                        const remaining = budget.amount - spent;
-                        const percentage = budget.amount > 0 ? (spent / budget.amount) * 100 : 0;
-                        const isOverBudget = remaining < 0;
-                        const categoryColor = getCategoryColor(budget.category);
-
-                        return (
-                            <div key={budget.category} className="cursor-pointer" onClick={() => handleEditBudget(budget)}>
-                                <div className="flex justify-between items-center mb-1 text-gray-700">
-                                    <span className="font-semibold">{budget.category}</span>
-                                    <span className="text-sm">
-                                        {formatCurrency(spent, homeCurrency)} / {formatCurrency(budget.amount, homeCurrency)}
-                                    </span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-4 relative overflow-hidden">
-                                    <div
-                                        className="h-full rounded-full transition-all duration-500"
-                                        style={{
-                                            width: `${Math.min(percentage, 100)}%`,
-                                            backgroundColor: isOverBudget ? '#ef4444' : categoryColor
-                                        }}
-                                    ></div>
-                                    {isOverBudget && (
-                                        <div
-                                            className="absolute h-full bg-red-500 opacity-50"
-                                            style={{
-                                                width: `${Math.min((Math.abs(remaining) / budget.amount) * 100, 100)}%`,
-                                                left: `${100}%`
-                                            }}
-                                        ></div>
-                                    )}
-                                </div>
-                                <div className="flex justify-between items-center mt-1 text-sm">
-                                    <span className="text-gray-600">{isOverBudget ? t.overBudget : t.remaining}</span>
-                                    <span className={`${isOverBudget ? 'text-red-600' : 'text-green-600'} font-bold`}>
-                                        {formatCurrency(remaining, homeCurrency)}
-                                    </span>
-                                </div>
-                            </div>
-                        );
-                    })
-                ) : (
-                    <p className="text-gray-500">{t.noBudgetsSet}</p>
+        <div className="budget-category-bar" onClick={onEdit} role="button" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onEdit()}>
+            <div className="bar-info">
+                <span className="category-name">{category.name}</span>
+                <span className="category-amount">
+                    {spent.toLocaleString()} / {budget.toLocaleString()} {currency}
+                </span>
+            </div>
+            <div className="progress-track">
+                <div 
+                    className="progress-fill" 
+                    style={{ 
+                        width: `${Math.min(percentage, 100)}%`, 
+                        backgroundColor: getBarColor() 
+                    }}
+                ></div>
+                {isOverBudget && (
+                     <div 
+                        className="over-budget-indicator"
+                        style={{ width: `100%` }}
+                     ></div>
                 )}
             </div>
-            <button
-                onClick={() => showModal(<BudgetForm onSave={() => showModal(null)} onCancel={() => showModal(null)} />)}
-                className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
-            >
-                {t.addNewBudget}
-            </button>
+            <div className="bar-footer">
+                <span className={`remaining-amount ${isOverBudget ? 'over' : ''}`}>
+                    {isOverBudget 
+                        ? `חריגה של ${(spent - budget).toLocaleString()}`
+                        : `נותרו ${(budget - spent).toLocaleString()}`
+                    }
+                </span>
+            </div>
+        </div>
+    );
+};
+
+/**
+ * Displays a list of budget trackers for various expense categories.
+ */
+const BudgetTracker = () => {
+    const { activeHome, loading } = useAppContext();
+    const { showModal } = useModal();
+
+    const { 
+        paidBills = [],
+        expenseCategories = [],
+        financeSettings
+    } = activeHome?.finances || {};
+    
+    const currency = financeSettings?.currency || 'ש"ח';
+
+    const categoryTotals = useMemo(() => {
+        const now = new Date();
+        return paidBills
+            .filter(bill => {
+                const billDate = new Date(bill.datePaid);
+                return billDate.getMonth() === now.getMonth() && billDate.getFullYear() === now.getFullYear();
+            })
+            .reduce((acc, bill) => {
+                acc[bill.category] = (acc[bill.category] || 0) + bill.amount;
+                return acc;
+            }, {});
+    }, [paidBills]);
+
+    const openEditBudgetModal = () => {
+        showModal(<BudgetForm />, { title: 'עריכת תקציבים' });
+    };
+
+    const budgetsToDisplay = expenseCategories.filter(cat => cat.budgetAmount > 0);
+
+    return (
+        <div className="budget-tracker-container">
+             <header className="budget-tracker-header">
+                <button onClick={openEditBudgetModal} className="edit-budgets-btn">
+                    <i className="fas fa-edit"></i> ערוך תקציבים
+                </button>
+            </header>
+            <div className="budget-bars-list">
+                {loading && budgetsToDisplay.length === 0 ? (
+                    <LoadingSpinner />
+                ) : budgetsToDisplay.length === 0 ? (
+                    <div className="no-items-message">
+                        <i className="fas fa-chart-pie"></i>
+                        <p>לא הוגדרו תקציבים. לחץ על 'ערוך תקציבים' כדי להתחיל.</p>
+                    </div>
+                ) : (
+                    budgetsToDisplay.map(cat => (
+                        <BudgetCategoryBar 
+                            key={cat.name}
+                            category={cat}
+                            spent={categoryTotals[cat.name] || 0}
+                            budget={cat.budgetAmount}
+                            currency={currency}
+                            onEdit={openEditBudgetModal}
+                        />
+                    ))
+                )}
+            </div>
         </div>
     );
 };

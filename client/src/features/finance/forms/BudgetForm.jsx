@@ -1,63 +1,100 @@
-// client/src/features/finance/forms/BudgetForm.jsx
-
 import React, { useState, useEffect } from 'react';
-import { useFinanceActions } from '@/context/FinanceActionsContext';
 import { useAppContext } from '@/context/AppContext';
+import { useFinanceActions } from '@/context/FinanceActionsContext';
 import { useModal } from '@/context/ModalContext';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
+/**
+ * A form for setting and updating monthly budget amounts for all expense categories.
+ */
 const BudgetForm = () => {
     const { activeHome } = useAppContext();
-    const { saveBudgets } = useFinanceActions(); // ✅ שינוי שם הפונקציה ל-saveBudgets
+    const { saveBudgets, loading } = useFinanceActions();
     const { hideModal } = useModal();
+    
     const [budgets, setBudgets] = useState({});
-    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
 
+    // Initialize the form state with the current budget values from the home context.
     useEffect(() => {
         const initialBudgets = {};
-        activeHome.finances.expenseCategories.forEach(cat => {
-            initialBudgets[cat.name] = cat.budget || 0;
-        });
+        if (activeHome?.finances?.expenseCategories) {
+            activeHome.finances.expenseCategories.forEach(cat => {
+                // The key is the category name, the value is its budget amount
+                initialBudgets[cat.name] = cat.budgetAmount || 0;
+            });
+        }
         setBudgets(initialBudgets);
-    }, [activeHome.finances.expenseCategories]);
+    }, [activeHome?.finances?.expenseCategories]);
 
+    /**
+     * Handles changes to a specific category's budget input.
+     * @param {string} categoryName - The name of the category being updated.
+     * @param {string} value - The new value from the input field.
+     */
     const handleBudgetChange = (categoryName, value) => {
-        setBudgets(prev => ({ ...prev, [categoryName]: Number(value) }));
+        // Allow empty string for user input, but treat as 0 for state
+        const numericValue = value === '' ? '' : parseFloat(value);
+        if (!isNaN(numericValue) || value === '') {
+             setBudgets(prev => ({ ...prev, [categoryName]: numericValue }));
+        }
     };
 
-    const handleUpdateBudgets = async (e) => {
+    /**
+     * Handles the form submission.
+     */
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        setIsLoading(true);
-        const budgetsData = Object.entries(budgets).map(([name, budget]) => ({ name, budget }));
-        await saveBudgets(budgetsData); // ✅ שינוי שם הפונקציה ל-saveBudgets
-        setIsLoading(false);
-        hideModal();
+        setError('');
+
+        // Prepare the data in the format the API expects: an array of category objects
+        const updatedCategories = activeHome.finances.expenseCategories.map(cat => ({
+            ...cat,
+            budgetAmount: Number(budgets[cat.name]) || 0, // Ensure it's a number, default to 0
+        }));
+
+        try {
+            await saveBudgets(updatedCategories);
+            hideModal();
+        } catch (err) {
+            setError(err.message || 'שגיאה בעדכון התקציבים.');
+        }
     };
 
     return (
-        <form onSubmit={handleUpdateBudgets} className="p-4 space-y-4">
-            <h3 className="text-lg font-semibold text-center">עדכון תקציב חודשי לקטגוריות</h3>
-            <div className="max-h-60 overflow-y-auto pr-2">
-                {activeHome.finances.expenseCategories.map(cat => (
-                    <div key={cat.name} className="flex items-center justify-between mb-3">
-                        <label htmlFor={`budget-${cat.name}`} className="text-sm font-medium text-gray-700">
+        <form onSubmit={handleSubmit} className="budget-form">
+            <h3 className="form-title">עריכת תקציב חודשי</h3>
+            <p className="form-subtitle">הגדר את סכום התקציב המקסימלי לכל קטגוריה.</p>
+            
+            <div className="budget-items-list">
+                {activeHome?.finances?.expenseCategories.map(cat => (
+                    <div key={cat.name} className="budget-item-row">
+                        <label htmlFor={`budget-${cat.name}`} className="category-label">
+                             <i className={`fas ${cat.icon || 'fa-tag'}`} style={{ color: cat.color }}></i>
                             {cat.name}
                         </label>
                         <input
                             type="number"
                             id={`budget-${cat.name}`}
-                            value={budgets[cat.name] || ''}
+                            value={budgets[cat.name] ?? ''}
                             onChange={(e) => handleBudgetChange(cat.name, e.target.value)}
-                            className="input input-bordered w-32 text-left"
-                            dir="ltr"
+                            className="budget-input"
+                            placeholder="0"
                             min="0"
                             step="10"
                         />
                     </div>
                 ))}
             </div>
-            <div className="flex justify-end pt-4 border-t">
-                <button type="submit" className="btn btn-primary" disabled={isLoading}>
-                    {isLoading ? 'שומר...' : 'שמור שינויים'}
+            
+            {error && <p className="error-message">{error}</p>}
+
+            <div className="modal-footer">
+                <button type="submit" className="primary-action" disabled={loading}>
+                    {loading ? <LoadingSpinner size="sm" /> : 'שמור תקציבים'}
+                </button>
+                 <button type="button" className="secondary-action" onClick={hideModal}>
+                    בטל
                 </button>
             </div>
         </form>

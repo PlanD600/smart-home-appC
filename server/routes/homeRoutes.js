@@ -1,41 +1,58 @@
-// server/routes/homeRoutes.js
-
 const express = require('express');
 const router = express.Router();
-const homeController = require('../controllers/homeController');
 
-// --- Home Management ---
+// --- Import all the new controllers ---
+const homeController = require('../controllers/homeController');
+const userController = require('../controllers/userController');
+const listController = require('../controllers/listController');
+const financeController = require('../controllers/financeController');
+const templateController = require('../controllers/templateController');
+const aiController = require('../controllers/aiController');
+
+// --- Home Management Routes ---
+// Base routes for creating, listing, and logging into homes.
 router.post('/', homeController.createHome);
 router.get('/', homeController.getHomes);
 router.post('/login', homeController.loginToHome);
-router.get('/:homeId', homeController.getHomeDetails);
 
-// --- User Management ---
-router.post('/:homeId/users', homeController.addUser);
-router.delete('/:homeId/users', homeController.removeUser);
+// --- Specific Home Routes (prefixed with /:homeId) ---
+// These routes operate on a specific home context.
+const homeRouter = express.Router({ mergeParams: true });
 
-// --- Finance Routes ---
-router.get('/:homeId/finances/summary/:year/:month', homeController.getUserMonthlyFinanceSummary);
-router.post('/:homeId/bills/expected', homeController.addExpectedBill); // נתיב נכון, השני נמחק
-router.put('/:homeId/finances/expected-bills/:billId', homeController.updateExpectedBill);
-router.delete('/:homeId/finances/expected-bills/:billId', homeController.deleteExpectedBill);
-router.post('/:homeId/finances/pay-bill/:billId', homeController.payBill);
-router.post('/:homeId/finances/income', homeController.addIncome);
-router.post('/:homeId/finances/savings-goals', homeController.addSavingsGoal);
-router.patch('/:homeId/finances/savings-goals/:goalId/add-funds', homeController.addFundsToSavingsGoal);
-router.put('/:homeId/finances/budgets', homeController.updateBudgets);
+// User Management in a specific home
+homeRouter.post('/users', userController.addUser);
+homeRouter.delete('/users', userController.removeUser);
 
-// --- Gemini AI Integrations ---
-router.post('/:homeId/ai/transform-recipe', homeController.transformRecipeToShoppingList);
-router.post('/:homeId/ai/breakdown-task', homeController.breakdownComplexTask);
+// List Management (Shopping & Tasks) in a specific home
+homeRouter.post('/:listType', listController.addItemToList);
+homeRouter.put('/:listType/:itemId', listController.updateItemInList);
+homeRouter.delete('/:listType/:itemId', listController.deleteItemFromList);
+homeRouter.post('/:listType/clear-completed', listController.clearCompletedItems);
 
-// --- Generic Item Routes (for Shopping and Tasks) ---
-router.post('/:homeId/:listType', homeController.addItemToList);
-router.put('/:homeId/:listType/:itemId', homeController.updateItemInList);
-router.delete('/:homeId/:listType/:itemId', homeController.deleteItemFromList);
-router.post('/:homeId/:listType/clear-completed', homeController.clearCompletedItems);
+// Finance Management in a specific home
+homeRouter.get('/finances/summary/:year/:month', financeController.getUserMonthlyFinanceSummary);
+homeRouter.post('/finances/bills', financeController.addExpectedBill);
+homeRouter.put('/finances/bills/:billId', financeController.updateExpectedBill);
+homeRouter.delete('/finances/bills/:billId', financeController.deleteExpectedBill);
+homeRouter.post('/finances/bills/:billId/pay', financeController.payBill);
+homeRouter.post('/finances/income', financeController.addIncome);
+homeRouter.post('/finances/savings-goals', financeController.addSavingsGoal);
+homeRouter.patch('/finances/savings-goals/:goalId/add-funds', financeController.addFundsToSavingsGoal);
+homeRouter.put('/finances/budgets', financeController.updateBudgets);
 
-router.put('/:homeId/templates', homeController.saveTemplates);
-router.put('/:homeId', homeController.updateHome);
+// Template Management in a specific home
+homeRouter.put('/templates', templateController.saveTemplates);
+
+// AI Integrations for a specific home
+homeRouter.post('/ai/transform-recipe', aiController.transformRecipeToShoppingList);
+homeRouter.post('/ai/breakdown-task', aiController.breakdownComplexTask);
+
+// General Home Details & Updates
+homeRouter.get('/', homeController.getHomeDetails);
+homeRouter.put('/', homeController.updateHome);
+
+
+// Mount the specific home router under the /:homeId parameter
+router.use('/:homeId', homeRouter);
 
 module.exports = router;

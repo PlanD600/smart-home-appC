@@ -1,19 +1,30 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
-const connectDB = require('./config/db'); // ייבוא פונקציית החיבור למסד הנתונים
+const connectDB = require('./config/db');
 
-dotenv.config(); // טעינת משתני סביבה
-connectDB(); // חיבור למסד הנתונים
+// Load environment variables from .env file
+dotenv.config();
+
+// Connect to MongoDB
+connectDB();
 
 const app = express();
 
-app.use(cors()); // מאפשר Cross-Origin Resource Sharing
-app.use(express.json()); // מאפשר לשרת לנתח בקשות עם גוף JSON
-app.use(express.urlencoded({ extended: false })); // מאפשר לשרת לנתח בקשות עם גוף URL-encoded
+// --- Core Middleware ---
+// Enable Cross-Origin Resource Sharing for all routes
+app.use(cors());
+// Parse incoming requests with JSON payloads
+app.use(express.json());
+// Parse incoming requests with URL-encoded payloads
+app.use(express.urlencoded({ extended: false }));
 
-// תיקון הנתיב: שינוי מ-'/api/homes' ל-'/api/home' כדי להתאים לצד הלקוח
-app.use('/api/home', require('./routes/homeRoutes')); 
+
+// --- Main API Routes ---
+// All API routes will be managed by the central router in './routes/index.js'
+// This keeps the main server file clean and organized.
+app.use('/api', require('./routes')); // We will create this index.js file next
+
 
 const PORT = process.env.PORT || 5000;
 

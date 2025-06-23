@@ -1,36 +1,80 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 
+/**
+ * A reusable, animated, and accessible modal component.
+ * It handles its own visibility transition and closing logic.
+ * @param {object} props - Component props.
+ * @param {boolean} props.isOpen - Controls whether the modal is open or closed.
+ * @param {function} props.onClose - Function to call when the modal should be closed.
+ * @param {string} props.title - The title to display in the modal header.
+ * @param {React.ReactNode} props.children - The content to be rendered inside the modal body.
+ */
 const Modal = ({ isOpen, onClose, title, children }) => {
-  // Effect to handle Escape key press for closing the modal
-  useEffect(() => {
-    const handleEsc = (event) => {
-      if (event.keyCode === 27) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleEsc);
+  const modalRef = useRef(null);
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
-    return () => {
-      window.removeEventListener('keydown', handleEsc);
-    };
+  const handleClose = useCallback(() => {
+    setIsAnimatingOut(true);
+    // The timeout duration should match the CSS animation duration
+    setTimeout(() => {
+        onClose();
+        setIsAnimatingOut(false);
+    }, 300);
   }, [onClose]);
 
-  // Prevent rendering if not open
-  if (!isOpen) {
+  // Effect to handle the 'Escape' key for closing the modal
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        handleClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      document.body.classList.add('modal-open'); // Prevent background scrolling
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.classList.remove('modal-open'); // Restore scrolling on cleanup
+    };
+  }, [isOpen, handleClose]);
+
+  if (!isOpen && !isAnimatingOut) {
     return null;
   }
+  
+  const animationClass = isAnimatingOut ? 'modal-fade-out' : 'modal-fade-in';
 
-  // The id="generic-modal" and other classes are taken from your original style.css
   return (
-    <div id="generic-modal" className="modal" style={{ display: 'block' }} onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <span id="generic-modal-close-btn" className="close-modal-btn" onClick={onClose}>
-          &times;
-        </span>
-        <h4 id="generic-modal-title">{title}</h4>
-        <div id="generic-modal-body">
+    // The modal-backdrop handles the semi-transparent background and click-outside-to-close
+    <div
+      ref={modalRef}
+      className={`modal-backdrop ${animationClass}`}
+      onClick={handleClose} // Click on the backdrop closes the modal
+      aria-modal="true"
+      role="dialog"
+    >
+      <div
+        className={`modal-content-container ${animationClass}`}
+        onClick={(e) => e.stopPropagation()} // Prevent clicks inside the modal from closing it
+      >
+        <header className="modal-header">
+          <h4 className="modal-title">{title}</h4>
+          <button
+            className="close-modal-button"
+            onClick={handleClose}
+            aria-label="Close modal"
+          >
+            &times;
+          </button>
+        </header>
+        <main className="modal-body">
           {children}
-        </div>
+        </main>
       </div>
     </div>
   );

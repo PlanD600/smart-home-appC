@@ -1,19 +1,47 @@
-import React from 'react';
-import { useAppContext } from '@/context/AppContext'; // ✅ Fixed import
+import React, { useMemo } from 'react';
+import { useAppContext } from '@/context/AppContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
+/**
+ * A utility function to format numbers as currency.
+ * @param {number} amount - The number to format.
+ * @param {string} currency - The currency symbol.
+ * @returns {string} - The formatted currency string.
+ */
+const formatCurrency = (amount, currency) => {
+    return `${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ${currency}`;
+};
+
+/**
+ * A small, reusable component for a single statistic card.
+ */
+const StatCard = ({ icon, title, value, colorClass = '', detail = null }) => (
+    <div className={`stat-card ${colorClass}`}>
+        <div className="stat-icon">
+            <i className={`fas ${icon}`}></i>
+        </div>
+        <div className="stat-content">
+            <h5 className="stat-title">{title}</h5>
+            <p className="stat-value">{value}</p>
+            {detail && <div className="stat-detail">{detail}</div>}
+        </div>
+    </div>
+);
+
+/**
+ * Displays a summary of the current month's finances: income, expenses, balance, and savings rate.
+ */
 const FinancialSummary = () => {
-    // ✅ Fixed: Use useAppContext instead of useHome
-    const { activeHome } = useAppContext();
+    const { activeHome, loading } = useAppContext();
 
-    if (!activeHome?.finances) {
-        return <LoadingSpinner />;
-    }
+    const monthlyTotals = useMemo(() => {
+        if (!activeHome?.finances) {
+            return { totalIncome: 0, totalExpenses: 0, balance: 0, savingsRate: 0, currency: 'ש"ח' };
+        }
 
-    const { income = [], paidBills = [], financeSettings } = activeHome.finances;
-    const currency = financeSettings?.currency || 'ש"ח';
+        const { income = [], paidBills = [], financeSettings } = activeHome.finances;
+        const currency = financeSettings?.currency || 'ש"ח';
 
-    const getMonthlyTotals = () => {
         const now = new Date();
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
@@ -35,29 +63,46 @@ const FinancialSummary = () => {
         const balance = totalIncome - totalExpenses;
         const savingsRate = totalIncome > 0 ? Math.max(0, (balance / totalIncome) * 100) : 0;
 
-        return { totalIncome, totalExpenses, balance, savingsRate };
-    };
+        return { totalIncome, totalExpenses, balance, savingsRate, currency };
+    }, [activeHome?.finances]);
 
-    const { totalIncome, totalExpenses, balance, savingsRate } = getMonthlyTotals();
+    if (loading && !activeHome) {
+        return <LoadingSpinner />;
+    }
+
+    const { totalIncome, totalExpenses, balance, savingsRate, currency } = monthlyTotals;
 
     return (
         <div className="financial-summary-grid">
-            <div className="summary-card">
-                <h5>סך הכנסות (החודש)</h5>
-                <p className="positive">{totalIncome.toLocaleString()} {currency}</p>
-            </div>
-            <div className="summary-card">
-                <h5>סך הוצאות (החודש)</h5>
-                <p className="negative">{totalExpenses.toLocaleString()} {currency}</p>
-            </div>
-            <div className={`summary-card ${balance >= 0 ? 'positive' : 'negative'}`}>
-                <h5>מאזן</h5>
-                <p>{balance.toLocaleString()} {currency}</p>
-            </div>
-            <div className="summary-card">
-                <h5>שיעור חיסכון</h5>
-                <p>{savingsRate.toFixed(0)}%</p>
-            </div>
+            <StatCard 
+                icon="fa-arrow-up" 
+                title="סך הכנסות (החודש)" 
+                value={formatCurrency(totalIncome, currency)}
+                colorClass="income"
+            />
+            <StatCard 
+                icon="fa-arrow-down" 
+                title="סך הוצאות (החודש)" 
+                value={formatCurrency(totalExpenses, currency)}
+                colorClass="expense"
+            />
+            <StatCard 
+                icon="fa-balance-scale" 
+                title="מאזן" 
+                value={formatCurrency(balance, currency)}
+                colorClass={balance >= 0 ? 'balance-positive' : 'balance-negative'}
+            />
+            <StatCard 
+                icon="fa-piggy-bank" 
+                title="שיעור חיסכון" 
+                value={`${savingsRate.toFixed(0)}%`}
+                colorClass="savings"
+                detail={
+                    <div className="savings-progress-bar">
+                        <div style={{ width: `${Math.min(savingsRate, 100)}%` }}></div>
+                    </div>
+                }
+            />
         </div>
     );
 };

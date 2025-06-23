@@ -1,92 +1,116 @@
-// client/src/features/home/HomeManagementForm.jsx
-
 import React, { useState } from 'react';
 import { useAppContext } from '@/context/AppContext';
 import { useModal } from '@/context/ModalContext';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
+/**
+ * A form component for managing users within a home (adding/removing).
+ * Intended to be displayed within a modal.
+ */
 const HomeManagementForm = () => {
-  const { activeHome, addHomeUser, removeHomeUser, loading, error } = useAppContext();
-  const { hideModal } = useModal();
-  const [newUserName, setNewUserName] = useState('');
+    const { activeHome, addHomeUser, removeHomeUser, loading, error, setError } = useAppContext();
+    const { hideModal, showConfirmModal } = useModal();
+    const [newUserName, setNewUserName] = useState('');
 
-  const currentUsers = activeHome?.users || [];
+    const currentUsers = activeHome?.users || [];
 
-  const handleAddUser = async (e) => {
-    e.preventDefault();
-    if (!newUserName.trim()) return;
-    const success = await addHomeUser(newUserName);
-    if (success) {
-      setNewUserName('');
-    }
-  };
+    /**
+     * Handles the submission for adding a new user.
+     */
+    const handleAddUser = async (e) => {
+        e.preventDefault();
+        setError(null); // Clear previous errors
+        if (!newUserName.trim()) return;
 
-  const handleRemoveUser = async (userName) => {
-    if (currentUsers.length <= 1) {
-        alert("לא ניתן להסיר את המשתמש האחרון.");
-        return;
-    }
-    if (window.confirm(`האם אתה בטוח שברצונך להסיר את המשתמש ${userName}?`)) {
-      await removeHomeUser(userName);
-    }
-  };
+        const success = await addHomeUser(newUserName.trim());
+        if (success) {
+            setNewUserName(''); // Clear input on success
+        }
+    };
 
-  // ... (הסגנונות נשארים כפי שהם)
+    /**
+     * Confirms and handles the removal of a user.
+     * Uses the custom confirmation modal.
+     */
+    const handleRemoveUser = (userName) => {
+        if (currentUsers.length <= 1) {
+            // This check is important to prevent orphaning a home.
+             setError("Cannot remove the last user from the home.");
+            return;
+        }
+        showConfirmModal(
+            `האם אתה בטוח שברצונך להסיר את ${userName}?`,
+            () => removeHomeUser(userName), // The action to perform on confirm
+            'אישור הסרת משתמש'
+        );
+    };
 
-  return (
-    <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-      <h4>ניהול בני בית</h4>
-      {error && <p style={{ color: 'var(--coral-red)', textAlign: 'center' }}>{error}</p>}
+    return (
+        <div className="home-management-form">
+            <h3 className="form-title">ניהול בני בית</h3>
+            
+            {/* Section for adding a new user */}
+            <form onSubmit={handleAddUser} className="add-user-section">
+                <label htmlFor="new-user-name">הוסף בן בית חדש:</label>
+                <div className="input-group">
+                    <input
+                        type="text"
+                        id="new-user-name"
+                        value={newUserName}
+                        onChange={(e) => setNewUserName(e.target.value)}
+                        placeholder="הקלד שם..."
+                        className="user-input"
+                        disabled={loading}
+                    />
+                    <button type="submit" className="add-button" disabled={loading || !newUserName.trim()}>
+                        {loading ? <LoadingSpinner size="sm" /> : <i className="fas fa-plus"></i>}
+                    </button>
+                </div>
+            </form>
 
-      <div>
-        <label htmlFor="new-user-name">הוסף בן בית חדש:</label>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <input
-            type="text"
-            id="new-user-name"
-            value={newUserName}
-            onChange={(e) => setNewUserName(e.target.value)}
-            placeholder="שם משתמש"
-            style={{ flexGrow: 1, /*...inputStyle*/ }}
-            disabled={loading}
-          />
-          <button type="submit" className="primary-action" disabled={loading}>
-            <i className="fas fa-plus-circle"></i> הוסף
-          </button>
-        </div>
-      </div>
+            <hr className="divider" />
 
-      <hr />
+            {/* Section for listing existing users */}
+            <div className="users-list-section">
+                <h4>בני בית קיימים:</h4>
+                {currentUsers.length === 0 ? (
+                    <p className="no-users-message">אין כרגע בני בית רשומים.</p>
+                ) : (
+                    <ul className="users-list">
+                        {currentUsers.map((user) => (
+                            <li key={user._id || user.name} className="user-item">
+                                <span className="user-name">
+                                    <i className={`fas ${user.isAdmin ? 'fa-user-shield' : 'fa-user'}`}></i>
+                                    {user.name}
+                                    {user.isAdmin && <span className="admin-tag">(מנהל)</span>}
+                                </span>
+                                {currentUsers.length > 1 && (
+                                    <button 
+                                        type="button" 
+                                        onClick={() => handleRemoveUser(user.name)} 
+                                        className="remove-button"
+                                        aria-label={`Remove ${user.name}`}
+                                        disabled={loading}
+                                    >
+                                        <i className="fas fa-trash-alt"></i>
+                                    </button>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
+            
+            {/* Display errors at the bottom */}
+            {error && <p className="error-message">{error}</p>}
 
-      <h4>בני בית קיימים:</h4>
-      {currentUsers.length === 0 ? (
-        <p style={{ textAlign: 'center', color: '#777' }}>אין בני בית מוגדרים.</p>
-      ) : (
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          {currentUsers.map((user) => (
-            <li key={user._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
-              <span>{user.name} {user.isAdmin ? '(מנהל)' : ''}</span>
-              {currentUsers.length > 1 && (
-                <button 
-                  type="button" 
-                  onClick={() => handleRemoveUser(user.name)} 
-                  style={{ background: 'none', border: 'none', color: 'var(--coral-red)', cursor: 'pointer' }}
-                  disabled={loading}
-                >
-                  <i className="fas fa-trash"></i>
+            <div className="modal-footer">
+                <button type="button" className="secondary-action" onClick={hideModal}>
+                    סגור
                 </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className="modal-footer">
-        <button type="button" className="secondary-action" onClick={hideModal}>
-          סגור
-        </button>
-      </div>
-    </form>
-  );
+            </div>
+        </div>
+    );
 };
 
 export default HomeManagementForm;

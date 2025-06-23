@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useAppContext } from '@/context/AppContext';
 import { useModal } from '@/context/ModalContext';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
+// Constants for available icons and colors to ensure consistency
 const AVAILABLE_ICONS = [
   'fas fa-home',
   'fas fa-house-user',
@@ -19,11 +21,17 @@ const AVAILABLE_COLORS = [
   'card-color-3', // Turquoise
 ];
 
-const CreateHomeForm = ({ onClose }) => {
-  // ✅ Fixed: Use useAppContext instead of non-existent useHome
-  const { createHome, loading, error } = useAppContext();
-  const { showModal, hideModal } = useModal();
+/**
+ * A form component for creating a new home.
+ * This form is displayed within a modal.
+ * @param {object} props - Component props.
+ * @param {function} props.onSuccess - Callback function to execute on successful creation.
+ */
+const CreateHomeForm = ({ onSuccess }) => {
+  const { createHome, loading, error, setError } = useAppContext();
+  const { hideModal } = useModal();
 
+  // Form state
   const [name, setName] = useState('');
   const [accessCode, setAccessCode] = useState('');
   const [initialUserName, setInitialUserName] = useState('');
@@ -31,132 +39,110 @@ const CreateHomeForm = ({ onClose }) => {
   const [selectedColor, setSelectedColor] = useState(AVAILABLE_COLORS[0]);
   const [selectedCurrency, setSelectedCurrency] = useState('ILS');
 
+  /**
+   * Handles the form submission process.
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // ✅ Enhanced validation
+    setError(null); // Clear previous errors
+
+    // Enhanced validation
     if (!name.trim() || !accessCode.trim() || !initialUserName.trim()) {
-      showModal(<div>נא למלא את כל השדות: שם בית, קוד גישה ושם משתמש ראשוני.</div>, { title: "שגיאה" });
+      setError("Please fill all fields: Home Name, Access Code, and Your Name.");
       return;
     }
 
     if (accessCode.trim().length < 4) {
-      showModal(<div>קוד הגישה חייב להיות באורך 4 תווים לפחות.</div>, { title: "שגיאה" });
+      setError("Access code must be at least 4 characters long.");
       return;
     }
 
-    // ✅ Fixed: Proper data structure for createHome
     const homeData = {
       name: name.trim(),
       accessCode: accessCode.trim(),
+      initialUserName: initialUserName.trim(),
       iconClass: selectedIcon,
       colorClass: selectedColor,
-      users: [{ name: initialUserName.trim(), isAdmin: true }],
       currency: selectedCurrency,
     };
 
-    try {
-      const success = await createHome(homeData);
-      if (success) {
-        showModal(<div>הבית "{name}" נוצר בהצלחה!</div>, { title: "הצלחה" });
-        if (onClose) onClose();
+    const success = await createHome(homeData);
+    if (success) {
         hideModal();
-      }
-    } catch (err) {
-      showModal(<div>שגיאה ביצירת הבית: {err.message || "נסה שוב."}</div>, { title: "שגיאה" });
+        if (onSuccess) {
+            onSuccess();
+        }
     }
+    // If not successful, the error will be set in the AppContext and displayed by the LoginScreen
   };
 
-  // Rest of the component remains the same...
   return (
-    <div className="login-card-form">
-      <h4>צור בית חדש</h4>
-      <form onSubmit={handleSubmit}>
-        {/* Form fields remain the same */}
-        <label htmlFor="homeName">שם הבית:</label>
-        <input
-          type="text"
-          id="homeName"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="לדוגמה: בית משפחת כהן"
-          required
-        />
-
-        <label htmlFor="accessCode">קוד גישה (לשיתוף):</label>
-        <input
-          type="password"
-          id="accessCode"
-          value={accessCode}
-          onChange={(e) => setAccessCode(e.target.value)}
-          placeholder="בחר קוד קל לזכירה"
-          required
-          minLength={4}
-        />
-
-        <label htmlFor="initialUserName">שם המשתמש שלך (האדמין הראשון):</label>
-        <input
-          type="text"
-          id="initialUserName"
-          value={initialUserName}
-          onChange={(e) => setInitialUserName(e.target.value)}
-          placeholder="השם שלך"
-          required
-        />
-
-        <label>בחר אייקון:</label>
-        <div className="icon-selector">
-          {AVAILABLE_ICONS.map((icon) => (
-            <i
-              key={icon}
-              className={`${icon} ${selectedIcon === icon ? 'selected' : ''}`}
-              onClick={() => setSelectedIcon(icon)}
-            ></i>
-          ))}
+    <div className="create-home-form p-4">
+      <h3 className="text-xl font-bold mb-4 text-center">יצירת בית חדש</h3>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="homeName" className="block text-sm font-medium text-gray-700">שם הבית:</label>
+          <input
+            type="text"
+            id="homeName"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="לדוגמה: בית משפחת כהן"
+            className="mt-1 block w-full p-2 border rounded-md"
+            required
+          />
         </div>
 
-        <label>בחר צבע כרטיס:</label>
-        <div className="icon-selector">
-          {AVAILABLE_COLORS.map((color) => (
-            <div
-              key={color}
-              className={`color-box ${color} ${selectedColor === color ? 'selected' : ''}`}
-              onClick={() => setSelectedColor(color)}
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                border: selectedColor === color ? '3px solid var(--dark-grey)' : '1px solid #ccc',
-                cursor: 'pointer',
-                display: 'inline-block',
-                backgroundColor:
-                  color === 'card-color-1' ? 'var(--mint-green)' :
-                  color === 'card-color-2' ? 'var(--light-yellow)' :
-                  color === 'card-color-3' ? 'var(--turquoise)' : 'transparent'
-              }}
-            ></div>
-          ))}
+        <div>
+          <label htmlFor="accessCode" className="block text-sm font-medium text-gray-700">קוד גישה (לשיתוף):</label>
+          <input
+            type="password"
+            id="accessCode"
+            value={accessCode}
+            onChange={(e) => setAccessCode(e.target.value)}
+            placeholder="בחר קוד קל לזכירה (לפחות 4 תווים)"
+            className="mt-1 block w-full p-2 border rounded-md"
+            required
+            minLength={4}
+          />
+        </div>
+
+        <div>
+            <label htmlFor="initialUserName" className="block text-sm font-medium text-gray-700">השם שלך (מנהל הבית):</label>
+            <input
+              type="text"
+              id="initialUserName"
+              value={initialUserName}
+              onChange={(e) => setInitialUserName(e.target.value)}
+              placeholder="השם שיוצג באפליקציה"
+              className="mt-1 block w-full p-2 border rounded-md"
+              required
+            />
+        </div>
+
+        <div>
+            <label className="block text-sm font-medium text-gray-700">בחר אייקון:</label>
+            <div className="icon-selector mt-2">
+              {AVAILABLE_ICONS.map((icon) => (
+                <i
+                  key={icon}
+                  className={`${icon} ${selectedIcon === icon ? 'selected' : ''}`}
+                  onClick={() => setSelectedIcon(icon)}
+                  aria-label={icon}
+                ></i>
+              ))}
+            </div>
         </div>
         
-        <label htmlFor="currency">מטבע:</label>
-        <select
-          id="currency"
-          value={selectedCurrency}
-          onChange={(e) => setSelectedCurrency(e.target.value)}
-          className="mt-1 block w-full p-2 border rounded-md"
-        >
-          <option value="ILS">ש"ח</option>
-          <option value="USD">דולר ארה"ב</option>
-          <option value="EUR">אירו</option>
-        </select>
+        {/* Error message display */}
+        {error && <p className="error-message text-center">{error}</p>}
 
-        {error && <p className="error-message">{error}</p>}
-
-        <div className="modal-footer">
+        {/* Modal footer with action buttons */}
+        <div className="modal-footer mt-6">
           <button type="submit" className="primary-action" disabled={loading}>
-            {loading ? 'יוצר...' : 'צור בית'}
+            {loading ? <LoadingSpinner size="sm" /> : 'צור בית'}
           </button>
-          <button type="button" className="secondary-action" onClick={() => { hideModal(); if (onClose) onClose(); }}>
+          <button type="button" className="secondary-action" onClick={hideModal}>
             בטל
           </button>
         </div>

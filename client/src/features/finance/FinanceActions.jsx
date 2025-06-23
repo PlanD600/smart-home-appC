@@ -1,72 +1,33 @@
-// client/src/features/finance/FinanceActions.jsx
-
-import { useFinanceActions } from '../../context/FinanceActionsContext';
-import { useModal } from '../../context/ModalContext';
-// import { useHome } from '../../context/HomeContext'; // ✅ שורה זו הוסרה, אין בה צורך כאן
-
-// ייבוא כל הטפסים
+import React from 'react';
+import { useModal } from '@/context/ModalContext';
 import BillForm from './forms/BillForm';
 import IncomeForm from './forms/IncomeForm';
 import SavingsGoalForm from './forms/SavingsGoalForm';
 import BudgetForm from './forms/BudgetForm';
 
 const FinanceActions = () => {
-    const { showModal, hideModal } = useModal();
+    const { showModal } = useModal();
     
-    // ✅ שלב 2: קבלת פונקציות השמירה מהקונטקסט
-    const { 
-        saveBill, 
-        saveIncome, 
-        saveSavingsGoal, 
-        saveBudgets 
-    } = useFinanceActions();
-
-    // ✅ שלב 3: יצירת פונקציות handler שיודעות לשמור ולסגור
-    const handleSaveBill = async (billData) => {
-        await saveBill(billData);
-        hideModal(); // סגור את המודאל רק לאחר שהשמירה הסתיימה
-    };
-
-    const handleSaveIncome = async (incomeData) => {
-        await saveIncome(incomeData);
-        hideModal();
-    };
-
-    const handleSaveSavingsGoal = async (goalData) => {
-        await saveSavingsGoal(goalData);
-        hideModal();
-    };
-    
-    const handleSaveBudgets = async (budgetsData) => {
-        await saveBudgets(budgetsData);
-        hideModal();
-    };
-
-
-    // ✅ שלב 4: חיבור הטפסים ל-handlers הנכונים
-    const openAddBillModal = () => showModal(
-        <BillForm onSave={handleSaveBill} onCancel={hideModal} />, 
-        { title: 'הוספת חשבון חדש' }
-    );
-    const openAddIncomeModal = () => showModal(
-        <IncomeForm onSave={handleSaveIncome} onCancel={hideModal} />, 
-        { title: 'הוספת הכנסה חדשה' }
-    );
-    const openAddSavingsGoalModal = () => showModal(
-        <SavingsGoalForm onSave={handleSaveSavingsGoal} onCancel={hideModal} />, 
-        { title: 'הוספת יעד חיסכון' }
-    );
-    const openEditBudgetModal = () => showModal(
-        <BudgetForm onSave={handleSaveBudgets} onCancel={hideModal} />, 
-        { title: 'עריכת תקציב' }
-    );
+    // These would trigger the API calls via context, which are already set up.
+    const openAddBillModal = () => showModal(<BillForm />, { title: 'הוספת חשבון חדש' });
+    const openAddIncomeModal = () => showModal(<IncomeForm />, { title: 'הוספת הכנסה חדשה' });
+    const openAddSavingsGoalModal = () => showModal(<SavingsGoalForm />, { title: 'הוספת יעד חיסכון' });
+    const openEditBudgetModal = () => showModal(<BudgetForm />, { title: 'עריכת תקציב' });
 
     return (
-        <div className="p-4 bg-gray-50 rounded-lg mb-6 flex flex-wrap gap-3 justify-center">
-            <button onClick={openAddBillModal} className="btn-primary">הוסף חשבון</button>
-            <button onClick={openAddIncomeModal} className="btn-primary">הוסף הכנסה</button>
-            <button onClick={openAddSavingsGoalModal} className="btn-secondary">הוסף יעד חיסכון</button>
-            <button onClick={openEditBudgetModal} className="btn-secondary">ערוך תקציב</button>
+        <div className="finance-actions-bar">
+            <button onClick={openAddBillModal} className="action-button">
+                <i className="fas fa-receipt"></i><span>הוסף חשבון</span>
+            </button>
+            <button onClick={openAddIncomeModal} className="action-button">
+                <i className="fas fa-hand-holding-usd"></i><span>הוסף הכנסה</span>
+            </button>
+            <button onClick={openAddSavingsGoalModal} className="action-button">
+                <i className="fas fa-piggy-bank"></i><span>הוסף יעד</span>
+            </button>
+            <button onClick={openEditBudgetModal} className="action-button">
+                 <i className="fas fa-sliders-h"></i><span>ערוך תקציב</span>
+            </button>
         </div>
     );
 };

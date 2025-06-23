@@ -1,93 +1,113 @@
-// client/src/features/users/UserManager.jsx
-
 import React, { useState } from 'react';
 import { useAppContext } from '@/context/AppContext';
 import { useModal } from '@/context/ModalContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
+/**
+ * A component for managing users within a home (adding/removing).
+ * This component is typically displayed inside a modal.
+ */
 const UserManager = () => {
-    const { activeHome, addHomeUser, removeHomeUser, loading, error } = useAppContext();
-    const { showModal, hideModal } = useModal();
+    const { activeHome, addHomeUser, removeHomeUser, loading, error, setError } = useAppContext();
+    // Using the showConfirmModal helper for cleaner confirmation dialogs
+    const { showConfirmModal } = useModal();
     const [newUserName, setNewUserName] = useState('');
 
+    const currentUsers = activeHome?.users || [];
+
+    /**
+     * Handles the submission for adding a new user.
+     */
     const handleAddUser = async (e) => {
         e.preventDefault();
+        setError(null); // Clear previous errors
         if (!newUserName.trim()) return;
+
         const success = await addHomeUser(newUserName.trim());
         if (success) {
-            setNewUserName('');
+            setNewUserName(''); // Clear input on success
         }
     };
 
-    const confirmRemoveUser = (user) => {
-        if (activeHome.users.length <= 1) {
-            alert("לא ניתן להסיר את בן הבית היחיד.");
+    /**
+     * Confirms and handles the removal of a user.
+     */
+    const handleRemoveUserClick = (user) => {
+        if (currentUsers.length <= 1) {
+            setError("לא ניתן להסיר את המשתמש האחרון מהבית.");
+            return;
+        }
+        if (user.isAdmin && activeHome.users.filter(u => u.isAdmin).length === 1) {
+            setError("לא ניתן להסיר את המנהל האחרון מהבית.");
             return;
         }
 
-        showModal(
-            <div>
-                <p>האם אתה בטוח שברצונך להסיר את {user.name} מהבית?</p>
-                <div className="flex justify-end gap-4 mt-4">
-                    <button onClick={hideModal} className="btn btn-secondary">ביטול</button>
-                    <button onClick={() => handleRemoveUser(user.name)} className="btn btn-danger">הסר</button>
-                </div>
-            </div>,
-            { title: 'אישור מחיקה' }
+        showConfirmModal(
+            `האם אתה בטוח שברצונך להסיר את ${user.name}?`,
+            () => removeHomeUser(user.name), // The action to perform on confirm
+            'אישור הסרת משתמש'
         );
     };
 
-    const handleRemoveUser = async (userName) => {
-        await removeHomeUser(userName);
-        hideModal();
-    };
-
-    if (loading && !activeHome?.users) {
-        return <LoadingSpinner />;
-    }
-
     return (
-        <div className="p-4 bg-gray-50 rounded-lg max-w-md mx-auto">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4 text-center">בני הבית הנוכחיים</h3>
-            {activeHome?.users && activeHome.users.length > 0 ? (
-                <ul className="space-y-3 mb-6">
-                    {activeHome.users.map((user) => (
-                        <li key={user._id} className="flex items-center justify-between p-3 bg-white rounded-md shadow-sm transition-shadow hover:shadow-md">
-                            <span className="text-gray-700 font-medium">{user.name}</span>
-                            {user.isAdmin && <span className="admin-tag text-blue-600 text-xs font-semibold mr-2">(מנהל)</span>}
-                            {activeHome.users.length > 1 && (
-                                <button
-                                    onClick={() => confirmRemoveUser(user)}
-                                    className="text-red-500 hover:text-red-700 transition-colors"
-                                    aria-label={`הסר את ${user.name}`}
-                                >
-                                    <i className="fas fa-trash-alt"></i>
-                                </button>
-                            )}
-                        </li>
-                    ))}
-                </ul>
-            ) : (
-                <p className="text-gray-500 text-center mb-6">עדיין אין בני בית.</p>
-            )}
+        <div className="user-manager-container">
+            <h3 className="manager-title">ניהול בני בית</h3>
+            
+            {/* Section for listing existing users */}
+            <div className="users-list-section">
+                <h4>בני בית קיימים</h4>
+                {loading && !currentUsers.length ? (
+                    <LoadingSpinner text="טוען משתמשים..."/>
+                ) : currentUsers.length === 0 ? (
+                    <p className="no-users-message">אין כרגע בני בית רשומים.</p>
+                ) : (
+                    <ul className="users-list">
+                        {currentUsers.map((user) => (
+                            <li key={user._id || user.name} className="user-item">
+                                <span className="user-name">
+                                    <i className={`fas ${user.isAdmin ? 'fa-user-shield' : 'fa-user'}`}></i>
+                                    {user.name}
+                                    {user.isAdmin && <span className="admin-tag">(מנהל)</span>}
+                                </span>
+                                {currentUsers.length > 1 && (
+                                    <button 
+                                        type="button" 
+                                        onClick={() => handleRemoveUserClick(user)} 
+                                        className="remove-button"
+                                        aria-label={`Remove ${user.name}`}
+                                        disabled={loading}
+                                    >
+                                        <i className="fas fa-trash-alt"></i>
+                                    </button>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
 
-            <hr className="my-6" />
+            <hr className="divider" />
 
-            <h3 className="text-xl font-semibold text-gray-800 mb-4 text-center">הוספת בן בית חדש</h3>
-            <form onSubmit={handleAddUser} className="flex flex-col sm:flex-row gap-3">
-                <input
-                    type="text"
-                    value={newUserName}
-                    onChange={(e) => setNewUserName(e.target.value)}
-                    placeholder="שם בן הבית"
-                    className="input input-bordered flex-grow p-2 border rounded-md"
-                    required
-                />
-                <button type="submit" className="btn btn-primary bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600 transition-colors" disabled={loading}>
-                    {loading ? <LoadingSpinner size="sm" /> : 'הוסף'}
-                </button>
+            {/* Section for adding a new user */}
+            <form onSubmit={handleAddUser} className="add-user-section">
+                <label htmlFor="new-user-name">הוסף בן בית חדש</label>
+                <div className="input-group">
+                    <input
+                        type="text"
+                        id="new-user-name"
+                        value={newUserName}
+                        onChange={(e) => setNewUserName(e.target.value)}
+                        placeholder="הקלד שם..."
+                        className="user-input"
+                        disabled={loading}
+                    />
+                    <button type="submit" className="add-button" disabled={loading || !newUserName.trim()}>
+                        {loading ? <LoadingSpinner size="sm" /> : 'הוסף'}
+                    </button>
+                </div>
             </form>
-            {error && <p className="text-red-500 text-sm mt-2 text-center">{error}</p>}
+            
+            {error && <p className="error-message">{error}</p>}
         </div>
     );
 };

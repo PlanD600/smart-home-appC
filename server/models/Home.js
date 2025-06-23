@@ -8,17 +8,20 @@ const HomeSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please provide a home name'],
     unique: true,
+    trim: true,
   },
   accessCode: {
     type: String,
     required: [true, 'Please provide an access code'],
     minlength: 4,
   },
-  currency: {
+  iconClass: {
     type: String,
-    // FIX: Changed default currency from "ש"ח" to the correct ISO code "ILS"
-    default: 'ILS', 
-    required: true,
+    default: 'fas fa-home',
+  },
+  colorClass: {
+    type: String,
+    default: 'card-color-1',
   },
   users: [{
     name: { type: String, required: true },
@@ -26,26 +29,39 @@ const HomeSchema = new mongoose.Schema({
   }],
   shoppingList: [ItemSchema],
   tasksList: [ItemSchema], 
+  archivedItems: [ItemSchema],
+  listCategories: {
+    type: [String],
+    default: ['כללית', 'מצרכים', 'ירקות ופירות', 'מוצרי חלב', 'מטלות בית', 'סידורים']
+  },
   templates: [{
     name: String,
+    // [FIXED] The enum now correctly includes 'tasks' (plural) to match the client.
+    type: { type: String, enum: ['shopping', 'tasks', 'finance'] },
     items: [ItemSchema]
   }],
   finances: {
     type: FinanceSchema,
-    default: () => ({})
+    default: () => ({}),
   }
 }, { timestamps: true });
 
-// Hash access code before saving
+// Middleware to hash the access code before saving
 HomeSchema.pre('save', async function (next) {
   if (!this.isModified('accessCode')) {
-    next();
+    return next();
   }
-  const salt = await bcrypt.genSalt(10);
-  this.accessCode = await bcrypt.hash(this.accessCode, salt);
+  
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.accessCode = await bcrypt.hash(this.accessCode, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
-// Method to compare entered access code with hashed access code
+// Method to compare entered access code with the hashed one
 HomeSchema.methods.compareAccessCode = async function (enteredCode) {
   return await bcrypt.compare(enteredCode, this.accessCode);
 };

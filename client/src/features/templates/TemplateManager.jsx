@@ -1,194 +1,107 @@
-import React, { useState, useEffect } from 'react';
-import { useAppContext } from '@/context/AppContext'; // ✅ Fixed import
-import { useModal } from '../../context/ModalContext';
+import React, { useState, useMemo } from 'react';
+import { useAppContext } from '@/context/AppContext';
+import { useModal } from '@/context/ModalContext';
+import { useListActions } from '@/context/ListActionsContext'; // Import list actions for applying templates
+import TemplateForm from './forms/TemplateForm'; 
 
-const TemplateForm = ({ onClose, templateToEdit, templateIndex }) => {
-  // ✅ Fixed: Use useAppContext instead of useHome
-  const { activeHome, updateHome, loading } = useAppContext();
-  const { showModal, hideModal } = useModal();
+/**
+ * A central component for viewing, applying, creating, editing, and deleting templates.
+ */
+const TemplateManager = () => {
+    const { activeHome, updateHome, loading } = useAppContext();
+    const { applyTemplate } = useListActions();
+    const { showModal, hideModal, showConfirmModal } = useModal();
+    const [filter, setFilter] = useState('all');
 
-  const [name, setName] = useState('');
-  const [type, setType] = useState('shopping');
-  const [items, setItems] = useState([{ text: '', amount: '', date: '' }]);
+    const templates = useMemo(() => activeHome?.templates || [], [activeHome]);
 
-  useEffect(() => {
-    if (templateToEdit) {
-      setName(templateToEdit.name || '');
-      setType(templateToEdit.type || 'shopping');
-      setItems(templateToEdit.items.map(item => ({
-        text: item.text || '',
-        amount: item.amount || '',
-        date: item.date || '',
-      })));
-    }
-  }, [templateToEdit]);
+    const filteredTemplates = useMemo(() => {
+        if (filter === 'all') return templates;
+        return templates.filter(t => t.type === filter);
+    }, [templates, filter]);
 
-  const handleNameChange = (e) => {
-    setName(e.target.value);
-  };
-
-  const handleTypeChange = (newType) => {
-    setType(newType);
-    setItems([{ text: '', amount: '', date: '' }]);
-  };
-
-  const handleItemChange = (index, field, value) => {
-    const newItems = [...items];
-    newItems[index][field] = value;
-    setItems(newItems);
-  };
-
-  const handleAddItem = () => {
-    setItems(prevItems => [...prevItems, { text: '', amount: '', date: '' }]);
-  };
-
-  const handleRemoveItem = (index) => {
-    setItems(prevItems => prevItems.filter((_, i) => i !== index));
-  };
-
-  const handleSubmit = async () => {
-    if (!name.trim()) {
-      showModal(<div>נא להזין שם לתבנית.</div>, { title: "שגיאה" });
-      return;
-    }
-
-    const filteredItems = items.filter(item => item.text.trim() !== '');
-    if (filteredItems.length === 0) {
-      showModal(<div>נא להוסיף לפחות פריט אחד לתבנית.</div>, { title: "שגיאה" });
-      return;
-    }
-
-    if (!activeHome) {
-      showModal(<div>נתוני הבית אינם זמינים.</div>, { title: "שגיאה" });
-      return;
-    }
-
-    const updatedTemplates = [...activeHome.templates || []];
-    const newTemplate = {
-      name: name.trim(),
-      type: type,
-      items: filteredItems.map(item => {
-        const baseItem = { text: item.text.trim() };
-        if (type === 'finance') {
-          return {
-            ...baseItem,
-            amount: parseFloat(item.amount) || 0,
-            date: item.date || '',
-          };
-        }
-        return baseItem;
-      }),
+    const openTemplateForm = (template = null, index = null) => {
+        showModal(
+            <TemplateForm
+                templateToEdit={template}
+                templateIndex={index}
+                onSuccess={hideModal}
+            />,
+            { title: template ? 'עריכת תבנית' : 'יצירת תבנית חדשה' }
+        );
     };
 
-    if (templateToEdit && templateIndex !== undefined) {
-      updatedTemplates[templateIndex] = newTemplate;
-    } else {
-      updatedTemplates.push(newTemplate);
-    }
+    /**
+     * Handles applying a template to the corresponding list.
+     */
+    const handleApplyTemplate = (template) => {
+        if (applyTemplate) {
+            applyTemplate(template);
+            hideModal(); // Close the manager after applying
+        }
+    };
+    
+    /**
+     * Handles deleting a template from the home object.
+     */
+    const handleDeleteTemplate = (templateToDelete) => {
+        showConfirmModal(
+            `האם אתה בטוח שברצונך למחוק את התבנית "${templateToDelete.name}"?`,
+            async () => {
+                const updatedTemplates = activeHome.templates.filter(
+                    t => t._id !== templateToDelete._id
+                );
+                // Use the updateHome function from AppContext to save the change
+                await updateHome({ templates: updatedTemplates });
+            }
+        );
+    };
 
-    try {
-      await updateHome({ templates: updatedTemplates });
-      showModal(<div>התבנית "{name.trim()}" נשמרה בהצלחה!</div>, { title: "הצלחה" });
-      onClose();
-    } catch (error) {
-      console.error("Failed to save template:", error);
-      showModal(<div>שגיאה בשמירת התבנית. נסה שוב.</div>, { title: "שגיאה" });
-    }
-  };
+    const getIconForType = (type) => {
+        if (type === 'shopping') return 'fa-shopping-cart';
+        if (type === 'tasks') return 'fa-tasks';
+        return 'fa-file-alt';
+    };
 
-  if (loading) {
-    return <div className="modal-loader"><div className="spinner"></div></div>;
-  }
+    return (
+        <div className="template-manager">
+            <header className="template-manager-header">
+                <h3>ניהול תבניות</h3>
+                <button onClick={() => openTemplateForm()} className="create-template-btn">
+                    <i className="fas fa-plus"></i> צור תבנית חדשה
+                </button>
+            </header>
 
-  return (
-    <div>
-      <h4>{templateToEdit ? 'עריכת תבנית' : 'יצירת תבנית חדשה'}</h4>
-      <label htmlFor="template-name">שם התבנית:</label>
-      <input
-        type="text"
-        id="template-name"
-        placeholder="לדוגמה: קניות שבועיות גדולות"
-        value={name}
-        onChange={handleNameChange}
-      />
+            <div className="template-filters">
+                <button onClick={() => setFilter('all')} className={filter === 'all' ? 'active' : ''} disabled={loading}>הכל</button>
+                <button onClick={() => setFilter('shopping')} className={filter === 'shopping' ? 'active' : ''} disabled={loading}>קניות</button>
+                <button onClick={() => setFilter('tasks')} className={filter === 'tasks' ? 'active' : ''} disabled={loading}>משימות</button>
+            </div>
 
-      <label>סוג התבנית:</label>
-      <div className="template-type-selector">
-        <button
-          className={`type-selector-btn ${type === 'shopping' ? 'active' : ''}`}
-          onClick={() => handleTypeChange('shopping')}
-        >
-          <i className="fas fa-shopping-cart" aria-hidden="true"></i> קניות
-        </button>
-        <button
-          className={`type-selector-btn ${type === 'task' ? 'active' : ''}`}
-          onClick={() => handleTypeChange('task')}
-        >
-          <i className="fas fa-tasks" aria-hidden="true"></i> מטלות
-        </button>
-        <button
-          className={`type-selector-btn ${type === 'finance' ? 'active' : ''}`}
-          onClick={() => handleTypeChange('finance')}
-        >
-          <i className="fas fa-wallet" aria-hidden="true"></i> כספים
-        </button>
-      </div>
-
-      <label id="template-items-label">פריטים:</label>
-      <div id="template-items-container">
-        {items.map((item, index) => (
-          <div className="template-item-field" key={index}>
-            <input
-              type="text"
-              className="template-item-text-input"
-              placeholder={`שם פריט ${index + 1}`}
-              value={item.text}
-              onChange={(e) => handleItemChange(index, 'text', e.target.value)}
-            />
-            {type === 'finance' && (
-              <>
-                <input
-                  type="number"
-                  className="template-item-number-input"
-                  placeholder="סכום"
-                  value={item.amount}
-                  onChange={(e) => handleItemChange(index, 'amount', e.target.value)}
-                />
-                <input
-                  type="date"
-                  className="template-item-date-input"
-                  value={item.date}
-                  onChange={(e) => handleItemChange(index, 'date', e.target.value)}
-                />
-              </>
-            )}
-            {items.length > 1 && (
-              <button
-                type="button"
-                className="action-btn delete-btn"
-                onClick={() => handleRemoveItem(index)}
-                aria-label={`מחק פריט ${index + 1}`}
-              >
-                <i className="far fa-trash-alt"></i>
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-      <button type="button" className="secondary-action" style={{ marginTop: '10px', padding: '8px 12px' }} onClick={handleAddItem}>
-        <i className="fas fa-plus" aria-hidden="true"></i> הוסף פריט
-      </button>
-
-      <div className="modal-footer">
-        <button className="primary-action" onClick={handleSubmit}>
-          {templateToEdit ? 'שמור שינויים' : 'צור תבנית'}
-        </button>
-        <button className="secondary-action" onClick={onClose}>
-          בטל
-        </button>
-      </div>
-    </div>
-  );
+            <ul className="templates-list">
+                {loading && templates.length === 0 ? (
+                    <p>טוען תבניות...</p>
+                ) : filteredTemplates.length === 0 ? (
+                    <p className="no-templates-message">לא נמצאו תבניות. נסה ליצור אחת!</p>
+                ) : (
+                    filteredTemplates.map((template, index) => (
+                        <li key={template._id || index} className="template-card">
+                            <div className="template-card-header">
+                                <i className={`fas ${getIconForType(template.type)} template-icon`}></i>
+                                <span className="template-name">{template.name}</span>
+                            </div>
+                            <p className="template-item-count">{template.items.length} פריטים בתבנית</p>
+                            <div className="template-card-actions">
+                                <button onClick={() => openTemplateForm(template, index)} className="action-btn edit-btn" disabled={loading}>ערוך</button>
+                                <button onClick={() => handleDeleteTemplate(template)} className="action-btn delete-btn" disabled={loading}>מחק</button>
+                                <button onClick={() => handleApplyTemplate(template)} className="action-btn apply-btn" disabled={loading}>החל תבנית</button>
+                            </div>
+                        </li>
+                    ))
+                )}
+            </ul>
+        </div>
+    );
 };
 
-export default TemplateForm;
+export default TemplateManager;

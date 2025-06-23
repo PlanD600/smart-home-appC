@@ -1,96 +1,103 @@
-import React, { useState } from 'react';
-import { useAppContext } from '../../context/AppContext'; // ✅ נתיב מעודכן
-import LoadingSpinner from '../../components/LoadingSpinner'; // ✅ ייבוא ספינר טעינה
+import React, { useState, useMemo } from 'react';
+import { useAppContext } from '@/context/AppContext';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
-// ✅ הקומפוננטה כבר לא מקבלת props
+/**
+ * A component that displays a list of paid bills, with navigation to view past months.
+ */
 const PaidBillsList = () => {
-    // ✅ שלב 1: קבלת המידע מ-useAppContext
-    const { activeHome, loading } = useAppContext(); // הוספתי loading מ-AppContext
-    const [monthOffset, setMonthOffset] = useState(0);
+    const { activeHome, loading } = useAppContext();
+    const [monthOffset, setMonthOffset] = useState(0);
 
-    // ✅ שלב 2: בדיקת הגנה
-    // נציג ספינר טעינה אם activeHome בטעינה, ואם אין נתוני כספים - הודעה מתאימה.
-    if (loading) {
-        return <LoadingSpinner />;
-    }
-    if (!activeHome?.finances) {
-        return <div className="p-4 text-center text-gray-500">אין נתוני כספים זמינים עבור הבית הפעיל.</div>;
-    }
+    const { paidBills = [], financeSettings } = activeHome?.finances || {};
+    const currency = financeSettings?.currency || 'ש"ח';
 
-    // ✅ שלב 3: פירוק משתנים בטוח מהקונטקסט
-    const { paidBills = [], financeSettings } = activeHome.finances;
-    const currency = financeSettings?.currency || 'ש"ח';
+    /**
+     * Memoized calculation for filtering and sorting bills for the selected month.
+     */
+    const monthlyData = useMemo(() => {
+        const targetDate = new Date();
+        targetDate.setDate(1); // Avoid issues with different day numbers
+        targetDate.setMonth(targetDate.getMonth() - monthOffset);
 
+        const filtered = paidBills
+            .filter(bill => {
+                const billDate = new Date(bill.datePaid);
+                return billDate.getMonth() === targetDate.getMonth() && billDate.getFullYear() === targetDate.getFullYear();
+            })
+            .sort((a, b) => new Date(b.datePaid) - new Date(a.datePaid));
+        
+        const total = filtered.reduce((sum, bill) => sum + bill.amount, 0);
 
-    // --- מכאן והלאה, כל הלוגיקה המקורית שלך נשארת זהה ---
+        return {
+            displayDate: targetDate.toLocaleString('he-IL', { month: 'long', year: 'numeric' }),
+            bills: filtered,
+            total,
+        };
+    }, [paidBills, monthOffset]);
 
-    const getTargetMonth = () => {
-        const date = new Date();
-        date.setDate(1); // Avoid issues with day numbers
-        date.setMonth(date.getMonth() - monthOffset);
-        return date;
-    };
+    return (
+        <div className="paid-bills-container">
+            <header className="paid-bills-header">
+                <div className="month-navigation">
+                    <button 
+                        className="nav-btn" 
+                        onClick={() => setMonthOffset(prev => prev + 1)}
+                        disabled={loading}
+                        aria-label="Previous month"
+                    >
+                        <i className="fas fa-chevron-right"></i>
+                    </button>
+                    <span className="month-display">
+                        {monthlyData.displayDate}
+                    </span>
+                    <button 
+                        className="nav-btn" 
+                        onClick={() => setMonthOffset(prev => Math.max(0, prev - 1))} 
+                        disabled={monthOffset === 0 || loading}
+                        aria-label="Next month"
+                    >
+                        <i className="fas fa-chevron-left"></i>
+                    </button>
+                </div>
+            </header>
+            
+            <div className="paid-bills-list-wrapper">
+                {loading && monthlyData.bills.length === 0 ? (
+                    <LoadingSpinner />
+                ) : monthlyData.bills.length === 0 ? (
+                    <div className="no-items-message">
+                         <i className="fas fa-file-invoice-dollar"></i>
+                        <p>אין תשלומים בחודש זה.</p>
+                    </div>
+                ) : (
+                    <ul>
+                        {monthlyData.bills.map(bill => (
+                            <li key={bill._id} className="paid-bill-item">
+                                <div className="bill-icon">
+                                    <i className="fas fa-receipt"></i>
+                                </div>
+                                <div className="bill-details">
+                                    <span className="bill-text">{bill.text}</span>
+                                    <span className="bill-category">{new Date(bill.datePaid).toLocaleDateString('he-IL')} • {bill.category}</span>
+                                </div>
+                                <div className="bill-amount">
+                                    - {bill.amount.toLocaleString()} {currency}
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
 
-    const targetDate = getTargetMonth();
-
-    const filteredBills = paidBills
-        .filter(bill => {
-            const billDate = new Date(bill.datePaid);
-            return billDate.getMonth() === targetDate.getMonth() && billDate.getFullYear() === targetDate.getFullYear();
-        })
-        .sort((a, b) => new Date(b.datePaid) - new Date(a.datePaid));
-
-    return (
-        <div className="p-4 bg-white rounded-lg shadow-md">
-            <div className="flex justify-between items-center mb-4">
-                <h4 className="text-lg font-semibold text-gray-700">תשלומים שבוצעו</h4>
-                <div className="flex items-center">
-                    <button 
-                        className="p-2 rounded-full hover:bg-gray-200 disabled:opacity-50" 
-                        onClick={() => setMonthOffset(prev => prev + 1)}
-                        disabled={loading} // השבתה בזמן טעינה
-                    >
-                        <i className="fas fa-chevron-right"></i>
-                    </button>
-                    <span className="w-32 text-center font-semibold text-gray-600">
-                        {targetDate.toLocaleString('he-IL', { month: 'long', year: 'numeric' })}
-                    </span>
-                    <button 
-                        className="p-2 rounded-full hover:bg-gray-200 disabled:opacity-50" 
-                        onClick={() => setMonthOffset(prev => Math.max(0, prev - 1))} 
-                        disabled={monthOffset === 0 || loading} // השבתה בזמן טעינה או בחודש הנוכחי
-                    >
-                        <i className="fas fa-chevron-left"></i>
-                    </button>
-                </div>
-            </div>
-            <div className="max-h-80 overflow-y-auto">
-                <ul>
-                    {filteredBills.length > 0 ? (
-                        filteredBills.map(bill => (
-                            <li key={bill._id} className="p-3 border-b border-gray-100 hover:bg-gray-50">
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <p className="font-medium text-gray-800">{bill.text}</p>
-                                        <p className="text-sm text-gray-500">
-                                            {new Date(bill.datePaid).toLocaleDateString('he-IL')}
-                                            {bill.category && ` • ${bill.category}`}
-                                            {bill.assignedTo && ` • ${bill.assignedTo}`}
-                                        </p>
-                                    </div>
-                                    <div className="font-semibold text-gray-800">
-                                        {bill.amount.toLocaleString()} {currency}
-                                    </div>
-                                </div>
-                            </li>
-                        ))
-                    ) : (
-                        <li className="text-center p-8 text-gray-500">אין תשלומים בחודש זה.</li>
-                    )}
-                </ul>
-            </div>
-        </div>
-    );
+             <footer className="paid-bills-footer">
+                <span>סה"כ הוצאות לחודש:</span>
+                <span className="total-amount">
+                    {monthlyData.total.toLocaleString()} {currency}
+                </span>
+            </footer>
+        </div>
+    );
 };
 
 export default PaidBillsList;

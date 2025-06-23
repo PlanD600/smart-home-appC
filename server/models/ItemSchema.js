@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
 
-// הגדרת ItemSchema מחוץ לפונקציה כדי לאפשר רקורסיה
+// This schema can be nested recursively to support sub-items/sub-tasks.
 const ItemSchema = new mongoose.Schema({
   text: {
     type: String,
-    required: [true, 'Item text is required'],
+    required: [true, 'Item text cannot be empty.'],
+    trim: true, // Removes whitespace from both ends of a string
   },
   category: {
     type: String,
@@ -20,23 +21,28 @@ const ItemSchema = new mongoose.Schema({
   },
   assignedTo: {
     type: String,
-    default: 'משותף',
+    default: 'משותף', // "Shared"
+  },
+  createdBy: {
+    type: String,
+    required: [true, 'The creator of the item must be specified.'],
   },
   comment: {
     type: String,
     default: '',
+    trim: true,
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
+
+// This field will store where the item came from when it's archived.
+  // It can be null for active items.
+  originalList: {
+    type: String,
+    enum: ['shopping', 'tasks', null], // Can be one of these or not exist
+    default: null,
   },
-  // === הוספה: תמיכה בתתי-פריטים / תתי-מטלות ===
-  // זה מאפשר למטלות להיות מקוננות, כלומר, פריט יכול להכיל רשימה של פריטים אחרים.
-  subItems: {
-    type: [this], // יצירת מערך של ItemSchema (רקורסיבי)
-    default: [],
-  },
-  // ==========================================
-});
+
+  // Using timestamps option instead of a manual createdAt field
+  subItems: [this], // Recursive nesting of items
+}, { timestamps: true }); // Automatically adds createdAt and updatedAt
 
 module.exports = ItemSchema;

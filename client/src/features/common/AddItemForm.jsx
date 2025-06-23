@@ -1,148 +1,124 @@
-import React, { useState, useEffect } from 'react'; // הוספתי useEffect
-import { useAppContext } from '../../context/AppContext'; // ✅ נתיב מעודכן
+import React, { useState, useEffect, useMemo } from 'react';
+import { useAppContext } from '@/context/AppContext';
 
-// הגדרת קטגוריות ברירת מחדל
-// ניתן לשנות או להרחיב רשימה זו בהתאם לצרכים
-const DEFAULT_CATEGORIES = [
-    'כללית', 
-    'מצרכים', 
-    'חשבונות', 
-    'בידור', 
-    'שונות', 
-    'עבודה', 
-    'לימודים',
-    'תחבורה',
-    'בריאות',
-    'חינוך',
-    'מסעדות'
+// This is now just a fallback for when no categories are defined in the home object.
+const FALLBACK_CATEGORIES = [
+    'כללית', 'מצרכים', 'חשבונות', 'בידור', 'שונות',
 ];
 
 /**
- * קומפוננטה לטופס הוספת פריט חדש לרשימות (קניות או מטלות).
- * תומך בהוספת טקסט, קטגוריה, שיוך למשתמש ומידע על יוצר הפריט.
- * @param {string} listType - סוג הרשימה (לדוגמה: 'shopping' או 'tasks').
- * @param {function} onAddItem - פונקציית קריאה חוזרת להוספת הפריט (מקבלת listType ו-itemData).
- * @param {function} [onCancel] - פונקציית קריאה חוזרת לביטול פעולת ההוספה.
+ * A reusable form for adding new items to shopping or task lists.
+ * It includes fields for text, category, and user assignment.
+ * @param {object} props - Component props.
+ * @param {'shopping' | 'tasks'} props.listType - The type of list the item will be added to.
+ * @param {function} props.onAddItem - The callback function to add the item, receives (listType, itemData).
  */
-const AddItemForm = ({ listType, onAddItem, onCancel }) => {
-    // קבלת activeHome ו-currentUser מהקונטקסט של האפליקציה
-    const { activeHome, currentUser } = useAppContext(); 
-    
-    // מצבי הקומפוננטה עבור שדות הטופס
-    const [text, setText] = useState(''); 
-    const [category, setCategory] = useState(DEFAULT_CATEGORIES[0]);
-    
-    // קבלת רשימת המשתמשים מהבית הפעיל, לצורך שיוך פריטים
-    // וודא ש-activeHome קיים וש-users הוא מערך
-    const users = activeHome?.users && Array.isArray(activeHome.users) ? activeHome.users : [];
-    
-    // הגדרת המשתמש המשויך כברירת מחדל.
-    // שימוש ב-useEffect כדי לעדכן את assignedTo כש-users נטען או משתנה.
+const AddItemForm = ({ listType, onAddItem }) => {
+    const { activeHome, currentUser, loading } = useAppContext();
+
+    const availableCategories = useMemo(() => {
+        return activeHome?.listCategories?.length > 0
+            ? activeHome.listCategories
+            : FALLBACK_CATEGORIES;
+    }, [activeHome?.listCategories]);
+
+    // Form state
+    const [text, setText] = useState('');
+    const [category, setCategory] = useState(availableCategories[0]);
     const [assignedTo, setAssignedTo] = useState('');
 
+    const users = useMemo(() => activeHome?.users || [], [activeHome?.users]);
+
+    // Update the default category if the available categories change.
     useEffect(() => {
-        if (users.length > 0 && assignedTo === '') {
-            setAssignedTo(users[0].name); // הגדר את המשתמש הראשון כברירת מחדל רק פעם אחת או אם הוא ריק
-        } else if (users.length === 0 && assignedTo !== '') {
-            setAssignedTo(''); // נקה אם אין משתמשים
+        if (!availableCategories.includes(category)) {
+            setCategory(availableCategories[0]);
         }
-    }, [users, assignedTo]); // תלויות ב-users וב-assignedTo
+    }, [availableCategories, category]);
 
+    useEffect(() => {
+        if (users.length > 0) {
+            const userExists = users.some(u => u.name === currentUser);
+            setAssignedTo(userExists ? currentUser : users[0].name);
+        }
+    }, [users, currentUser]);
 
-    /**
-     * פונקציה לטיפול בשליחת הטופס.
-     * מונעת את התנהגות ברירת המחדל של הטופס ושולחת את נתוני הפריט החדש.
-     */
     const handleSubmit = (e) => {
         e.preventDefault();
-        // וודא שיש טקסט לפריט לפני שליחה ופונקציית onAddItem קיימת
-        if (text.trim() && onAddItem) {
-            // יצירת אובייקט הפריט עם כל הנתונים, כולל createdBy
-            const newItemData = { 
-                text: text.trim(), 
-                category, 
-                assignedTo,
-                createdBy: currentUser // הוספת המשתמש שיצר את הפריט
-            };
-            
-            // קריאה לפונקציית onAddItem מה-props
-            // listType מועבר כפרמטר ראשון כפי ש-HomeContext.addItem מצפה
-            onAddItem(listType, newItemData);
-            
-            // איפוס הטופס למצב התחלתי
-            setText(''); 
-            setCategory(DEFAULT_CATEGORIES[0]);
-            // איפוס assignedTo (אם נרצה שישתנה לאחר שליחה)
-            // setAssignedTo(users.length > 0 ? users[0].name : ''); // זה יטופל על ידי useEffect עכשיו
-            
-            // אם קיימת פונקציית ביטול, קרא לה כדי לסגור את המודל/טופס
-            if (onCancel) onCancel();
-        }
+        if (!text.trim() || loading) return;
+
+        const newItemData = {
+            text: text.trim(),
+            category,
+            assignedTo,
+        };
+
+        onAddItem(listType, newItemData);
+
+        setText('');
+        setCategory(availableCategories[0]); // Reset to the first available category
     };
 
     return (
-        <form onSubmit={handleSubmit} className="p-4 bg-gray-700 rounded-lg shadow-inner space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* שדה קלט לטקסט הפריט */}
+        <form onSubmit={handleSubmit} className="add-item-form-container">
+            <div className="input-group">
+                <i className="fas fa-pencil-alt input-icon"></i>
                 <input
                     type="text"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
-                    placeholder={"הוסף פריט או משימה..."}
-                    className="w-full sm:col-span-2 p-2 text-white bg-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    autoFocus
-                    required // וודא שהשדה אינו ריק
+                    placeholder={listType === 'shopping' ? 'הוסף מוצר...' : 'הוסף משימה...'}
+                    className="main-input"
+                    aria-label="New item text"
+                    required
                 />
-                {/* כפתור הוספה */}
-                <button 
-                    type="submit" 
-                    className="w-full px-4 py-2 font-bold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                >
-                    הוסף
-                </button>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* בורר קטגוריות */}
-                <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full p-2 text-white bg-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                    {DEFAULT_CATEGORIES.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                </select>
-
-                {/* בורר משתמשים לשיוך */}
-                <select
-                    value={assignedTo}
-                    onChange={(e) => setAssignedTo(e.target.value)}
-                    className="w-full p-2 text-white bg-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                    {/* וודא שיש משתמשים זמינים לפני הרינדור */}
-                    {users.length > 0 ? (
-                        users.map((user) => (
-                            <option key={user.name} value={user.name}> {/* השתמש ב-user.name כ-key ו-value */}
-                                {user.name}
-                            </option>
-                        ))
-                    ) : (
-                        <option value="">אין משתמשים זמינים</option>
-                    )}
-                </select>
             </div>
 
-            {/* כפתור ביטול (מוצג רק אם הפרופ onCancel קיים) */}
-            {onCancel && (
-                <button 
-                    type="button" 
-                    onClick={onCancel} 
-                    className="w-full mt-2 px-4 py-2 font-semibold text-white bg-gray-600 rounded-md hover:bg-gray-500 focus:outline-none"
+            <div className="options-group">
+                <div className="select-group">
+                    <label htmlFor="category-select">קטגוריה</label>
+                    <select
+                        id="category-select"
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="control-select"
+                    >
+                        {availableCategories.map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="select-group">
+                    <label htmlFor="user-select">שייך ל</label>
+                     <select
+                        id="user-select"
+                        value={assignedTo}
+                        onChange={(e) => setAssignedTo(e.target.value)}
+                        className="control-select"
+                        disabled={users.length === 0}
+                    >
+                        {users.length > 0 ? (
+                            users.map((user) => (
+                                <option key={user.name} value={user.name}>
+                                    {user.name}
+                                </option>
+                            ))
+                        ) : (
+                            <option>אין משתמשים</option>
+                        )}
+                    </select>
+                </div>
+
+                <button
+                    type="submit"
+                    className="submit-button"
+                    disabled={loading || !text.trim()}
+                    aria-label="Add item"
                 >
-                    ביטול
+                    <i className="fas fa-plus"></i>
                 </button>
-            )}
+            </div>
         </form>
     );
 };
