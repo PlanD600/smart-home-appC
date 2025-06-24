@@ -12,11 +12,14 @@ const api = axios.create({
 });
 
 /**
+/**
  * Helper function to handle API errors uniformly.
  */
 const handleApiError = (error, defaultMessage = 'An unexpected error occurred.') => {
     console.error("API Error:", error.response || error.message || error);
-    throw new Error(error.response?.data?.message || defaultMessage);
+    const customError = new Error(error.response?.data?.message || defaultMessage);
+    customError.status = error.response?.status;
+    throw customError;
 };
 
 // --- Home Management APIs ---
@@ -240,12 +243,13 @@ export const saveTemplates = async (homeId, templates) => {
     }
 };
 
-export const transformRecipeToShoppingList = async (homeId, recipeText) => {
+export const transformRecipeToShoppingList = async (homeId, recipeText, currentUser) => {
     try {
-        const response = await api.post(`/home/${homeId}/ai/transform-recipe`, { recipeText });
+        // נוסיף את שם המשתמש לגוף הבקשה
+        const response = await api.post(`/home/${homeId}/ai/transform-recipe`, { recipeText, currentUser });
         return response.data;
     } catch (error) {
-        handleApiError(error, 'Failed to transform recipe using Gemini.');
+        handleApiError(error, 'Error transforming recipe');
     }
 };
 
@@ -281,6 +285,17 @@ export const clearList = async (homeId, listType) => {
     }
 };
 
+export const checkHomeName = async (name) => {
+    try {
+        const response = await api.get(`/home/check-name`, { params: { name } });
+        return response.data; // יחזיר אובייקט כמו { exists: true }
+    } catch (error) {
+        // במקרה הזה, שגיאה בבדיקה היא לא קריטית, אז רק נדפיס לקונסול
+        console.error("Failed to check home name:", error);
+        return { exists: false }; // נחזיר false כדי לא לחסום את המשתמש במקרה של תקלה בבדיקה
+    }
+};
+
 
 export default {
     getHomes,
@@ -311,4 +326,5 @@ export default {
     breakdownComplexTask,
      deleteItemPermanently,
     clearList,
+    checkHomeName,
 };

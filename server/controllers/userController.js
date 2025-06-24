@@ -1,5 +1,5 @@
 const Home = require('../models/Home');
-const { handleError } = require('../utils/controllerUtils');
+const { handleError, normalizeHomeObject } = require('../utils/controllerUtils');
 
 /**
  * Adds a new user to a home.
@@ -27,7 +27,7 @@ const addUser = async (req, res) => {
         await home.save();
         
         // Return only the updated users array
-        res.status(201).json(home.users);
+        res.status(201).json(normalizeHomeObject(home));
 
     } catch (error) {
         handleError(res, error, 'Error adding user to home');
@@ -68,7 +68,7 @@ const removeUser = async (req, res) => {
         await home.save();
 
         // Return the updated users array and a success message
-        res.status(200).json({ users: home.users, message: 'User removed successfully.' });
+        res.status(200).json(normalizeHomeObject(home));
     } catch (error) {
         handleError(res, error, 'Error removing user from home');
     }

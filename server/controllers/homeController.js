@@ -75,25 +75,23 @@ const createHome = async (req, res) => {
     }
 
     try {
+        // --- הבדיקה המקדימה חוזרת להיות המקור היחיד לאמת ---
         const homeExists = await Home.findOne({ name });
+
         if (homeExists) {
-            // This is the check you requested
+            // אם הבדיקה מצאה בית, נחזיר שגיאה ולא ננסה לשמור
             return res.status(409).json({ message: 'A home with this name already exists. Please choose another name.' });
         }
         
-        // Create the first user, who will be the admin
+        // אם לא נמצא בית, אפשר ליצור בבטחה
         const initialUser = { name: initialUserName, isAdmin: true };
 
         const newHome = new Home({
             name,
             accessCode,
-            users: [initialUser], // Add the first user
+            users: [initialUser],
             iconClass: iconClass || 'fas fa-home',
             colorClass: colorClass || 'card-color-1',
-            currency: currency || 'ILS',
-            shoppingList: [],
-            tasksList: [],
-            templates: [],
             finances: {
                 expectedBills: [],
                 paidBills: [],
@@ -106,10 +104,9 @@ const createHome = async (req, res) => {
 
         await newHome.save();
         res.status(201).json(normalizeHomeObject(newHome));
+
     } catch (error) {
-        if (error.code === 11000) { // This is a fallback for the race condition
-            return res.status(409).json({ message: 'A home with this name already exists.' });
-        }
+        // הבלוק הזה יתפוס רק שגיאות אחרות, לא כפילות
         handleError(res, error, 'Server error creating home');
     }
 };
@@ -145,10 +142,27 @@ const updateHome = async (req, res) => {
     }
 };
 
+/**
+ * Checks if a home name already exists.
+ */
+const checkHomeName = async (req, res) => {
+    try {
+        const { name } = req.query; // נקבל את השם מה-query parameters
+        if (!name) {
+            return res.status(400).json({ message: 'Name parameter is required.' });
+        }
+        const home = await Home.findOne({ name });
+        res.status(200).json({ exists: !!home }); // נחזיר true אם הבית קיים, אחרת false
+    } catch (error) {
+        handleError(res, error, 'Error checking home name');
+    }
+};
+
 module.exports = {
     getHomes,
     getHomeDetails,
     loginToHome,
     createHome,
     updateHome,
+    checkHomeName,
 };

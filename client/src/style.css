@@ -3582,3 +3582,95 @@ body.lang-ltr .sticky-note-container { right: 25px; left: auto; }
     color: #9ca3af;
     padding: 2rem 0;
 }
+
+/* --- Item Comment Styles --- */
+.item-text-container {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.item-comment-text {
+  display: block;
+  font-size: 0.85rem;
+  color: #6b7280; /* צבע אפור עדין */
+  margin-top: 4px;
+  font-style: italic;
+  cursor: pointer; /* כדי שירגיש לחיץ לפתיחת עריכה */
+  padding-right: 10px; /* הזחה קטנה ימינה */
+}
+
+.item-comment-text:hover {
+  color: #1f2937; /* צבע כהה יותר במעבר עכבר */
+}
+
+.item-comment-text i {
+  margin-inline-end: 6px; /* רווח בין האייקון לטקסט */
+}
+
+/* התאמה למבנה של רשימת המשימות */
+.item-text-details .item-comment-text {
+  padding-right: 0;
+  padding-bottom: 5px;
+}
+
+/* ============================================== */
+/* ======   תיקוני עיצוב לפריטים והערות   ====== */
+/* ============================================== */
+
+/* מיישר את כל התוכן הראשי של השורה ומונע מהכפתורים לזוז */
+.item-main-content {
+    flex-grow: 1; /* מאפשר לחלק הזה לתפוס את כל המקום הפנוי */
+    min-width: 0; /* קריטי! מאפשר לטקסט להתכווץ במקום לדחוף אלמנטים אחרים */
+    display: flex;
+    align-items: center;
+}
+
+/* הקונטיינר של שם הפריט וההערה שלו */
+.item-text-container {
+    flex-grow: 1; /* תופס את המקום שנותר בשורה */
+    min-width: 0; /* מאפשר לו להתכווץ */
+    display: flex;
+    align-items: baseline; /* מיישר את שם הפריט וההערה על קו בסיס אחד */
+    flex-direction: row; /* מוודא שהם אחד ליד השני */
+}
+
+/* שם הפריט עצמו */
+.item-text {
+    font-weight: 500;
+    color: #1f2937;
+    white-space: nowrap; /* מונע משם הפריט להישבר לשתי שורות */
+}
+
+/* העיצוב החדש והמתוקן להערה */
+.item-comment-text {
+    /* מיקום וריווח */
+    display: inline-block; /* מציג בשורה אחת עם שם הפריט */
+    margin-right: 8px; /* רווח בין שם הפריט להערה */
+    margin-top: 0; /* מבטל את הרווח העליון שהיה קודם */
+
+    /* עיצוב הטקסט */
+    font-size: 0.85rem;
+    color: #6b7280;
+    font-style: italic;
+    cursor: pointer;
+
+    /* --- החלק שפותר את בעיית הטקסט הארוך --- */
+    white-space: nowrap;     /* מונע מהטקסט לרדת שורה */
+    overflow: hidden;        /* מסתיר את הטקסט שחורג מהגודל */
+    text-overflow: ellipsis; /* מוסיף "..." בסוף הטקסט החרוג */
+    max-width: 200px;        /* מגביל את הרוחב המקסימלי של ההערה */
+}
+
+.item-comment-text i {
+    margin-inline-end: 4px;
+}
+
+/* עיצוב ספציפי לרשימת המשימות */
+.task-item .item-text-details {
+    flex-grow: 1;
+    min-width: 0;
+}
+.task-item .item-sub-details {
+    margin-top: 4px; /* יוצר רווח קטן בין שם המשימה לפרטים הנוספים */
+}

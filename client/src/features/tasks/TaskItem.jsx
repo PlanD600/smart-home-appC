@@ -86,6 +86,11 @@ const TaskItem = ({ item, isSubItem = false }) => {
                     </label>
                     <div className="item-text-details">
                         <span className="item-text">{item.text}</span>
+                        {item.comment && (
+                            <span className="item-comment-text" onClick={handleCommentClick}>
+                                <i className="fas fa-info-circle"></i> {item.comment}
+                            </span>
+                        )}
                         <div className="item-sub-details">
                             <span><i className="fas fa-tag"></i> {item.category || 'כללית'}</span>
                             {item.assignedTo && <span><i className="fas fa-user"></i> {item.assignedTo}</span>}

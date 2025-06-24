@@ -14,6 +14,8 @@ const archiveController = require('../controllers/archiveController');
 router.post('/home', homeController.createHome);
 router.get('/homes', homeController.getHomes);
 router.post('/home/login', homeController.loginToHome);
+router.get('/home/check-name', homeController.checkHomeName); 
+
 
 // --- User Management ---
 router.post('/home/:homeId/users', userController.addUser);
@@ -25,7 +27,7 @@ router.put('/home/:homeId/lists/:listType/:itemId', listController.updateItemInL
 router.post('/home/:homeId/lists/:listType/clear-completed', listController.clearCompletedItems);
 router.post('/home/:homeId/lists/:listType/:itemId/archive', archiveController.archiveItem);
 router.delete('/home/:homeId/lists/:listType/:itemId', listController.deleteItemPermanently);
-router.delete('/home/:homeId/lists/:listType/clear', listController.clearList);
+router.delete('/home/:homeId/lists/:listType', listController.clearList);
 
 // --- Archive Management ---
 router.post('/home/:homeId/archive/:itemId/restore', archiveController.restoreItem);

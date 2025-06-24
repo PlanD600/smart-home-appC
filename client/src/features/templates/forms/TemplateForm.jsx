@@ -101,7 +101,7 @@ const TemplateForm = ({ onSuccess, templateToEdit, templateIndex }) => {
                 <label>סוג התבנית</label>
                 <div className="type-selector">
                     <button type="button" onClick={() => setType('shopping')} className={type === 'shopping' ? 'active' : ''}><i className="fas fa-shopping-cart"></i> קניות</button>
-                    <button type="button" onClick={() => setType('tasks')} className={type === 'tasks' ? 'active' : ''}><i className="fas fa-tasks"></i> מטלות</button>
+                    <button type="button" onClick={() => setType('tasks')} className={type === 'tasks' ? 'active' : ''}><i className="fas fa-tasks"></i> משימות</button>
                 </div>
             </div>
 

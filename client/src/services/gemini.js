@@ -2,7 +2,6 @@
 
 export const Gemini = {
     async generateStructuredText(prompt, responseSchema) {
-        // קריאת מפתח ה-API ממשתני הסביבה של Vite
         const apiKey = import.meta.env.VITE_GEMINI_API_KEY; 
         
         if (!apiKey || apiKey === "PASTE_YOUR_REAL_GOOGLE_AI_API_KEY_HERE") {
@@ -14,7 +13,6 @@ export const Gemini = {
 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-        // ... שאר הקוד של הפונקציה נשאר זהה ...
         const payload = {
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: { responseMimeType: "application/json" },
@@ -25,10 +23,11 @@ export const Gemini = {
                     parameters: responseSchema
                 }]
             }],
+            // --- החלק החשוב ---
             toolConfig: {
                 functionCallingConfig: {
-                    mode: "ANY",
-                    allowedFunctionNames: ["extract_data"]
+                    mode: "AUTO"
+                    // ודא שהשורה allowedFunctionNames נמחקה מכאן
                 }
             }
         };
@@ -40,17 +39,32 @@ export const Gemini = {
                 body: JSON.stringify(payload),
             });
 
-            if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+            if (!response.ok) {
+                let errorBody = `API request failed with status ${response.status}`;
+                try {
+                    const googleError = await response.json();
+                    console.error("Detailed error from Google:", googleError);
+                    errorBody = googleError.error?.message || errorBody;
+                } catch (e) {
+                    console.error("Could not parse error response from Google.");
+                }
+                throw new Error(errorBody);
+            }
 
             const result = await response.json();
             const functionCall = result.candidates?.[0]?.content?.parts?.[0]?.functionCall;
+
             if (functionCall?.name === 'extract_data' && functionCall.args) {
                 return functionCall.args;
             }
-            return null;
+
+            console.warn("Gemini response did not contain a function call. Response:", result);
+            // אם Gemini לא החזיר תשובה במבנה הנכון, נחזיר הודעת שגיאה למשתמש
+            throw new Error("שירות ה-AI לא הצליח לעבד את הבקשה. נסה שוב או שנה את הניסוח.");
+
         } catch (error) {
             console.error("Error calling Gemini API:", error);
-            return null;
+            throw error;
         }
     }
 };

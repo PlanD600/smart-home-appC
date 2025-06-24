@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useCallback, useMemo } from 'react';
 import { useAppContext } from './AppContext';
 import * as api from '../services/api';
+import { Gemini } from '../services/gemini'; // <-- ייבוא השירות של Gemini
 import { useArchiveActions } from './ArchiveActionsContext'; 
 
-// הגדרת הקונטקסט וה-hook שלו
 const ListActionsContext = createContext();
 export const useListActions = () => useContext(ListActionsContext);
 
@@ -13,144 +13,129 @@ const listTypeToStateKey = {
 };
 
 export const ListActionsProvider = ({ children }) => {
-    const { activeHome, currentUser, updateActiveHome, loading, setLoading, setError, setActiveHome } = useAppContext();
+    const { activeHome, currentUser, updateActiveHome, loading, setLoading, setError } = useAppContext();
     const { archiveItem } = useArchiveActions();
 
     /**
-     * פונקציית עזר מרכזית לטיפול בקריאות API לרשימות.
-     * מטפלת בטעינה, שגיאות, עדכונים אופטימיים ועדכון המצב הגלובלי.
+     * פונקציית עזר מרכזית, עכשיו היא תמיד מעדכנת את ה-state מהתשובה של השרת
      */
-    const handleListApiCall = useCallback(async (apiFunction, args, options = {}) => {
+    const handleListApiCall = useCallback(async (apiFunction, args) => {
         if (!activeHome?._id) return;
 
-        let previousHomeState = activeHome; // לשמירת מצב קודם במקרה של שגיאה בעדכון אופטימי
-        
-        if (options.optimisticUpdate) {
-            const optimisticState = options.optimisticUpdate(activeHome);
-            setActiveHome(optimisticState); // עדכון אופטימי מיידי
-        } else {
-            setLoading(true); // הצגת טעינה אם אין עדכון אופטימי
-        }
-        
-        setError(null); // ניקוי שגיאות קודמות
+        setLoading(true);
+        setError(null);
         
         try {
-            const result = await apiFunction(activeHome._id, ...args);
+            // ה-API תמיד יחזיר את אובייקט הבית המעודכן במלואו
+            const updatedHome = await apiFunction(activeHome._id, ...args);
             
-            if (options.onSuccess) {
-                const finalState = options.onSuccess(activeHome, result);
-                updateActiveHome(finalState); // עדכון מצב הבית לאחר הצלחה מותאמת אישית
-            } else if (result && result._id) { // [FIXED/IMPROVEMENT] אם ה-API מחזיר את אובייקט הבית המעודכן, נעדכן אותו
-                updateActiveHome(result); 
+            // נעדכן את ה-state רק אם השרת החזיר אובייקט בית תקין
+            if (updatedHome && updatedHome._id) {
+                updateActiveHome(updatedHome);
             }
         } catch (err) {
-            setError(err.message || 'An action failed.'); // הצגת שגיאה
-            if (options.optimisticUpdate) {
-                setActiveHome(previousHomeState); // החזרת מצב קודם במקרה של שגיאה בעדכון אופטימי
-            }
-            throw err; // זריקת השגיאה הלאה
+            setError(err.message || 'An action failed.');
+            throw err;
         } finally {
-            // [FIXED/IMPROVEMENT] כיבוי טעינה רק אם לא היה עדכון אופטימי, או תמיד אם השלמת הקריאה.
-            // עדיף תמיד לכבות ב-finally.
-            setLoading(false); 
+            setLoading(false);
         }
-    }, [activeHome, updateActiveHome, setLoading, setError, setActiveHome]); // תלויות ל-useCallback
+    }, [activeHome, updateActiveHome, setLoading, setError]);
 
     const addItem = useCallback((listType, itemData) => {
-        const stateKey = listTypeToStateKey[listType];
-        const onSuccess = (currentHome, newItem) => ({
-            ...currentHome,
-            [stateKey]: [...(currentHome[stateKey] || []), newItem],
-        });
-        // שימו לב ש-handleListApiCall כבר מטפל ב-return של ה-Promise
-        return handleListApiCall(api.addItemToList, [listType, { ...itemData, createdBy: currentUser }], { onSuccess });
+        // --- תיקון: קוראים ישירות ל-handleListApiCall, ללא onSuccess ---
+        return handleListApiCall(
+            api.addItemToList, 
+            [listType, { ...itemData, createdBy: currentUser }]
+        );
     }, [handleListApiCall, currentUser]);
     
     const modifyItem = useCallback((listType, itemId, updates) => {
-        const stateKey = listTypeToStateKey[listType];
-        const optimisticUpdate = (currentHome) => {
-            const updateRecursively = (items) => items.map(item => {
-                if (item._id?.toString() === itemId) return { ...item, ...updates };
-                if (item.subItems) return { ...item, subItems: updateRecursively(item.subItems) };
-                return item;
-            });
-            const updatedList = updateRecursively(currentHome[stateKey] || []);
-            return { ...currentHome, [stateKey]: updatedList };
-        };
-        // שימו לב ש-handleListApiCall כבר מטפל ב-return של ה-Promise
-        return handleListApiCall(api.updateItemInList, [listType, itemId, updates], { optimisticUpdate });
+        // --- תיקון: קוראים ישירות ל-handleListApiCall, ללא optimisticUpdate ---
+        // העדכון יתבצע כשהשרת יחזיר תשובה, מה שמבטיח שהמידע תמיד נכון.
+        return handleListApiCall(
+            api.updateItemInList, 
+            [listType, itemId, updates]
+        );
     }, [handleListApiCall]);
 
-    // [MODIFIED] This function is now responsible for ARCHIVING, not deleting.
     const removeItem = useCallback((listType, itemId) => {
         if (archiveItem) {
-            archiveItem(listType, itemId); // קורא לפונקציית הארכיון
+            archiveItem(listType, itemId);
         } else {
-            console.error("archiveItem function is not available from context. Please ensure ArchiveActionsProvider is used.");
+            console.error("archiveItem function is not available from context.");
         }
     }, [archiveItem]);
 
     const clearCompletedItems = useCallback((listType) => {
-        // [IMPROVEMENT] הוספת עדכון אופטימי גם ל-clearCompletedItems
-        return handleListApiCall(api.clearCompletedItems, [listType], {
-            optimisticUpdate: (currentHome) => {
-                const stateKey = listTypeToStateKey[listType];
-                const updatedList = (currentHome[stateKey] || []).filter(item => !item.completed);
-                // אופציונלי: אפשר להוסיף את הפריטים שהושלמו לרשימת הארכיון באופן אופטימי כאן אם רוצים לראות אותם שם מיד.
-                return { ...currentHome, [stateKey]: updatedList };
-            }
-        });
+        return handleListApiCall(api.clearCompletedItems, [listType]);
     }, [handleListApiCall]);
 
-    // [FIXED] פונקציה למחיקה לצמיתות (הועברה לתוך הקומפוננטה ונוספה לוגיקה אופטימית)
     const deleteItemPermanently = useCallback((listType, itemId) => {
-        return handleListApiCall(api.deleteItemPermanently, [listType, itemId], {
-            optimisticUpdate: (currentHome) => {
-                const stateKey = listTypeToStateKey[listType];
-                const removeRecursively = (items) => items.filter(item => {
-                    if (item._id?.toString() === itemId) return false;
-                    if (item.subItems) {
-                        // יצירת עותק חדש של subItems כדי למנוע מוטציה ישירה
-                        item.subItems = removeRecursively(item.subItems); 
-                    }
-                    return true;
-                });
-                const updatedList = removeRecursively(currentHome[stateKey] || []);
-                return { ...currentHome, [stateKey]: updatedList };
-            }
-        });
+        return handleListApiCall(api.deleteItemPermanently, [listType, itemId]);
     }, [handleListApiCall]);
 
-    // [FIXED] פונקציה למחיקת רשימה שלמה לצמיתות (הועברה לתוך הקומפוננטה ונוספה לוגיקה אופטימית)
     const clearList = useCallback((listType) => {
-        return handleListApiCall(api.clearList, [listType], {
-            optimisticUpdate: (currentHome) => {
-                const stateKey = listTypeToStateKey[listType];
-                return { ...currentHome, [stateKey]: [] }; // מרוקן את הרשימה באופן אופטימי
-            }
-        });
+        return handleListApiCall(api.clearList, [listType]);
     }, [handleListApiCall]);
     
-    // AI Actions (ללא שינוי מהותי)
-    const runAiRecipe = useCallback((recipeText) => {
-        const onSuccess = (currentHome, response) => ({
-            ...currentHome,
-            shoppingList: [...currentHome.shoppingList, ...(response.newItems || [])] // ודא ש-response.newItems קיים
-        });
-        return handleListApiCall(api.transformRecipeToShoppingList, [recipeText], { onSuccess });
-    }, [handleListApiCall]);
+    // --- AI and Template functions remain largely the same, but simplified ---
 
+  const runAiRecipe = useCallback(async (recipeText) => {
+        setLoading(true);
+        setError(null);
+        
+        const prompt = `
+            You are an expert chef's assistant. Your task is to generate a shopping list of ingredients based on a user's request in Hebrew.
+            - If the user provides a dish name, generate a typical list of ingredients for that dish.
+            - If the user provides a full recipe, extract only the ingredients from it.
+            - The output must be a simple list of Hebrew strings.
+
+            Example for the model:
+            User request: "עוגת גבינה פירורים"
+            Your generated list of ingredients: ["250 גרם ביסקוויטים פתי בר", "100 גרם חמאה מומסת", "750 גרם גבינה לבנה 5%", "1 מיכל שמנת חמוצה", "1 כוס סוכר", "4 ביצים", "1 כפית תמצית וניל", "גרידת לימון מחצי לימון"]
+            
+            Now, fulfill this user request: "${recipeText}"
+        `;
+
+        // --- הסכמה הנכונה עם אותיות קטנות ---
+        const responseSchema = {
+            type: "object",
+            properties: {
+                ingredients: {
+                    type: "array",
+                    items: { type: "string" }
+                }
+            }
+        };
+
+        try {
+            const structuredData = await Gemini.generateStructuredText(prompt, responseSchema);
+            
+            if (structuredData && structuredData.ingredients && structuredData.ingredients.length > 0) {
+                let lastUpdatedHome = activeHome;
+                for (const ingredient of structuredData.ingredients) {
+                    const newItemData = { text: ingredient, createdBy: currentUser, category: 'ממתכון AI' };
+                    lastUpdatedHome = await api.addItemToList(activeHome._id, 'shopping', newItemData);
+                }
+                updateActiveHome(lastUpdatedHome);
+            } else {
+                setError("לא הצלחתי להפיק רשימת מצרכים מהטקסט שהוזן. נסה לפרט יותר.");
+            }
+        } catch (err) {
+            setError(err.message || "שגיאה בתקשורת עם שירות ה-AI.");
+            console.error("[AI] Error:", err);
+        } finally {
+            setLoading(false);
+        }
+    }, [activeHome, currentUser, updateActiveHome, setLoading, setError]);
+    
     const runAiTask = useCallback((taskText) => {
-        const onSuccess = (currentHome, response) => ({
-            ...currentHome,
-            tasksList: [...currentHome.tasksList, ...(response.newItems || [])] // ודא ש-response.newItems קיים
-        });
-        return handleListApiCall(api.breakdownComplexTask, [taskText], { onSuccess });
+        return handleListApiCall(api.breakdownComplexTask, [taskText]);
     }, [handleListApiCall]);
 
     const applyTemplate = useCallback(async (template) => {
         if (!activeHome?._id || !template.items) return;
-        setLoading(true); // ללא עדכון אופטימי בגלל ריבוי קריאות
+        setLoading(true);
         setError(null);
         
         try {
@@ -160,24 +145,18 @@ export const ListActionsProvider = ({ children }) => {
                     createdBy: currentUser,
                 })
             );
-            const newItems = await Promise.all(addPromises);
-            
-            const stateKey = listTypeToStateKey[template.type];
-            const updatedHome = {
-                ...activeHome,
-                [stateKey]: [...(activeHome[stateKey] || []), ...newItems]
-            };
-            updateActiveHome(updatedHome);
-
+            const results = await Promise.all(addPromises);
+            // נעדכן את ה-state עם התוצאה האחרונה שחזרה מהשרת, שהיא הבית המעודכן ביותר
+            if (results.length > 0) {
+                updateActiveHome(results[results.length - 1]);
+            }
         } catch (err) {
             setError(err.message || "Failed to apply template.");
         } finally {
             setLoading(false);
         }
-    }, [activeHome, currentUser, setLoading, setError, updateActiveHome]);
+    }, [activeHome?._id, currentUser, updateActiveHome, setLoading, setError]);
 
-
-    // useMemo לערך הקונטקסט (ודא שכל הפונקציות נכללות כאן)
     const contextValue = useMemo(() => ({
         loading,
         addItem,
@@ -187,19 +166,11 @@ export const ListActionsProvider = ({ children }) => {
         runAiRecipe,
         runAiTask,
         applyTemplate,
-        deleteItemPermanently, // נחשפת
-        clearList, // נחשפת
+        deleteItemPermanently,
+        clearList,
     }), [
-        loading, 
-        addItem, 
-        modifyItem, 
-        removeItem, 
-        clearCompletedItems, 
-        runAiRecipe, 
-        runAiTask, 
-        applyTemplate,
-        deleteItemPermanently, // תלות
-        clearList // תלות
+        loading, addItem, modifyItem, removeItem, clearCompletedItems, 
+        runAiRecipe, runAiTask, applyTemplate, deleteItemPermanently, clearList
     ]);
 
     return (

@@ -36,7 +36,7 @@ const SavingsGoalSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const ExpenseCategorySchema = new mongoose.Schema({
-    name: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
     icon: String,
     color: String,
     budgetAmount: { type: Number, default: 0 },

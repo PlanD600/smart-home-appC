@@ -73,23 +73,30 @@ export const AppProvider = ({ children }) => {
         }
     }, []);
 
-    const createHome = useCallback(async (homeData) => {
-        setLoading(true);
-        setError(null);
-        try {
-            const newHome = await api.createHome(homeData);
-            const adminUser = homeData.initialUserName;
-            setActiveHome(newHome);
-            setCurrentUser(adminUser);
-            persistSession(newHome, adminUser);
-            return true;
-        } catch (err) {
-            setError(err.message || 'Creation failed');
-            return false;
-        } finally {
-            setLoading(false);
+ const createHome = useCallback(async (homeData) => {
+    setLoading(true);
+    setError(null);
+    try {
+        const newHome = await api.createHome(homeData);
+        const adminUser = homeData.initialUserName;
+        setActiveHome(newHome);
+        setCurrentUser(adminUser);
+        persistSession(newHome, adminUser);
+        return true;
+    } catch (err) {
+        // --- שיפור הטיפול בשגיאות ---
+        if (err.response === 409) {
+            // אם זו שגיאת Conflict (409), נציג הודעה מותאמת אישית בעברית
+            setError('בית עם שם זה כבר קיים. אנא בחר שם אחר.');
+        } else {
+            // עבור כל שגיאה אחרת, נציג את ההודעה הכללית
+            setError(err.message || 'יצירת הבית נכשלה');
         }
-    }, []);
+        return false;
+    } finally {
+        setLoading(false);
+    }
+}, [updateActiveHome]);
 
     const logoutHome = useCallback(() => {
         setActiveHome(null);
