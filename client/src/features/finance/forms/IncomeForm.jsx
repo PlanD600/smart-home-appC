@@ -1,95 +1,110 @@
 import React, { useState } from 'react';
+import { useAppContext } from '@/context/AppContext';
 import { useFinanceActions } from '@/context/FinanceActionsContext';
 import { useModal } from '@/context/ModalContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
-/**
- * A form for adding a new income record.
- */
 const IncomeForm = () => {
+    const { activeHome, currentUser } = useAppContext();
     const { saveIncome, loading } = useFinanceActions();
     const { hideModal } = useModal();
     
-    const [income, setIncome] = useState({
-        text: '',
-        amount: '',
-        date: new Date().toISOString().split('T')[0], // Default to today
-        source: '',
-        isRecurring: false,
-    });
+    const [source, setSource] = useState('');
+    const [amount, setAmount] = useState('');
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    // [NEW] State for assigning the income to a user
+    const [assignedTo, setAssignedTo] = useState(currentUser || '');
     const [error, setError] = useState('');
 
-    /**
-     * Handles changes in form inputs.
-     */
-    const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setIncome(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-    };
-
-    /**
-     * Handles form submission.
-     */
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError('');
-        if (!income.text || !income.amount) {
-            setError('נא למלא את שדות התיאור והסכום.');
+        if (!source || !amount) {
+            setError('יש למלא את כל השדות.');
             return;
         }
 
         const incomeData = {
-            ...income,
-            amount: parseFloat(income.amount),
+            source,
+            amount: parseFloat(amount),
+            date,
+            assignedTo // Include the assigned user in the data
         };
 
         try {
             await saveIncome(incomeData);
             hideModal();
         } catch (err) {
-            setError(err.message || 'שגיאה בשמירת ההכנסה.');
+            setError(err.message || 'שגיאה בהוספת הכנסה.');
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="income-form">
+        <form onSubmit={handleSubmit} className="p-4" noValidate>
             <h3 className="form-title">הוספת הכנסה חדשה</h3>
             
-            <div className="form-group">
-                <label htmlFor="income-text">תיאור ההכנסה *</label>
-                <input id="income-text" name="text" type="text" value={income.text} onChange={handleChange} placeholder="לדוגמה: משכורת חודש יוני" required autoFocus />
+            {error && <p className="error-message">{error}</p>}
+            
+            <div className="form-field">
+                <label htmlFor="income-source">מקור ההכנסה</label>
+                <input
+                    id="income-source"
+                    type="text"
+                    value={source}
+                    onChange={(e) => setSource(e.target.value)}
+                    placeholder="למשל: משכורת, מתנה..."
+                    required
+                />
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-                <div className="form-group">
-                    <label htmlFor="income-amount">סכום *</label>
-                    <input id="income-amount" name="amount" type="number" value={income.amount} onChange={handleChange} placeholder="0.00" required min="0.01" step="0.01" />
-                </div>
-                <div className="form-group">
-                    <label htmlFor="income-date">תאריך קבלה</label>
-                    <input id="income-date" name="date" type="date" value={income.date} onChange={handleChange} required />
-                </div>
+            <div className="form-field">
+                <label htmlFor="income-amount">סכום</label>
+                <input
+                    id="income-amount"
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0.00"
+                    required
+                    step="0.01"
+                    min="0"
+                />
+            </div>
+            
+            <div className="form-field">
+                <label htmlFor="income-date">תאריך</label>
+                <input
+                    id="income-date"
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    required
+                />
             </div>
 
-            <div className="form-group">
-                <label htmlFor="income-source">מקור ההכנסה</label>
-                <input id="income-source" name="source" type="text" value={income.source} onChange={handleChange} placeholder="לדוגמה: מקום עבודה" />
+            {/* [NEW] Dropdown to select a user */}
+            <div className="form-field">
+                <label htmlFor="income-assignedTo">שיוך ל:</label>
+                <select
+                    id="income-assignedTo"
+                    value={assignedTo}
+                    onChange={(e) => setAssignedTo(e.target.value)}
+                >
+                    <option value="">ללא שיוך (משותף)</option>
+                    {activeHome?.users?.map(user => (
+                        <option key={user._id} value={user.name}>
+                            {user.name}
+                        </option>
+                    ))}
+                </select>
             </div>
-
-            <div className="form-control">
-                <label className="label cursor-pointer justify-start gap-3">
-                    <input type="checkbox" name="isRecurring" checked={income.isRecurring} onChange={handleChange} className="checkbox checkbox-primary" />
-                    <span className="label-text">הכנסה קבועה?</span> 
-                </label>
-            </div>
-
-            {error && <p className="error-message">{error}</p>}
             
             <div className="modal-footer">
                 <button type="submit" className="primary-action" disabled={loading}>
                     {loading ? <LoadingSpinner size="sm" /> : 'הוסף הכנסה'}
                 </button>
-                <button type="button" className="secondary-action" onClick={hideModal}>בטל</button>
+                <button type="button" className="secondary-action" onClick={hideModal}>
+                    ביטול
+                </button>
             </div>
         </form>
     );

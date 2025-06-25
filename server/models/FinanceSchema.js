@@ -1,58 +1,54 @@
 const mongoose = require('mongoose');
 
-// --- Sub-schemas for better structure and validation ---
-
-const IncomeSchema = new mongoose.Schema({
-    text: { type: String, required: true, trim: true },
-    amount: { type: Number, required: true },
-    date: { type: Date, required: true, default: Date.now },
-    source: { type: String, trim: true },
-    assignedTo: String,
-    isRecurring: { type: Boolean, default: false },
-}, { timestamps: true });
-
 const BillSchema = new mongoose.Schema({
-    text: { type: String, required: true, trim: true },
+    name: { type: String, required: true },
     amount: { type: Number, required: true },
-    category: { type: String, required: true },
     dueDate: { type: Date, required: true },
-    isUrgent: { type: Boolean, default: false },
-    assignedTo: String,
-    recurring: { 
-        isRecurring: { type: Boolean, default: false },
-        frequency: { type: String, enum: ['monthly', 'bimonthly', 'quarterly', 'annually', 'no'], default: 'no' }
-    },
+    category: { type: String, required: true },
+    isRecurring: { type: Boolean, default: false },
+    assignedTo: { type: String, default: 'משותף' } 
 }, { timestamps: true });
 
 const PaidBillSchema = new mongoose.Schema({
-    ...BillSchema.obj, // Inherit all fields from BillSchema
-    datePaid: { type: Date, default: Date.now },
+    name: { type: String, required: true },
+    amount: { type: Number, required: true },
+    dueDate: { type: Date },
+    datePaid: { type: Date, required: true },
+    category: { type: String, required: true },
+    assignedTo: { type: String, default: 'משותף' }
+}, { timestamps: true });
+
+const IncomeSchema = new mongoose.Schema({
+    source: { type: String, required: true },
+    amount: { type: Number, required: true },
+    date: { type: Date, default: Date.now },
+    // [NEW] Added field to assign income to a specific user
+    assignedTo: { type: String } 
 }, { timestamps: true });
 
 const SavingsGoalSchema = new mongoose.Schema({
-    name: { type: String, required: true, trim: true },
+    name: { type: String, required: true },
     targetAmount: { type: Number, required: true },
     currentAmount: { type: Number, default: 0 },
+    deadline: { type: Date }
 }, { timestamps: true });
 
-const ExpenseCategorySchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    icon: String,
-    color: String,
-    budgetAmount: { type: Number, default: 0 },
-});
-
-// --- Main Finance Schema ---
-
 const FinanceSchema = new mongoose.Schema({
-  income: [IncomeSchema],
-  expectedBills: [BillSchema],
-  paidBills: [PaidBillSchema],
-  expenseCategories: [ExpenseCategorySchema],
-  savingsGoals: [SavingsGoalSchema],
-  financeSettings: {
-    currency: { type: String, default: 'ILS', required: true },
-  },
-});
+    expectedBills: [BillSchema],
+    paidBills: [PaidBillSchema],
+    income: [IncomeSchema],
+    savingsGoals: [SavingsGoalSchema],
+    expenseCategories: [{
+        name: String,
+        budgetAmount: Number,
+        icon: String,
+        color: String
+    }]
+}, { _id: false });
 
-module.exports = FinanceSchema;
+module.exports = {
+    FinanceSchema,
+    BillSchema,
+    IncomeSchema,
+    SavingsGoalSchema
+};

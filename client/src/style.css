@@ -3674,3 +3674,21 @@ body.lang-ltr .sticky-note-container { right: 25px; left: auto; }
 .task-item .item-sub-details {
     margin-top: 4px; /* יוצר רווח קטן בין שם המשימה לפרטים הנוספים */
 }
+
+/* Add these styles to the end of your style.css file */
+
+/* Drag and Drop Styling */
+.shopping-item.drag-over,
+.task-item.drag-over > .task-item-content {
+    background-color: #e0f2fe; /* Light blue background */
+    outline: 2px dashed #0ea5e9; /* Dashed blue outline */
+    outline-offset: -2px;
+}
+
+/* Style for the item being dragged */
+.shopping-item:not(.is-sub-item)[draggable="true"]:active,
+.task-item:not(.is-sub-item)[draggable="true"]:active {
+    opacity: 0.5;
+    background: #f0f0f0;
+    border-left-color: #ccc;
+}
