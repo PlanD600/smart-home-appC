@@ -51,33 +51,45 @@ const IncomeList = () => {
             </header>
             
             <div className="income-items-wrapper">
-                {loading && processedList.length === 0 ? (
-                    <LoadingSpinner />
-                ) : processedList.length === 0 ? (
-                    <div className="no-items-message">
-                        <i className="fas fa-search-dollar"></i>
-                        <p>לא הוזנו הכנסות.</p>
+    {loading && processedList.length === 0 ? (
+        <LoadingSpinner />
+    ) : processedList.length === 0 ? (
+        <div className="no-items-message">
+            <i className="fas fa-search-dollar"></i>
+            <p>לא הוזנו הכנסות.</p>
+        </div>
+    ) : (
+        <ul>
+            {processedList.map(inc => (
+                <li key={inc._id} className="income-item">
+                    <div className="income-icon">
+                        <i className="fas fa-long-arrow-alt-up"></i>
                     </div>
-                ) : (
-                    <ul>
-                        {processedList.map(inc => (
-                            <li key={inc._id} className="income-item">
-                                <div className="income-icon">
-                                    <i className="fas fa-long-arrow-alt-up"></i>
-                                </div>
-                                <div className="income-details">
-                                    <span className="income-text">{inc.text}</span>
-                                    <span className="income-date">{new Date(inc.date).toLocaleDateString('he-IL')}</span>
-                                </div>
-                                <div className="income-amount">
-                                    + {inc.amount.toLocaleString()} {currency}
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </div>
-
+                    <div className="income-details">
+                        <span className="income-text">{inc.source}</span>
+                        {/* --- החלק החדש שהוספנו --- */}
+                        <div className="income-sub-details">
+                            <span className="income-date">{new Date(inc.date).toLocaleDateString('he-IL')}</span>
+                            {/* הצג את שם המשתמש רק אם הוא קיים */}
+                            {inc.assignedTo && (
+                                <>
+                                    <span className="detail-separator">•</span>
+                                    <span className="income-assignee">
+                                        <i className="fas fa-user" style={{marginInlineEnd: '4px'}}></i>
+                                        {inc.assignedTo}
+                                    </span>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                    <div className="income-amount">
+                        + {inc.amount.toLocaleString()} {currency}
+                    </div>
+                </li>
+            ))}
+        </ul>
+    )}
+</div>
             <footer className="income-list-footer">
                 <span>סה"כ הכנסות:</span>
                 <span className="total-amount">{totalIncome.toLocaleString()} {currency}</span>
