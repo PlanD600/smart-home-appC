@@ -8,6 +8,7 @@ import { useModal } from '@/context/ModalContext';
 import TemplateManager from '@/features/templates/TemplateManager';
 import CategoryManager from '@/features/categories/CategoryManager';
 
+
 const AiTaskPopup = ({ onRun, hideModal, loading }) => {
     const [text, setText] = React.useState('');
     const handleRun = () => {

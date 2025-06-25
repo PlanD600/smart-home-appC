@@ -1,0 +1,211 @@
+/* client/src/styles/MainAppLayout.css */
+
+/* The main container for the entire authenticated app screen */
+.main-app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden; /* Prevent double scrollbars */
+  background-color: #f4f6f9; /* A neutral, clean background */
+}
+
+/* Header Styles */
+.app-header {
+  flex-shrink: 0; /* Prevent header from shrinking */
+  background-color: #ffffff;
+  padding: 0 1rem;
+  height: 64px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.header-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1d2b3a;
+}
+
+.header-user-info {
+  display: none; /* Hidden on mobile */
+}
+
+.header-nav {
+  display: none; /* Hidden on mobile, shown on desktop */
+}
+
+.mobile-menu-toggle {
+  display: block; /* Shown on mobile */
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #333;
+}
+
+/* This is the main content area for the app */
+.app-body {
+  display: flex;
+  flex-grow: 1;
+  overflow: hidden; /* Important for layout control */
+}
+
+.main-content {
+  flex-grow: 1;
+  overflow-y: auto; /* Allows only the content to scroll */
+  padding: 1.5rem;
+}
+
+/* Bottom Tab Navigation for Mobile */
+.bottom-tab-navigation {
+  display: flex;
+  justify-content: space-around;
+  background-color: #ffffff;
+  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.bottom-tab-navigation .tab-button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  border-top: 3px solid transparent;
+  color: #5a6a7b;
+  font-weight: 600;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.bottom-tab-navigation .tab-button i {
+  font-size: 1.5rem;
+}
+
+.bottom-tab-navigation .tab-button.active {
+  color: var(--primary-color-start, #007BFF);
+  border-top-color: var(--primary-color-start, #007BFF);
+}
+
+/* Sidebar for Desktop */
+.sidebar {
+  display: none; /* Hidden by default */
+}
+
+/* --- Desktop Styles (using a media query) --- */
+@media (min-width: 768px) {
+  .mobile-menu-toggle,
+  .bottom-tab-navigation {
+    display: none; /* Hide mobile elements */
+  }
+
+  .header-content {
+    justify-content: flex-end; /* Push items to the right */
+  }
+
+  .header-title {
+    margin-right: auto; /* Push title to the far left */
+  }
+
+  .header-user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 600;
+    color: #475467;
+  }
+  
+  .header-user-info .fa-user-circle {
+    font-size: 1.5rem;
+    color: #9e9e9e;
+  }
+  
+  .header-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: 1.5rem;
+  }
+  
+  .header-nav button {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+  }
+  
+  .header-nav button:hover {
+    background-color: #e9ecef;
+    border-color: #adb5bd;
+  }
+  
+  .header-nav .logout-btn {
+    background-color: #ffebee;
+    border-color: #ffcdd2;
+    color: #c62828;
+  }
+  
+  .header-nav .logout-btn:hover {
+    background-color: #ef5350;
+    color: white;
+  }
+
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    width: 240px;
+    background-color: #ffffff;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+    padding: 1.5rem 0;
+  }
+  
+  .sidebar .tab-button {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-right: 4px solid transparent;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #475467;
+    transition: all 0.2s;
+    cursor: pointer;
+    background: none;
+    border: none;
+    text-align: right;
+  }
+
+  .sidebar .tab-button i {
+    font-size: 1.25rem;
+    width: 24px; /* Align icons */
+  }
+
+  .sidebar .tab-button:hover {
+    background-color: #f8f9fa;
+  }
+
+  .sidebar .tab-button.active {
+    color: var(--primary-color-start, #007BFF);
+    border-right-color: var(--primary-color-start, #007BFF);
+    background-color: #e7f3ff;
+  }
+}

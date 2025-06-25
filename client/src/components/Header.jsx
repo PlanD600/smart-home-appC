@@ -1,70 +1,55 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useAppContext } from '@/context/AppContext';
 
+// The 'on' props are for the desktop view, as on mobile they are in a separate menu
 const Header = ({ onManageUsers, onManageTemplates, onViewArchive }) => {
     const { activeHome, currentUser, logoutHome } = useAppContext();
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-    // אפקט זה מונע גלילה של הדף כאשר תפריט המובייל פתוח - נשאיר אותו
-    useEffect(() => {
-        const bodyClass = 'menu-open';
-        if (isMenuOpen) {
-            document.body.classList.add(bodyClass);
-        } else {
-            document.body.classList.remove(bodyClass);
-        }
-        return () => document.body.classList.remove(bodyClass);
-    }, [isMenuOpen]);
-
-    // פונקציית עזר לסגירת התפריט לאחר לחיצה
-    const handleMenuAction = (action) => {
-        if (action) {
-            action();
-        }
-        setIsMenuOpen(false);
-    };
+    // In a real scenario, the mobile menu state would be managed here
+    // But for this responsive design, we use CSS to show/hide elements
 
     return (
         <header className="app-header">
             <div className="header-content">
-                {/* שם הבית */}
+                {/* Home name, always visible */}
                 <h1 className="header-title">{activeHome?.name || 'Smart Home'}</h1>
 
-                {/* מידע על המשתמש (יוצג תמיד) */}
+                {/* User info, shown only on desktop via CSS */}
                 <div className="header-user-info">
                     <i className="fas fa-user-circle"></i>
                     <span>שלום, {currentUser}</span>
                 </div>
-
-                {/* כפתור המבורגר שיוצג רק במובייל */}
-                <button
-                    className="mobile-menu-toggle"
-                    onClick={() => setIsMenuOpen(!isMenuOpen)}
-                    aria-label="Toggle menu"
-                    aria-expanded={isMenuOpen}
-                >
-                    <i className={isMenuOpen ? 'fas fa-times' : 'fas fa-bars'}></i>
-                </button>
-
-                {/* אלמנט ניווט יחיד שמתאים את עצמו לגודל המסך */}
-                <nav className={`header-nav ${isMenuOpen ? 'is-open' : ''}`}>
-                    <button onClick={() => handleMenuAction(onManageUsers)}>
+                
+                {/* Desktop navigation buttons */}
+                <nav className="header-nav">
+                    <button onClick={onManageUsers}>
                         <i className="fas fa-users"></i>
-                        <span>ניהול בית</span>
+                        <span>ניהול</span>
                     </button>
-                    <button onClick={() => handleMenuAction(onManageTemplates)}>
+                    <button onClick={onManageTemplates}>
                         <i className="fas fa-file-alt"></i>
                         <span>תבניות</span>
                     </button>
-                    <button onClick={() => handleMenuAction(onViewArchive)}>
+                    <button onClick={onViewArchive}>
                         <i className="fas fa-archive"></i>
                         <span>ארכיון</span>
                     </button>
-                    <button onClick={() => handleMenuAction(logoutHome)} className="logout-btn">
+                    <button onClick={logoutHome} className="logout-btn">
                         <i className="fas fa-sign-out-alt"></i>
                         <span>יציאה</span>
                     </button>
                 </nav>
+
+                {/* Mobile hamburger menu button */}
+                <button
+                    className="mobile-menu-toggle"
+                    // This would open a mobile-specific menu/modal
+                    // For now, it's a placeholder
+                    onClick={onManageUsers} 
+                    aria-label="Toggle menu"
+                >
+                    <i className={'fas fa-bars'}></i>
+                </button>
             </div>
         </header>
     );

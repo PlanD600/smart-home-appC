@@ -1,0 +1,316 @@
+/* client/src/features/lists/ListComponents.css */
+/* ... (התוכן המלא של הקובץ מהתגובה הקודמת. אין שינוי בקובץ זה) ... */
+:root {
+  --background-color: #f7f9fc;
+  --card-background: #ffffff;
+  --text-primary: #1d2b3a;
+  --text-secondary: #5a6a7b;
+  --primary-color-start: #007BFF;
+  --primary-color-end: #00C6FF;
+  --accent-color: #1DE9B6;
+  --accent-color-hover: #00BFA5;
+  --border-color: #dde2e7;
+  --error-color: #d32f2f;
+  --error-background: #ffebee;
+}
+
+.list-container {
+    background-color: transparent;
+    padding: 0;
+    box-shadow: none;
+    max-width: 100%;
+    margin: 0;
+}
+
+.list-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+}
+
+.list-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-primary, #1d2b3a);
+    margin: 0;
+}
+
+.list-title i {
+    color: var(--primary-color-start, #007BFF);
+}
+
+.list-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.list-actions .header-style-button, .list-actions .ai-btn, .list-actions .clear-btn {
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #dee2e6);
+    background-color: #ffffff;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.list-actions .header-style-button:hover, .list-actions .clear-btn:hover {
+    background-color: #f8f9fa;
+    border-color: #ced4da;
+}
+
+.list-actions .ai-btn {
+    background: linear-gradient(45deg, var(--accent-color), var(--primary-color-end));
+    color: white;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0, 150, 255, 0.2);
+}
+
+.add-item-form-container {
+    background-color: var(--card-background, #fff);
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.add-item-form-container .input-group .main-input {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.add-item-form-container .options-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+    margin-top: 0.75rem;
+}
+
+.add-item-form-container .select-group {
+    flex: 1 1 150px;
+}
+
+.add-item-form-container .select-group label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+    display: block;
+}
+
+.add-item-form-container .control-select {
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background-color: #fff;
+    width: 100%;
+}
+
+.add-item-form-container .submit-button {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    height: 38px;
+    width: 38px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    flex-shrink: 0;
+}
+
+.list-controls {
+    display: flex;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    margin-bottom: 1rem;
+}
+
+.item-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.shopping-item, .task-item {
+    display: flex;
+    flex-direction: column;
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);
+    transition: box-shadow 0.2s, transform 0.2s;
+    border-left: 5px solid transparent;
+}
+
+.shopping-item:hover, .task-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.item-content-wrapper, .task-item-content {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+}
+
+.item-main-content {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.item-checkbox {
+    width: 22px;
+    height: 22px;
+    accent-color: var(--accent-color);
+    cursor: pointer;
+}
+
+.item-text-container, .item-text-details {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.item-text {
+    font-weight: 500;
+}
+
+.item-comment-text {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 2px;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shopping-item.urgent, .task-item.urgent {
+    border-left-color: #f59e0b;
+    background-color: #fffbeb;
+}
+
+.shopping-item.completed, .task-item.completed {
+    background-color: #f8f9fa;
+    opacity: 0.6;
+}
+
+.shopping-item.completed .item-text, .task-item.completed .item-text {
+    text-decoration: line-through;
+}
+
+.item-actions {
+    display: flex;
+    align-items: center;
+}
+
+.item-actions .action-btn {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    font-size: 1.25rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    transition: color 0.2s, background-color 0.2s;
+}
+
+.item-actions .action-btn:hover {
+    background-color: #f3f4f6;
+    color: var(--text-primary);
+}
+
+.item-actions .action-btn.urgent-active {
+    color: #f59e0b;
+}
+
+.item-actions .action-btn.assigned-active {
+    color: var(--primary-color-start);
+}
+
+.item-actions .delete-btn:hover {
+    color: var(--error-color);
+}
+
+.list-controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.control-group {
+    flex: 1; /* Make both groups take equal space */
+    position: relative; /* Needed for icon positioning */
+}
+
+/* Remove the default label */
+.control-group label {
+    display: none;
+}
+
+/* Style the select element to look like a modern button */
+.control-group select {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem; /* Make space for the icon on the right */
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: #ffffff;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: left 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1.25em;
+    padding-left: 2rem; /* space for the arrow */
+}
+
+/* Add an icon inside the select area */
+.control-group::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    pointer-events: none; /* Make sure it doesn't block clicks */
+}
+
+/* Specific icons for each control group */
+#filter-status-container::before {
+    content: '\f0b0'; /* fa-filter */
+}
+
+#sort-by-container::before {
+    content: '\f161'; /* fa-sort-amount-down */
+}

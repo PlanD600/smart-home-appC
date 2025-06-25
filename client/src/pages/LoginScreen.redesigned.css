@@ -1,0 +1,193 @@
+/* client/src/pages/LoginScreen.redesigned.css */
+
+/* Define the new color palette as CSS variables for easy changes in the future */
+:root {
+  --background-color: #f7f9fc;
+  --card-background: #ffffff;
+  --text-primary: #1d2b3a;
+  --text-secondary: #5a6a7b;
+  --primary-color-start: #007BFF; /* A vibrant, reliable blue */
+  --primary-color-end: #00C6FF;   /* A lighter, techy cyan */
+  --accent-color: #1DE9B6;      /* A happy, modern teal/mint */
+  --accent-color-hover: #00BFA5;
+  --border-color: #dde2e7;
+  --error-color: #d32f2f;
+  --error-background: #ffebee;
+}
+
+/* General container for the whole screen */
+.login-screen-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: var(--background-color);
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+/* The main login card */
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background-color: var(--card-background);
+  border-radius: 20px; /* More rounded corners for a modern feel */
+  padding: 2rem 2.5rem; /* More padding */
+  box-shadow: 0 12px 35px rgba(0, 30, 80, 0.12); /* Softer, more pronounced shadow */
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header section within the card */
+.login-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.login-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 1.5rem;
+  /* Using the new gradient for the icon background */
+  background: linear-gradient(45deg, var(--primary-color-start), var(--primary-color-end));
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  box-shadow: 0 4px 12px rgba(0, 150, 255, 0.3);
+}
+
+.login-header h1 {
+  /* This is the change you requested */
+  text-align: center;
+  font-size: 2rem; /* Larger title */
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+}
+
+.login-header p {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Form Styles */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.input-group label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.input-group input {
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background-color: #fdfdff;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: var(--primary-color-start);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+/* Submit Button */
+.login-submit-btn {
+  /* Using the new gradient for the button */
+  background: linear-gradient(45deg, var(--accent-color), var(--primary-color-end));
+  color: white;
+  padding: 0.875rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(0, 198, 255, 0.25);
+}
+
+.login-submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 198, 255, 0.35);
+}
+
+.login-submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.login-submit-btn:disabled {
+  background: #b0bec5;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Error Message */
+.login-error-message {
+  color: var(--error-color);
+  background-color: var(--error-background);
+  text-align: center;
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* Footer Section */
+.login-footer {
+  text-align: center;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.login-footer p {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.create-home-link-btn {
+  background: none;
+  border: none;
+  color: var(--primary-color-start);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.create-home-link-btn:hover:not(:disabled) {
+  color: var(--primary-color-end);
+  text-decoration: underline;
+}
+
+.create-home-link-btn:disabled {
+  color: #9e9e9e;
+  cursor: not-allowed;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .login-card {
+    padding: 2rem 1.5rem;
+  }
+}
