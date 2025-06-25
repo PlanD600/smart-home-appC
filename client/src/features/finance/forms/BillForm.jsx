@@ -61,7 +61,8 @@ const BillForm = ({ initialData }) => {
             dueDate: bill.dueDate,
             category: bill.category,
             assignedTo: bill.assignedTo,
-            recurring: { isRecurring: bill.recurring !== 'no', frequency: bill.recurring },
+            isRecurring: bill.recurring !== 'no', // <-- תיקון שני: שליחת ערך בוליאני פשוט
+
         };
         
         try {

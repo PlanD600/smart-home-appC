@@ -1,12 +1,11 @@
 const Home = require('../models/Home');
 const { handleError, normalizeHomeObject } = require('../utils/controllerUtils');
 
-// Helper to ensure finances object and its arrays exist. This is crucial for new homes.
+// Helper to ensure finances object and its arrays exist.
 const ensureFinances = (home) => {
     if (!home.finances) {
         home.finances = {};
     }
-    // Ensure each sub-array exists, defaulting to an empty array if not.
     if (!home.finances.expectedBills) home.finances.expectedBills = [];
     if (!home.finances.paidBills) home.finances.paidBills = [];
     if (!home.finances.income) home.finances.income = [];
@@ -19,12 +18,8 @@ const addExpectedBill = async (req, res) => {
         const { homeId } = req.params;
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found' });
-        
         ensureFinances(home);
-        
-        // Use .push() directly. Mongoose handles subdocument creation.
         home.finances.expectedBills.push(req.body);
-
         await home.save();
         res.status(201).json(normalizeHomeObject(home));
     } catch (error) {
@@ -38,9 +33,7 @@ const updateExpectedBill = async (req, res) => {
         const billData = req.body;
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
-        
         ensureFinances(home);
-
         const bill = home.finances.expectedBills.id(billId);
         if (!bill) return res.status(404).json({ message: 'Bill not found.' });
         Object.assign(bill, billData);
@@ -51,26 +44,24 @@ const updateExpectedBill = async (req, res) => {
     }
 };
 
+// --- התיקון כאן ---
 const deleteExpectedBill = async (req, res) => {
     try {
-        const { homeId, billId } = req.params; 
-        const home = await Home.findById(homeId);
-        if (!home) return res.status(404).json({ message: 'Home not found.' });
-        
-        ensureFinances(home);
-
-        const bill = home.finances.expectedBills.id(billId);
-        if (!bill) return res.status(404).json({ message: 'Bill not found.' });
-        
-        bill.remove(); // .remove() is the correct method for a subdocument instance
-        
-        await home.save();
-        res.status(200).json(normalizeHomeObject(home));
+        const { homeId, billId } = req.params;
+        // שימוש ב-findByIdAndUpdate עם $pull להסרת החשבון מהמערך
+        const updatedHome = await Home.findByIdAndUpdate(
+            homeId,
+            { $pull: { 'finances.expectedBills': { _id: billId } } },
+            { new: true } // החזר את המסמך המעודכן
+        );
+        if (!updatedHome) return res.status(404).json({ message: 'Home or bill not found.' });
+        res.status(200).json(normalizeHomeObject(updatedHome));
     } catch (error) {
         handleError(res, error, 'Error deleting expected bill');
     }
 };
 
+// --- והתיקון כאן ---
 const payBill = async (req, res) => {
     try {
         const { homeId, billId } = req.params;
@@ -78,7 +69,6 @@ const payBill = async (req, res) => {
         if (!home) return res.status(404).json({ message: 'Home not found.' });
 
         ensureFinances(home);
-
         const billToPay = home.finances.expectedBills.id(billId);
         if (!billToPay) return res.status(404).json({ message: 'Bill not found in expected bills.' });
         
@@ -86,34 +76,34 @@ const payBill = async (req, res) => {
         delete billObject._id;
         const paidBillData = { ...billObject, datePaid: new Date() };
         
-        home.finances.paidBills.push(paidBillData);
-        billToPay.remove();
-        
-        await home.save();
-        res.status(200).json(normalizeHomeObject(home));
+        // הוסף את החשבון לרשימת המשולמים והסר אותו מרשימת הצפויים בפקודה אחת
+        const updatedHome = await Home.findByIdAndUpdate(
+            homeId,
+            {
+                $push: { 'finances.paidBills': paidBillData },
+                $pull: { 'finances.expectedBills': { _id: billId } }
+            },
+            { new: true }
+        );
+
+        res.status(200).json(normalizeHomeObject(updatedHome));
     }
     catch (error) {
         handleError(res, error, 'Error paying bill');
     }
 };
 
-/**
- * [CORRECTED] This function now correctly uses .push() to add a new income record.
- * The server log "home.finances.income.create is not a function" indicates the old,
- * incorrect method was being called. This version fixes that definitively.
- */
+
+// --- שאר הפונקציות ללא שינוי ---
+
 const addIncome = async (req, res) => {
     try {
         const { homeId } = req.params;
         const incomeData = req.body;
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
-        
         ensureFinances(home);
-
-        // Use .push() directly. Mongoose will create the subdocument from the plain object.
         home.finances.income.push(incomeData);
-
         await home.save();
         res.status(201).json(normalizeHomeObject(home));
     } catch (error) {
@@ -127,12 +117,8 @@ const addSavingsGoal = async (req, res) => {
         const goalData = req.body;
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
-        
         ensureFinances(home);
-        
-        // Use .push() directly. Mongoose handles subdocument creation.
         home.finances.savingsGoals.push(goalData);
-        
         await home.save();
         res.status(201).json(normalizeHomeObject(home));
     } catch (error) {
@@ -149,9 +135,7 @@ const addFundsToSavingsGoal = async (req, res) => {
         }
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
-        
         ensureFinances(home);
-
         const goal = home.finances.savingsGoals.id(goalId);
         if (!goal) return res.status(404).json({ message: 'Savings goal not found.' });
         goal.currentAmount = (goal.currentAmount || 0) + amount;
@@ -167,9 +151,7 @@ const updateBudgets = async (req, res) => {
         const { homeId } = req.params;
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
-        
         ensureFinances(home);
-        
         const updatedCategories = req.body;
         if (!Array.isArray(updatedCategories)) {
             return res.status(400).json({ message: 'Invalid data format. Expected an array of categories.' });
@@ -187,21 +169,16 @@ const getUserMonthlyFinanceSummary = async (req, res) => {
         const { homeId, year, month } = req.params;
         const home = await Home.findById(homeId);
         if (!home) return res.status(404).json({ message: 'Home not found.' });
-
         const finances = home.finances || {};
         const incomeList = finances.income || [];
         const paidBillsList = finances.paidBills || [];
         const userNames = (home.users || []).map(u => u.name);
-        
         const numericYear = parseInt(year);
         const numericMonth = parseInt(month); 
-
         const startOfMonth = new Date(numericYear, numericMonth - 1, 1);
         const endOfMonth = new Date(numericYear, numericMonth, 1); 
-
         const userSummary = {};
         [...userNames, 'משותף'].forEach(user => { userSummary[user] = { income: 0, expenses: 0, net: 0 }; });
-
         incomeList.forEach(inc => {
             const incomeDate = new Date(inc.date);
             if (incomeDate >= startOfMonth && incomeDate < endOfMonth) {
@@ -209,7 +186,6 @@ const getUserMonthlyFinanceSummary = async (req, res) => {
                 userSummary[user].income += inc.amount;
             }
         });
-
         paidBillsList.forEach(bill => {
             const paidDate = new Date(bill.datePaid);
             if (paidDate >= startOfMonth && paidDate < endOfMonth) {
@@ -217,11 +193,8 @@ const getUserMonthlyFinanceSummary = async (req, res) => {
                 userSummary[user].expenses += bill.amount;
             }
         });
-
         Object.keys(userSummary).forEach(user => { userSummary[user].net = userSummary[user].income - userSummary[user].expenses; });
-
         res.status(200).json(userSummary);
-
     } catch (error) {
         handleError(res, error, 'Error fetching user monthly finance summary');
     }

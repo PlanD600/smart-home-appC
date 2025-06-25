@@ -44,7 +44,7 @@ const UserFinanceSummary = () => {
         };
 
         getSummary();
-    }, [activeHome?._id, fetchUserMonthlyFinanceSummary]);
+    }, [activeHome?._id, activeHome?.finances?.income, activeHome?.finances?.paidBills, fetchUserMonthlyFinanceSummary]);
 
     const usersToDisplay = useMemo(() => {
         const users = activeHome?.users || [];

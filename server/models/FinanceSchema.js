@@ -1,16 +1,19 @@
 const mongoose = require('mongoose');
 
 const BillSchema = new mongoose.Schema({
-    name: { type: String, required: true },
+    text: { type: String, required: true }, // השדה צריך להיות 'text'
     amount: { type: Number, required: true },
     dueDate: { type: Date, required: true },
     category: { type: String, required: true },
-    isRecurring: { type: Boolean, default: false },
+    recurring: {
+        isRecurring: { type: Boolean, default: false },
+        frequency: { type: String, default: 'no' }
+    },
     assignedTo: { type: String, default: 'משותף' } 
 }, { timestamps: true });
 
 const PaidBillSchema = new mongoose.Schema({
-    name: { type: String, required: true },
+    text: { type: String, required: true }, // גם כאן השדה צריך להיות 'text'
     amount: { type: Number, required: true },
     dueDate: { type: Date },
     datePaid: { type: Date, required: true },
@@ -18,11 +21,11 @@ const PaidBillSchema = new mongoose.Schema({
     assignedTo: { type: String, default: 'משותף' }
 }, { timestamps: true });
 
+// ... שאר הקובץ ללא שינוי ...
 const IncomeSchema = new mongoose.Schema({
     source: { type: String, required: true },
     amount: { type: Number, required: true },
     date: { type: Date, default: Date.now },
-    // [NEW] Added field to assign income to a specific user
     assignedTo: { type: String } 
 }, { timestamps: true });
 

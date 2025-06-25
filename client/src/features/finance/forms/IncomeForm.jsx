@@ -27,7 +27,7 @@ const IncomeForm = () => {
             source,
             amount: parseFloat(amount),
             date,
-            assignedTo // Include the assigned user in the data
+            assignedTo: assignedTo // <-- תוקן: הוספת השדה החסר
         };
 
         try {

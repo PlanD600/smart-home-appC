@@ -1,9 +1,10 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const ItemSchema = require('./ItemSchema');
-const FinanceSchema = require('./FinanceSchema');
+const { FinanceSchema } = require('./FinanceSchema'); // ייבוא נכון של FinanceSchema
 
 const HomeSchema = new mongoose.Schema({
+  // --- התיקון המרכזי כאן ---
   name: {
     type: String,
     required: [true, 'Please provide a home name'],
@@ -28,7 +29,7 @@ const HomeSchema = new mongoose.Schema({
     isAdmin: { type: Boolean, default: false },
   }],
   shoppingList: [ItemSchema],
-  tasksList: [ItemSchema], 
+  tasksList: [ItemSchema],
   archivedItems: [ItemSchema],
   listCategories: {
     type: [String],
@@ -36,8 +37,7 @@ const HomeSchema = new mongoose.Schema({
   },
   templates: [{
     name: String,
-    // [FIXED] The enum now correctly includes 'tasks' (plural) to match the client.
-    type: { type: String, enum: ['shopping', 'tasks', 'finance'] },
+    type: { type: String, enum: ['shopping', 'tasks'] }, // התיקון השני: הסרת 'finance'
     items: [ItemSchema]
   }],
   finances: {

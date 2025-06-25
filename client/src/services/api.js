@@ -26,16 +26,18 @@ export const deleteArchivedItem = async (homeId, itemId) => { try { const respon
 export const clearArchive = async (homeId) => { try { const response = await api.delete(`/home/${homeId}/archive`); return response.data; } catch (error) { handleApiError(error, 'Failed to clear archive.'); } };
 export const addExpectedBill = async (homeId, billData) => { try { const response = await api.post(`/home/${homeId}/finances/bills`, billData); return response.data; } catch (error) { handleApiError(error, 'Failed to add bill.'); } };
 export const updateExpectedBill = async (homeId, billId, billData) => { try { const response = await api.put(`/home/${homeId}/finances/bills/${billId}`, billData); return response.data; } catch (error) { handleApiError(error, 'Failed to update expected bill.'); } };
+
+// --- התיקון כאן ---
 export const deleteExpectedBill = async (homeId, billId) => {
     try {
         const response = await api.delete(`/home/${homeId}/finances/bills/${billId}`);
-        return response.data; // This line was missing
+        return response.data; // הוספנו return
     } catch (error) {
         handleApiError(error, 'Error deleting expected bill.');
     }
 };
 
-// [FIXED] Corrected the payBill function to return response.data
+// --- וגם כאן ---
 export const payBill = async (homeId, billId) => {
     try {
         const response = await api.post(`/home/${homeId}/finances/bills/${billId}/pay`);
@@ -44,6 +46,7 @@ export const payBill = async (homeId, billId) => {
         handleApiError(error, 'Error paying bill.');
     }
 };
+
 export const addIncome = async (homeId, incomeData) => { try { const response = await api.post(`/home/${homeId}/finances/income`, incomeData); return response.data; } catch (error) { handleApiError(error, 'Failed to add income.'); } };
 export const addSavingsGoal = async (homeId, goalData) => { try { const response = await api.post(`/home/${homeId}/finances/savings-goals`, goalData); return response.data; } catch (error) { handleApiError(error, 'Failed to add savings goal.'); } };
 export const addFundsToSavingsGoal = async (homeId, goalId, amount) => { try { const response = await api.patch(`/home/${homeId}/finances/savings-goals/${goalId}/add-funds`, { amount }); return response.data; } catch (error) { handleApiError(error, 'Failed to add funds to savings goal.'); } };
