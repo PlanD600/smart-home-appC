@@ -4,17 +4,14 @@ import { useModal } from '@/context/ModalContext';
 import BudgetForm from './forms/BudgetForm';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
-/**
- * A small, reusable component for displaying a single budget category bar.
- */
 const BudgetCategoryBar = ({ category, spent, budget, currency, onEdit }) => {
     const percentage = budget > 0 ? (spent / budget) * 100 : 0;
     const isOverBudget = spent > budget;
 
     const getBarColor = () => {
-        if (isOverBudget) return '#ef4444'; // Red
-        if (percentage > 80) return '#f59e0b'; // Amber
-        return '#22c55e'; // Green
+        if (isOverBudget) return '#ef4444';
+        if (percentage > 80) return '#f59e0b';
+        return '#22c55e';
     };
 
     return (
@@ -52,9 +49,6 @@ const BudgetCategoryBar = ({ category, spent, budget, currency, onEdit }) => {
     );
 };
 
-/**
- * Displays a list of budget trackers for various expense categories.
- */
 const BudgetTracker = () => {
     const { activeHome, loading } = useAppContext();
     const { showModal } = useModal();
@@ -64,7 +58,7 @@ const BudgetTracker = () => {
         expenseCategories = [],
         financeSettings
     } = activeHome?.finances || {};
-    
+
     const currency = financeSettings?.currency || 'ש"ח';
 
     const categoryTotals = useMemo(() => {
@@ -88,18 +82,13 @@ const BudgetTracker = () => {
 
     return (
         <div className="budget-tracker-container">
-             <header className="budget-tracker-header">
-                <button onClick={openEditBudgetModal} className="edit-budgets-btn">
-                    <i className="fas fa-edit"></i> ערוך תקציבים
-                </button>
-            </header>
             <div className="budget-bars-list">
                 {loading && budgetsToDisplay.length === 0 ? (
                     <LoadingSpinner />
                 ) : budgetsToDisplay.length === 0 ? (
                     <div className="no-items-message">
                         <i className="fas fa-chart-pie"></i>
-                        <p>לא הוגדרו תקציבים. לחץ על 'ערוך תקציבים' כדי להתחיל.</p>
+                        <p>לא הוגדרו תקציבים.</p>
                     </div>
                 ) : (
                     budgetsToDisplay.map(cat => (

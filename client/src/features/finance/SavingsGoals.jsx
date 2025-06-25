@@ -1,22 +1,12 @@
 import React, { useMemo } from 'react';
 import { useAppContext } from '@/context/AppContext';
-import { useFinanceActions } from '@/context/FinanceActionsContext';
 import { useModal } from '@/context/ModalContext';
-import SavingsGoalForm from './forms/SavingsGoalForm';
 import AddFundsForm from './forms/AddFundsForm';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
-/**
- * A component that displays and manages savings goals.
- */
 const SavingsGoals = () => {
     const { activeHome, loading } = useAppContext();
-    const { addFundsToSavingsGoal } = useFinanceActions();
     const { showModal } = useModal();
-
-    const openAddGoalModal = () => {
-        showModal(<SavingsGoalForm />, { title: 'הוספת יעד חיסכון חדש' });
-    };
 
     const openAddFundsModal = (goal) => {
         showModal(<AddFundsForm goal={goal} onSuccess={() => {}} />, { title: `הוספת כספים ל"${goal.name}"` });
@@ -29,24 +19,18 @@ const SavingsGoals = () => {
         return [...savingsGoals].sort((a, b) => {
             const aComplete = (a.currentAmount / a.targetAmount) * 100;
             const bComplete = (b.currentAmount / b.targetAmount) * 100;
-            return bComplete - aComplete; // Sort by percentage complete, descending
+            return bComplete - aComplete;
         });
     }, [savingsGoals]);
 
     return (
         <div className="savings-goals-container">
-            <header className="savings-goals-header">
-                <button onClick={openAddGoalModal} className="add-goal-btn" disabled={loading}>
-                    <i className="fas fa-plus"></i> הוסף יעד
-                </button>
-            </header>
-
             {loading && sortedGoals.length === 0 ? (
                 <LoadingSpinner />
             ) : sortedGoals.length === 0 ? (
                 <div className="no-items-message">
                     <i className="fas fa-piggy-bank"></i>
-                    <p>לא הוגדרו יעדי חיסכון. זה הזמן להתחיל!</p>
+                    <p>לא הוגדרו יעדי חיסכון.</p>
                 </div>
             ) : (
                 <div className="savings-goals-grid">

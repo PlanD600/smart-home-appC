@@ -2474,6 +2474,8 @@ body.lang-ltr .sticky-note-container { right: 25px; left: auto; }
 .stat-content {
     display: flex;
     flex-direction: column;
+    min-width: 0; /* --- הוסף את השורה הזאת --- */
+
 }
 
 .stat-title {
@@ -2488,6 +2490,9 @@ body.lang-ltr .sticky-note-container { right: 25px; left: auto; }
     font-weight: 700;
     color: #111827;
     margin: 0;
+     word-wrap: break-word; /* מאפשר שבירת מילים ארוכות */
+    overflow-wrap: break-word; /* גרסה מודרנית יותר של אותו הדבר */
+    hyphens: auto; /* מאפשר מיקוף אוטומטי במידת האפשר */
 }
 
 .stat-detail {
@@ -3691,4 +3696,255 @@ body.lang-ltr .sticky-note-container { right: 25px; left: auto; }
     opacity: 0.5;
     background: #f0f0f0;
     border-left-color: #ccc;
+}
+
+/* === Header - General Styles === */
+.app-header {
+    background-color: #fff;
+    padding: 0 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 900;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 70px;
+}
+
+.header-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--dark-grey);
+    margin: 0;
+}
+
+.header-user-info {
+    display: none; /* Hide by default, show on desktop */
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: #4b5563;
+    margin-left: auto; /* Push it to the right */
+    margin-right: 2rem;
+}
+
+.header-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.header-nav button {
+    background: none;
+    border: 1px solid transparent;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.header-nav button:hover {
+    background-color: #f3f4f6;
+}
+
+.header-nav .logout-btn {
+    background-color: #fee2e2;
+    color: #ef4444;
+}
+
+.header-nav .logout-btn:hover {
+    background-color: #ef4444;
+    color: #fff;
+}
+
+/* --- Mobile Styles --- */
+.mobile-menu-toggle {
+    display: none; /* Hidden by default */
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--dark-grey);
+    cursor: pointer;
+    z-index: 1001; /* Above the nav menu */
+}
+
+/* On screens smaller than 768px */
+@media (max-width: 768px) {
+    .mobile-menu-toggle {
+        display: block; /* Show hamburger button */
+    }
+
+    .header-user-info {
+        display: none; /* Hide user info from top bar */
+    }
+
+    .header-nav {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 280px;
+        background-color: #fff;
+        box-shadow: -2px 0 8px rgba(0,0,0,0.15);
+        
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 80px 2rem 2rem;
+        gap: 1rem;
+
+        transform: translateX(100%);
+        transition: transform 0.3s ease-in-out;
+    }
+
+    .header-nav.is-open {
+        transform: translateX(0);
+    }
+    
+    .header-nav button {
+        font-size: 1.1rem;
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+/* --- Desktop Styles --- */
+/* On screens larger than 768px */
+@media (min-width: 769px) {
+    .header-user-info {
+        display: flex;
+    }
+}
+
+/* Prevent body scroll when menu is open */
+body.menu-open {
+    overflow: hidden;
+}
+
+/* === Finance Page New Layout === */
+.finance-page-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.finance-page-title {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--dark-grey);
+    margin: 0;
+}
+
+.finance-actions-container {
+    align-self: center;
+}
+
+.finance-section.summary-section .financial-summary-grid {
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Smaller cards */
+}
+
+.finance-section.summary-section .stat-card {
+    padding: 1rem;
+}
+
+.finance-section.summary-section .stat-title {
+    font-size: 0.8rem;
+}
+
+.finance-section.summary-section .stat-value {
+    font-size: 1.25rem;
+}
+
+.finance-section.card {
+    background-color: #fff;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--dark-grey);
+    margin-top: 0;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--mint-green);
+}
+
+.finance-grid {
+    display: grid;
+    grid-template-columns: 1fr; /* Single column by default for mobile */
+    gap: 1.5rem;
+}
+
+.finance-main-column,
+.finance-sidebar-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Two-column layout for larger screens */
+@media (min-width: 1024px) {
+    .finance-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* === Finance Section Header with Action Button === */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem; /* Add some space below the header */
+}
+
+.section-header .section-title {
+  margin: 0; /* Remove default margins from h3 */
+  padding: 0;
+  border: none;
+}
+
+.section-action-btn {
+  background-color: var(--mint-green);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-action-btn:hover {
+  background-color: #79bda8;
+}
+
+.financial-summary-grid {
+    display: grid;
+    gap: 1rem;
+    /* On small screens, show 2 columns */
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* On medium screens and up, show all 4 columns */
+@media (min-width: 768px) {
+    .financial-summary-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
 }

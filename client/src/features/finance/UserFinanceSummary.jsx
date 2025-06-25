@@ -1,99 +1,110 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useAppContext } from '@/context/AppContext';
-import { useFinanceActions } from '@/context/FinanceActionsContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 /**
- * A small, reusable component for displaying a single user's financial summary row.
+ * A utility function to format numbers as currency.
+ * @param {number} amount - The number to format.
+ * @param {string} currency - The currency symbol.
+ * @returns {string} - The formatted currency string.
  */
-const UserStatRow = ({ icon, label, amount, currency, className = '' }) => (
-    <div className={`user-stat-row ${className}`}>
-        <span><i className={`fas ${icon}`}></i> {label}</span>
-        <span className="font-semibold">{amount.toLocaleString()} {currency}</span>
+const formatCurrency = (amount, currency) => {
+    return `${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ${currency}`;
+};
+
+/**
+ * A small, reusable component for a single statistic card.
+ */
+const StatCard = ({ icon, title, value, colorClass = '', detail = null }) => (
+    <div className={`stat-card ${colorClass}`}>
+        <div className="stat-icon">
+            <i className={`fas ${icon}`}></i>
+        </div>
+        <div className="stat-content">
+            <h5 className="stat-title">{title}</h5>
+            <p className="stat-value">{value}</p>
+            {detail && <div className="stat-detail">{detail}</div>}
+        </div>
     </div>
 );
 
 /**
- * Displays a summary of the current month's finances, broken down by user.
+ * Displays a summary of the current month's finances: income, expenses, balance, and savings rate.
  */
-const UserFinanceSummary = () => {
-    const { activeHome } = useAppContext();
-    const { fetchUserMonthlyFinanceSummary, loading } = useFinanceActions();
-    
-    const [summaryData, setSummaryData] = useState(null);
-    const [error, setError] = useState(null);
+const FinancialSummary = () => {
+    const { activeHome, loading } = useAppContext();
 
-    useEffect(() => {
-        if (!activeHome?._id || !fetchUserMonthlyFinanceSummary) {
-            setSummaryData(null);
-            return;
+    const monthlyTotals = useMemo(() => {
+        if (!activeHome?.finances) {
+            return { totalIncome: 0, totalExpenses: 0, balance: 0, savingsRate: 0, currency: 'ש"ח' };
         }
 
-        const getSummary = async () => {
-            setError(null);
-            const year = new Date().getFullYear();
-            const month = new Date().getMonth() + 1;
+        const { income = [], paidBills = [], financeSettings } = activeHome.finances;
+        const currency = financeSettings?.currency || 'ש"ח';
 
-            try {
-                const data = await fetchUserMonthlyFinanceSummary(year, month);
-                setSummaryData(data);
-            } catch (err) {
-                console.error("Failed to fetch user summary:", err);
-                setError("שגיאה בטעינת סיכום חודשי");
-            }
-        };
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
 
-        getSummary();
-    }, [activeHome?._id, activeHome?.finances?.income, activeHome?.finances?.paidBills, fetchUserMonthlyFinanceSummary]);
+        const totalIncome = income
+            .filter(i => {
+                const d = new Date(i.date);
+                return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+            })
+            .reduce((sum, i) => sum + i.amount, 0);
 
-    const usersToDisplay = useMemo(() => {
-        const users = activeHome?.users || [];
-        const sharedDataExists = summaryData && summaryData['משותף'] && (summaryData['משותף'].income > 0 || summaryData['משותף'].expenses > 0);
-        
-        const all = [...users];
-        if (sharedDataExists) {
-            all.push({ name: 'משותף', _id: 'shared' });
-        }
-        return all;
-    }, [activeHome?.users, summaryData]);
+        const totalExpenses = paidBills
+            .filter(p => {
+                const d = new Date(p.datePaid);
+                return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+            })
+            .reduce((sum, p) => sum + p.amount, 0);
 
-    const currency = activeHome?.finances?.financeSettings?.currency || 'ש"ח';
+        const balance = totalIncome - totalExpenses;
+        const savingsRate = totalIncome > 0 ? Math.max(0, (balance / totalIncome) * 100) : 0;
 
-    if (loading && !summaryData) {
-        return <LoadingSpinner text="טוען סיכום..." />;
+        return { totalIncome, totalExpenses, balance, savingsRate, currency };
+    }, [activeHome?.finances]);
+
+    if (loading && !activeHome) {
+        return <LoadingSpinner />;
     }
-    
-    if (error) {
-        return <div className="text-center text-red-500 p-4">{error}</div>;
-    }
-    
-    if (!summaryData) {
-        return <div className="text-center text-gray-500 p-4">אין נתונים להצגה.</div>;
-    }
-    
+
+    const { totalIncome, totalExpenses, balance, savingsRate, currency } = monthlyTotals;
+
     return (
-        <div className="user-summary-container">
-            {usersToDisplay.map(user => {
-                const data = summaryData[user.name] || { income: 0, expenses: 0, net: 0 };
-                const netClass = data.net > 0 ? 'net-positive' : data.net < 0 ? 'net-negative' : '';
-                
-                return (
-                    <div key={user._id || user.name} className="user-summary-card">
-                        <h4 className="user-card-title">
-                            <i className={`fas ${user.name === 'משותף' ? 'fa-users' : 'fa-user-circle'}`}></i>
-                            {user.name}
-                        </h4>
-                        <div className="user-stats">
-                            <UserStatRow icon="fa-arrow-up" label="הכנסות" amount={data.income} currency={currency} className="income-row" />
-                            <UserStatRow icon="fa-arrow-down" label="הוצאות" amount={data.expenses} currency={currency} className="expense-row" />
-                            <hr className="my-2 border-gray-200"/>
-                            <UserStatRow icon="fa-balance-scale" label="מאזן" amount={data.net} currency={currency} className={`font-bold ${netClass}`} />
-                        </div>
+        <div className="financial-summary-grid">
+            <StatCard 
+                icon="fa-arrow-up" 
+                title="סך הכנסות (החודש)" 
+                value={formatCurrency(totalIncome, currency)}
+                colorClass="income"
+            />
+            <StatCard 
+                icon="fa-arrow-down" 
+                title="סך הוצאות (החודש)" 
+                value={formatCurrency(totalExpenses, currency)}
+                colorClass="expense"
+            />
+            <StatCard 
+                icon="fa-balance-scale" 
+                title="מאזן" 
+                value={formatCurrency(balance, currency)}
+                colorClass={balance >= 0 ? 'balance-positive' : 'balance-negative'}
+            />
+            <StatCard 
+                icon="fa-piggy-bank" 
+                title="שיעור חיסכון" 
+                value={`${savingsRate.toFixed(0)}%`}
+                colorClass="savings"
+                detail={
+                    <div className="savings-progress-bar">
+                        <div style={{ width: `${Math.min(savingsRate, 100)}%` }}></div>
                     </div>
-                );
-            })}
+                }
+            />
         </div>
     );
 };
 
-export default UserFinanceSummary;
+export default FinancialSummary;
