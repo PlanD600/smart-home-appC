@@ -1,0 +1,164 @@
+/* === src/styles/Redesign.css === */
+
+/* 1. הגדרות בסיס ופלטת צבעים */
+:root {
+  --background-main: #f4f6f9;
+  --background-content: #ffffff;
+  --text-primary: #1d2b3a;
+  --text-secondary: #5a6a7b;
+  --primary-color: #007bff;
+  --accent-color: #1DE9B6;
+  --border-color: #e2e8f0;
+  --error-color: #d32f2f;
+  --error-background: #ffebee;
+  --header-height: 64px;
+  --bottom-nav-height: 65px;
+  --card-shadow: 0 4px 12px rgba(0, 30, 80, 0.08);
+}
+
+/* סגנון ברירת מחדל לכל הדף */
+body {
+    font-family: 'Heebo', sans-serif;
+    margin: 0;
+    background-color: var(--background-main);
+    color: var(--text-primary);
+}
+
+/* 2. מבנה האפליקציה הראשי */
+.main-app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.app-body {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding-bottom: var(--bottom-nav-height); 
+}
+
+.main-content {
+  padding: 1rem;
+}
+
+/* 3. כותרת עליונה (Header) */
+.app-header {
+  height: var(--header-height);
+  background-color: var(--background-content);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.header-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.header-menu-container {
+  position: relative;
+}
+
+.header-menu-toggle {
+  background-color: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+.header-menu-toggle:hover {
+  background-color: #f1f5f9;
+}
+
+.header-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 240px;
+  background-color: var(--background-content);
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0, 30, 80, 0.15);
+  border: 1px solid var(--border-color);
+  z-index: 110;
+  padding: 0.5rem;
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-weight: 500;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: right;
+  transition: background-color 0.2s;
+}
+.dropdown-item:hover { background-color: #f1f5f9; }
+.dropdown-item i { width: 20px; text-align: center; color: var(--text-secondary); }
+.dropdown-divider { height: 1px; background-color: var(--border-color); margin: 0.5rem 0; }
+.dropdown-item.logout-item { color: var(--error-color); }
+
+/* 4. ניווט תחתון */
+.bottom-tab-navigation {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  height: var(--bottom-nav-height);
+  background-color: var(--background-content);
+  box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
+  z-index: 90;
+}
+
+.tab-button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  border-top: 3px solid transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+.tab-button i { font-size: 1.5rem; }
+.tab-button.active {
+  color: var(--primary-color);
+  border-top-color: var(--primary-color);
+}

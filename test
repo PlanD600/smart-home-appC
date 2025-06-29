@@ -1,0 +1,197 @@
+/* === src/pages/LoginScreen.redesigned.css === */
+
+/* 1. הגדרת פלטת צבעים גלובלית
+     --------------------------------
+     פלטת הצבעים נבחרה כדי ליצור חוויה רגועה, טכנולוגית וברורה.
+     - כחולים (primary): משדרים אמינות ורוגע.
+     - ירוק-טורקיז (accent): צבע מודרני וידידותי שמושך את העין לפעולות חשובות.
+     - אפורים (text/border): מבטיחים ניגודיות טובה וקריאות גבוהה.
+*/
+:root {
+  --background-color: #f7f9fc; /* אפור בהיר מאוד ונקי לרקע הכללי */
+  --card-background: #ffffff;   /* לבן נקי לכרטיסים וקונטיינרים */
+  --text-primary: #1d2b3a;      /* כחול כהה מאוד לטקסט ראשי - קריא וברור */
+  --text-secondary: #5a6a7b;   /* אפור-כחלחל לטקסט משני ותוויות */
+  --primary-color: #007BFF;       /* כחול עשיר ונגיש */
+  --accent-color: #1DE9B6;        /* טורקיז מודרני ובוהק להדגשות וכפתורים */
+  --border-color: #dde2e7;        /* אפור בהיר למסגרות */
+  --error-color: #d32f2f;          /* אדום ברור לשגיאות */
+  --error-background: #ffebee;   /* רקע ורדרד להודעות שגיאה */
+}
+
+/* 2. עיצוב כללי של המסך
+     -----------------------
+     מבטיח שהתוכן ממורכז בצורה אנכית ואופקית ושהרקע נקי ונעים לעין.
+*/
+.login-screen-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: var(--background-color);
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+/* 3. כרטיס הכניסה המרכזי
+     ----------------------
+     הכרטיס מעוצב עם פינות מעוגלות והצללה עדינה (box-shadow)
+     כדי לתת לו תחושת "עומק" ולהפריד אותו מהרקע.
+     הריווח הפנימי (padding) גדול כדי לתת לתוכן "לנשום".
+*/
+.login-card {
+  width: 100%;
+  max-width: 420px; /* רוחב מקסימלי שמתאים גם למובייל וגם נראה טוב בדסקטופ */
+  background-color: var(--card-background);
+  border-radius: 20px; /* פינות עגולות למראה מודרני */
+  padding: 2.5rem;   /* ריווח פנימי נדיב */
+  box-shadow: 0 10px 35px rgba(0, 30, 80, 0.1); /* הצללה רכה */
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 4. כותרת הכרטיס (אייקון וטקסט)
+     --------------------------------
+     האייקון הגדול והצבעוני משמש כ"עוגן ויזואלי" ונותן אופי לאפליקציה.
+     הכותרת "ברוכים הבאים" גדולה ובולטת כדי להנחות את המשתמש.
+*/
+.login-header {
+  text-align: center;
+  margin-bottom: 2.5rem; /* רווח גדול יותר מהטופס */
+}
+
+.login-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 1.5rem;
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+}
+
+.login-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* 5. טופס הכניסה
+     ----------------
+     כל שדה קלט (input) מקבל תווית (label) ברורה מעליו.
+     הפונט גדול וברור, והריווח גדול מספיק כדי למנוע טעויות הקלקה.
+     אפקט ה-focus נותן חיווי ברור למשתמש היכן הוא נמצא.
+*/
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* רווח גדול יותר בין השדות */
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.input-group label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.input-group input {
+  padding: 1rem; /* ריווח פנימי גדול יותר לנוחות */
+  border: 1px solid var(--border-color);
+  border-radius: 10px; /* פינות מעוגלות יותר */
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+}
+
+/* 6. כפתור השליחה הראשי
+     ------------------------
+     הכפתור גדול, בולט ועם צבע המושך לפעולה.
+     הוא נותן חיווי ברור כשהוא לא פעיל (disabled).
+*/
+.login-submit-btn {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 1rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center; /* ודא שהטקסט ממורכז */
+}
+
+.login-submit-btn:hover:not(:disabled) {
+  background-color: #0056b3; /* גוון כהה יותר במעבר עכבר */
+  transform: translateY(-2px);
+}
+
+.login-submit-btn:disabled {
+  background-color: #b0bec5; /* אפור כהה כשהכפתור לא פעיל */
+  cursor: not-allowed;
+}
+
+/* 7. הודעות שגיאה
+     -----------------
+     ברורות ובולטות עם צבע ורקע המעידים על שגיאה.
+*/
+.login-error-message {
+  color: var(--error-color);
+  background-color: var(--error-background);
+  text-align: center;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* 8. כותרת תחתונה (Footer)
+     ----------------------
+     מפרידה בין אזור הכניסה לאזור יצירת הבית החדש.
+*/
+.login-footer {
+  text-align: center;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #3d80d7;
+}
+
+.login-footer p {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.create-home-link-btn {
+ background-color: rgba(188, 126, 255, 0.618);
+  color: rgb(0, 0, 0);
+  padding: 1rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center; /* ודא שהטקסט ממורכז */
+
+}
+
+.create-home-link-btn:hover:not(:disabled) {
+  color: rgb(0, 89, 254);
+}

@@ -4,7 +4,6 @@ import { useModal } from "@/context/ModalContext";
 import CreateHomeForm from "@/features/auth/CreateHomeForm";
 import LoadingSpinner from "@/components/LoadingSpinner";
 // שיניתי את שם קובץ ה-CSS המיובא כדי להשתמש בעיצוב החדש
-import "./LoginScreen.redesigned.css";
 
 const LoginScreen = () => {
     // כל הלוגיקה הקיימת נשארת ללא שינוי
