@@ -1,122 +1,69 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useAppContext } from '@/context/AppContext';
+import React, { useState, useEffect, useRef } from 'react';
 
-// This is now just a fallback for when no categories are defined in the home object.
-const FALLBACK_CATEGORIES = [
-    'כללית', 'מצרכים', 'חשבונות', 'בידור', 'שונות',
-];
-
-/**
- * A reusable form for adding new items to shopping or task lists.
- * It includes fields for text, category, and user assignment.
- * @param {object} props - Component props.
- * @param {'shopping' | 'tasks'} props.listType - The type of list the item will be added to.
- * @param {function} props.onAddItem - The callback function to add the item, receives (listType, itemData).
- */
-const AddItemForm = ({ listType, onAddItem }) => {
-    const { activeHome, currentUser, loading } = useAppContext();
-
-    const availableCategories = useMemo(() => {
-        return activeHome?.listCategories?.length > 0
-            ? activeHome.listCategories
-            : FALLBACK_CATEGORIES;
-    }, [activeHome?.listCategories]);
-
-    // Form state
+const AddItemForm = ({ onAddItem, categories = [], users = [], listType }) => {
     const [text, setText] = useState('');
-    const [category, setCategory] = useState(availableCategories[0]);
-    const [assignedTo, setAssignedTo] = useState('');
-
-    const users = useMemo(() => activeHome?.users || [], [activeHome?.users]);
-
-    // Update the default category if the available categories change.
-    useEffect(() => {
-        if (!availableCategories.includes(category)) {
-            setCategory(availableCategories[0]);
-        }
-    }, [availableCategories, category]);
+    const [category, setCategory] = useState('כללית');
+    const [assignedTo, setAssignedTo] = useState('משותף');
+    const inputRef = useRef(null);
 
     useEffect(() => {
-        if (users.length > 0) {
-            const userExists = users.some(u => u.name === currentUser);
-            setAssignedTo(userExists ? currentUser : users[0].name);
+        if (inputRef.current) {
+            inputRef.current.focus();
         }
-    }, [users, currentUser]);
+    }, []);
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!text.trim() || loading) return;
-
-        const newItemData = {
-            text: text.trim(),
-            category,
-            assignedTo,
+        if (!text.trim()) return;
+        const newItem = {
+            text,
+            category: category || 'כללית',
+            assignedTo: assignedTo || 'משותף', // [שינוי] תמיד נשלח את השיוך
+            isUrgent: false,
+            completed: false,
         };
-
-        onAddItem(listType, newItemData);
-
+        onAddItem(newItem);
         setText('');
-        setCategory(availableCategories[0]); // Reset to the first available category
+        // Do not reset category and user for faster sequential adding
     };
 
     return (
-        <form onSubmit={handleSubmit} className="add-item-form-container">
-            <div className="input-group">
-                <i className="fas fa-pencil-alt input-icon"></i>
+        <form onSubmit={handleSubmit} className="add-item-form-redesigned">
+            {/* [שדרוג] שורה ראשונה */}
+            <div className="form-row">
                 <input
+                    ref={inputRef}
                     type="text"
+                    className="form-control item-name-input"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
-                    placeholder={listType === 'shopping' ? 'הוסף מוצר...' : 'הוסף משימה...'}
-                    className="main-input"
-                    aria-label="New item text"
-                    required
+                    placeholder="הוסף פריט חדש..."
                 />
             </div>
+            
+            {/* [שדרוג] שורה שנייה */}
+            <div className="form-row">
+                <select
+                    className="form-control"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                >
+                    <option value="כללית">קטגוריה (כללית)</option>
+                    {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
 
-            <div className="options-group">
-                <div className="select-group">
-                    <label htmlFor="category-select">קטגוריה</label>
                     <select
-                        id="category-select"
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        className="control-select"
-                    >
-                        {availableCategories.map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="select-group">
-                    <label htmlFor="user-select">שייך ל</label>
-                     <select
-                        id="user-select"
+                        className="form-control"
                         value={assignedTo}
                         onChange={(e) => setAssignedTo(e.target.value)}
-                        className="control-select"
-                        disabled={users.length === 0}
                     >
-                        {users.length > 0 ? (
-                            users.map((user) => (
-                                <option key={user.name} value={user.name}>
-                                    {user.name}
-                                </option>
-                            ))
-                        ) : (
-                            <option>אין משתמשים</option>
-                        )}
+                        <option value="משותף">שייך ל... (משותף)</option>
+                        {users.map(user => <option key={user} value={user}>{user}</option>)}
                     </select>
-                </div>
+                
 
-                <button
-                    type="submit"
-                    className="submit-button"
-                    disabled={loading || !text.trim()}
-                    aria-label="Add item"
-                >
-                    <i className="fas fa-plus"></i>
+                <button type="submit" className="add-btn">
+                    <i className="fas fa-plus"></i> הוסף
                 </button>
             </div>
         </form>

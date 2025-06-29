@@ -1,0 +1,130 @@
+/* client/src/styles/00-globals.css */
+:root {
+  --background-color: #f4f6f9;
+  --card-background: #ffffff;
+  --text-primary: #1d2b3a;
+  --text-secondary: #5a6a7b;
+  --text-light: #9ca3af;
+  --border-color: #e5e7eb;
+  
+  /* Primary Color Palette */
+  --primary-500: #007BFF;
+  --primary-600: #0069D9;
+  
+  /* Accent Color Palette */
+  --accent-400: #1DE9B6;
+  --accent-500: #00C8A2;
+
+  /* Semantic Colors */
+  --success-color: #16a34a;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
+
+  --success-bg: #dcfce7;
+  --warning-bg: #fffbeb;
+  --danger-bg: #fee2e2;
+
+  --font-main: 'Heebo', sans-serif;
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--background-color);
+  color: var(--text-primary);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+/* Generic form elements */
+.form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+label { font-weight: 600; color: var(--text-secondary); }
+input, select, textarea {
+    width: 100%; padding: 0.75rem; border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md); font-size: 1rem; box-sizing: border-box;
+}
+
+/* Generic Modal Styles */
+.modal-backdrop {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background-color: rgba(0, 0, 0, 0.6); display: flex;
+  align-items: center; justify-content: center; z-index: 1000;
+}
+.modal-content-container {
+  background-color: var(--card-background); border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg); width: 90%; max-width: 500px; max-height: 90vh;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.modal-header {
+  padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.modal-title { font-size: 1.25rem; font-weight: 600; }
+.close-modal-button {
+  background: none; border: none; font-size: 1.75rem;
+  color: var(--text-light); cursor: pointer; transition: color 0.2s;
+}
+.close-modal-button:hover { color: var(--text-primary); }
+.modal-body { padding: 1.5rem; overflow-y: auto; }
+.modal-footer {
+  padding: 1rem 1.5rem; border-top: 1px solid var(--border-color);
+  display: flex; justify-content: flex-start; gap: 0.75rem;
+}
+.primary-action {
+  background-color: var(--primary-500); color: white;
+  padding: 0.6rem 1.2rem; border-radius: var(--border-radius-md); border: none; cursor: pointer;
+}
+.secondary-action {
+  background-color: var(--card-background); color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  padding: 0.6rem 1.2rem; border-radius: var(--border-radius-md); cursor: pointer;
+}
+/* Animations for Modal */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes scaleUp { from { transform: scale(0.95); } to { transform: scale(1); } }
+@keyframes scaleDown { from { transform: scale(1); } to { transform: scale(0.95); } }
+.modal-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+.modal-fade-in .modal-content-container { animation: scaleUp 0.3s ease-out forwards; }
+.modal-fade-out { animation: fadeOut 0.3s ease-in forwards; }
+.modal-fade-out .modal-content-container { animation: scaleDown 0.3s ease-in forwards; }
+
+/* Utility & Helper Classes */
+.loading-spinner-container.full-page {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100vh; width: 100%; position: fixed; top: 0; left: 0;
+    background-color: rgba(255, 255, 255, 0.8); z-index: 9999;
+}
+.loading-spinner { border-radius: 50%; animation: spin 1s linear infinite; }
+.spinner-sm { width: 20px; height: 20px; border: 3px solid var(--border-color); border-top-color: var(--primary-500); }
+.spinner-md { width: 40px; height: 40px; border: 4px solid var(--border-color); border-top-color: var(--primary-500); }
+.spinner-lg { width: 60px; height: 60px; border: 5px solid var(--border-color); border-top-color: var(--primary-500); }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* --- Hover Effects for Modal Buttons --- */
+
+.primary-action:hover:not(:disabled) {
+    background-color: var(--primary-600);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.secondary-action:hover:not(:disabled) {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+}
+
+/* A general rule for all buttons to have a nice transition */
+button {
+    transition: all 0.2s ease-in-out;
+}

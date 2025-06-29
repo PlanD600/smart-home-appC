@@ -99,7 +99,7 @@ const TaskList = () => {
 
             <AddItemForm listType="tasks" onAddItem={addItem} />
 
-            <div className="list-controls">
+            <div className="list-container">
                 <div className="control-group">
                     <label htmlFor="task-filter-status">הצג:</label>
                     <select id="task-filter-status" value={filter} onChange={(e) => setFilter(e.target.value)} disabled={loading}>

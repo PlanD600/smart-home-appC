@@ -1,7 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import './style.css';
+import './styles/00-globals.css';
+import './styles/01-layout.css';
+import './styles/02-login.css';
+import './styles/03-lists.css';
+import './styles/04-finance.css';
+
 
 // Importing all context providers
 import { LanguageProvider } from '@/context/LanguageContext';

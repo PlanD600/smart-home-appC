@@ -92,7 +92,7 @@ const ShoppingList = () => {
 
             <AddItemForm listType="shopping" onAddItem={addItem} />
 
-            <div className="list-controls">
+            <div className="list-container">
                  <div className="control-group">
                     <label htmlFor="filter-status">הצג:</label>
                     <select id="filter-status" value={filter} onChange={(e) => setFilter(e.target.value)} disabled={loading}>

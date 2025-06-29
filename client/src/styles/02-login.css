@@ -1,0 +1,81 @@
+/* client/src/styles/02-login.css */
+.login-screen-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background-color: var(--card-background);
+  border-radius: 20px;
+  padding: 2.5rem;
+  box-shadow: var(--shadow-lg);
+}
+
+.login-header { text-align: center; margin-bottom: 2rem; }
+.login-icon {
+  width: 64px; height: 64px; margin: 0 auto 1.5rem;
+  background: linear-gradient(45deg, var(--primary-500), var(--primary-600));
+  color: white; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center;
+  font-size: 1.75rem; box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+.login-header h1 { font-size: 2rem; color: var(--text-primary); }
+
+.login-form .input-group { margin-bottom: 1.25rem; }
+.login-form label { font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem; display: block; }
+.login-form input {
+  width: 100%; padding: 0.8rem 1rem; border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md); font-size: 1rem; transition: all 0.2s;
+}
+.login-form input:focus {
+  outline: none; border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+}
+
+.login-error-message {
+  color: var(--danger-color); background-color: var(--danger-bg);
+  text-align: center; padding: 0.75rem; border-radius: 6px; font-weight: 500;
+}
+
+.login-submit-btn, .create-home-btn {
+  width: 100%; padding: 0.875rem; border: none; border-radius: var(--border-radius-md);
+  font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.login-submit-btn {
+  background: linear-gradient(45deg, var(--accent-500), var(--primary-500));
+  color: white; box-shadow: 0 4px 15px rgba(0, 198, 255, 0.25);
+}
+.login-submit-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 198, 255, 0.35); }
+
+.login-footer { text-align: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); }
+.login-footer p { margin: 0 0 0.75rem 0; color: var(--text-secondary); }
+.create-home-link-btn { background: none; border: none; color: var(--primary-500); font-weight: 600; cursor: pointer; }
+.create-home-link-btn:hover { text-decoration: underline; color: var(--primary-600); }
+
+/* Home Cards (Selection screen) */
+.home-cards-container {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.5rem; padding: 2rem 0;
+}
+.home-card {
+  padding: 1.5rem; border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-md); transition: all 0.2s ease-in-out;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 200px; cursor: pointer;
+}
+.home-card:hover, .home-card:focus-visible { transform: translateY(-5px); box-shadow: var(--shadow-lg); }
+.home-card-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+.home-card-name { margin: 0; font-size: 1.25rem; font-weight: 700; }
+.card-color-1 { background-color: #4dabf7; color: white; }
+.card-color-2 { background-color: #fab005; color: white; }
+.card-color-3 { background-color: #20c997; color: white; }
+.add-home-card {
+    border: 2px dashed var(--border-color); background-color: transparent;
+    color: var(--text-secondary);
+}
+.add-home-card:hover { border-color: var(--primary-500); color: var(--primary-500); }
